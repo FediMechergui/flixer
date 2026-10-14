@@ -8,10 +8,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const product = process.env.APP_PRODUCT || 'dahsha';
+const product = process.env.APP_PRODUCT || 'flixer';
 const dataOut = path.join(root, 'client', 'public', product === 'dahsha' ? 'data' : 'data-flixer', 'catalog.json');
 const serverData = path.join(root, 'server', 'data');
-const SNAPSHOT_URL = process.env.DATA_SNAPSHOT_URL || 'https://github.com/FediMechergui/dahsha/releases/download/data-snapshot/data-snapshot.tar.gz';
+const SNAPSHOT_URL = process.env.DATA_SNAPSHOT_URL || 'https://github.com/FediMechergui/flixer/releases/download/data-snapshot/data-snapshot.tar.gz';
 // No shell: paths with spaces must reach the child process untouched.
 const run = (cmd, args, opts = {}) => {
   const bin = cmd === 'node' ? process.execPath : (process.platform === 'win32' && !/\.exe$/i.test(cmd) ? `${cmd}.exe` : cmd);

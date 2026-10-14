@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
 const opt = (name, def) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : def; };
-const product = process.env.APP_PRODUCT || 'dahsha';
+const product = process.env.APP_PRODUCT || 'flixer';
 if (!['dahsha', 'flixer'].includes(product)) throw new Error('Invalid app product');
 const outDir = opt('--out', product === 'dahsha' ? 'dist' : 'dist-flixer');
 const dataBase = opt('--data-base', process.env.VITE_DATA_BASE || '');

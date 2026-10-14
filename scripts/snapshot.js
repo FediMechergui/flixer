@@ -10,13 +10,13 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dataDir = path.join(root, 'server', 'data');
 const TAG = 'data-snapshot';
-const FILES = ['playlists.json', 'details.json', 'seen.json', 'catalog.json', 'artwork.json', 'flixer-catalog.json', ...['dahsha','flixer'].flatMap(product => [`providers-${product}.json`, `provider-aliases-${product}.json`, `provider-identities-${product}.json`, `provider-matches-${product}.json`])];
+const FILES = ["flixer-catalog.json", "providers-flixer.json", "provider-aliases-flixer.json", "provider-identities-flixer.json", "provider-matches-flixer.json"];
 const ARCHIVE = 'data-snapshot.tar.gz';
 const archive = path.join(root, ARCHIVE);
 // No shell: paths with spaces (OneDrive folders) must reach tar/gh untouched. Windows resolves
 // gh/tar through PATHEXT without a shell as long as we name the executable.
 const exe = (cmd) => (process.platform === 'win32' ? `${cmd}.exe` : cmd);
-const repo = process.env.SNAPSHOT_REPO || 'FediMechergui/dahsha';
+const repo = process.env.SNAPSHOT_REPO || 'FediMechergui/flixer';
 const sh = (cmd, args, opts = {}) => spawnSync(exe(cmd), cmd === 'gh' ? [...args,'--repo',repo] : args, { stdio: 'inherit', ...opts });
 const mode = process.argv[2];
 
@@ -26,7 +26,7 @@ if (mode === 'save') {
   // Run tar inside the data dir with relative names so no path needs quoting.
   if (sh('tar', ['-czf', path.relative(dataDir, archive), ...present], { cwd: dataDir }).status !== 0) process.exit(1);
   const exists = spawnSync(exe('gh'), ['release', 'view', TAG,'--repo',repo], { stdio: 'ignore' }).status === 0;
-  if (!exists && sh('gh', ['release', 'create', TAG, '--title', 'Data snapshot (auto)', '--notes', 'Cached YouTube metadata used by the refresh job. Updated automatically.', '--latest=false']).status !== 0) process.exit(1);
+  if (!exists && sh('gh', ['release', 'create', TAG, '--title', 'Data snapshot (auto)', '--notes', 'Cached Flixer catalogue metadata used by this repository. Updated automatically.', '--latest=false']).status !== 0) process.exit(1);
   if (sh('gh', ['release', 'upload', TAG, ARCHIVE, '--clobber'], { cwd: root }).status !== 0) process.exit(1);
   fs.rmSync(archive, { force: true });
   console.log(`snapshot saved (${present.join(', ')})`);

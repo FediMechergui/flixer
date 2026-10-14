@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "node scripts/vercel-build.js",
-  "outputDirectory": "client/dist",
+  "buildCommand": "node scripts/product.js flixer vercel",
+  "outputDirectory": "client/dist-flixer",
   "installCommand": "npm ci --prefix client && npm ci --prefix server",
   "framework": null,
   "trailingSlash": false,
@@ -81,9 +81,12 @@
   ],
   "functions": {
     "api/*.js": {
-      "includeFiles": "server/deployment-dahsha.json",
+      "includeFiles": "server/deployment-flixer.json",
       "maxDuration": 60,
       "excludeFiles": "{server/data/**,client/public/**,client/dist*/**,client-terrarium/dist*/**,mobile/**,docs/**}"
     }
+  },
+  "env": {
+    "APP_PRODUCT": "flixer"
   }
 }

@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 const root = path.dirname(fileURLToPath(import.meta.url));
-const product = process.env.VITE_PRODUCT || process.env.APP_PRODUCT || 'dahsha';
+const product = process.env.VITE_PRODUCT || process.env.APP_PRODUCT || 'flixer';
 if (!['dahsha', 'flixer'].includes(product)) throw new Error('Invalid app product');
 const documentaries = product === 'dahsha';
 const dataDir = path.join(root, 'public', documentaries ? 'data' : 'data-flixer');

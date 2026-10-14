@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-export const DATA_DIR = process.env.DATA_DIR || (process.env.VERCEL ? path.join(os.tmpdir(), `stream-library-${process.env.APP_PRODUCT || 'dahsha'}`) : path.resolve(__dirname, '../data'));
+export const DATA_DIR = process.env.DATA_DIR || (process.env.VERCEL ? path.join(os.tmpdir(), `stream-library-${process.env.APP_PRODUCT || 'flixer'}`) : path.resolve(__dirname, '../data'));
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
 export function readJson(name, fallback) {

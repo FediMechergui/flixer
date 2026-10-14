@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-const product=process.argv[2] || process.env.APP_PRODUCT || 'dahsha';
+const product=process.argv[2] || process.env.APP_PRODUCT || 'flixer';
 if(!['dahsha','flixer'].includes(product))throw new Error('Invalid deployment product');
 const functions=path.join(root,'.vercel/output/functions/api');
 const backup=path.join(root,'.vercel/trace-backup',`${product}-${Date.now()}`);
