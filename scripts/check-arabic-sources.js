@@ -1,0 +1,4 @@
+import {safeRemoteFetch} from '../server/src/stream-security.js';
+for(const url of ['https://tuniflix.site/tg/tunisian-movies','https://streamtunisie.net/series-category/tunisian/','https://kirmalk.com/category.php?cat=msr7','https://yam.ahwaktv.net/category.php?cat=aflam-arabya1','https://tv10.egydead.live/category/%d8%a7%d9%81%d9%84%d8%a7%d9%85-%d8%b9%d8%b1%d8%a8%d9%8a/','https://cinetimes.org/t/zohra']){
+  try{const r=await safeRemoteFetch(url,{timeoutMs:12000,headers:{'User-Agent':'Mozilla/5.0',Accept:'text/html'}});const html=await r.text();console.log(JSON.stringify({url,status:r.status,challenge:r.headers.get('cf-mitigated'),title:/<title[^>]*>([^<]+)/i.exec(html)?.[1],bytes:html.length}));}catch(e){console.log(JSON.stringify({url,error:e.message}));}
+}
