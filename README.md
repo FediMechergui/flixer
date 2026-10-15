@@ -79,9 +79,9 @@ stored as a repository secret. That path does not need a general Vercel API toke
 
 Read [Scraper behavior](docs/SCRAPERS.md) and [Provider integration](docs/FMOVIES.md) for parsing, matching, and playback details. Upstream streams and artwork may be unavailable; failed requests retain imported catalogue data.
 
-HDToday challenges GitHub's runner. The hosted refresh can import a validated
-metadata feed produced by an environment with ordinary access; see
-[HDToday refresh setup](docs/hdtoday-refresh.md). The feed has its own timestamp,
-expires after 36 hours, and never replaces the other providers' snapshot.
+HDToday challenges GitHub's runner. Hosted refreshes retain its cached titles
+and retry ordinary access while other providers continue updating. Independent
+metadata feeds and PC refresh tasks are disabled; see
+[HDToday refresh setup](docs/hdtoday-refresh.md).
 [Arabic source research](docs/arabic-sources.md) records candidates and remaining
 playback/coverage checks; these candidates are not advertised as integrated.

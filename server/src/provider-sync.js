@@ -49,7 +49,9 @@ export async function refreshProviders({product='dahsha',full=false,pageBudget=N
 async function scan({product,full,pageBudget,log}) {
   const cache=providerCache(product),items=new Map(cache.items.map(i=>[i.id,i]));
   const errors={};let requests=0;
-  const feed=validateHdtodayFeed(readJson('hdtoday-feed.json',null));
+  // Cached HDToday data is the default until ordinary hosted access returns.
+  // Independent feeds require explicit configuration, never just a file's presence.
+  const feed=process.env.HDTODAY_EXTERNAL_FEED==='1'?validateHdtodayFeed(readJson('hdtoday-feed.json',null)):null;
   const paused=new Set(feed?['hdtoday']:[]);
   const put=rows=>{for(const row of rows){const old=items.get(row.id);const now=new Date().toISOString();
     const fresh=!old?.latestAt || !row.latestAt || row.latestAt>=old.latestAt;

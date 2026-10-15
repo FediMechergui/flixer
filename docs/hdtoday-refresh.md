@@ -11,7 +11,15 @@ The adapter now identifies this condition and pauses further requests for ten
 minutes. Rate limiting has a separate cooldown. Existing catalogue records and
 historical cursors remain intact.
 
-## Independent metadata feed
+## Current policy: retain cached HDToday data
+
+The selected configuration retains imported HDToday titles and retries ordinary
+hosted access on scheduled refreshes. Upstream challenges are reported; other
+providers continue refreshing. No PC task is registered and the hosted workflow
+does not download independent HDToday feeds. Previously imported records remain
+part of the catalogue cache.
+
+## Optional independent metadata feed (disabled)
 
 An environment with ordinary access can run:
 
@@ -27,7 +35,8 @@ overwrite the main data snapshot or other providers. A failed scan never
 publishes a partial replacement. `--publish` requires the repository owner's
 existing GitHub CLI authentication.
 
-The hosted workflow downloads this asset before merging providers. A valid
+This alternative requires explicitly setting `HDTODAY_EXTERNAL_FEED=1` and
+configuring the workflow to download the asset before merging providers. A valid
 snapshot less than 36 hours old replaces direct HDToday crawling on that run.
 Its own timestamp and record count appear in `providerSync.externalFeeds`;
 the workflow timestamp does not pretend that the upstream was freshly crawled.
