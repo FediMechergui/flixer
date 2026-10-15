@@ -860,7 +860,8 @@
         (Array.isArray(data.servers) ? data.servers : []).forEach((s, idx) => {
           if(s.requiresBrowserVerification || /^https:\/\/hdtoday\.sx\//i.test(s.embedUrl || ''))return;
           const streamUrl = toAbsolute(s.streamUrl || s.rawStreamUrl);
-          const embedUrl = toAbsolute(s.embedUrl || s.rawEmbedUrl);
+          const youtubeId = s.type === 'youtube' && /^[A-Za-z0-9_-]{11}$/.test(s.videoId || '') ? s.videoId : null;
+          const embedUrl = youtubeId ? `https://www.youtube.com/embed/${youtubeId}?autoplay=1&playsinline=1&rel=0` : toAbsolute(s.embedUrl || s.rawEmbedUrl);
           if (streamUrl || embedUrl) servers.push({ ...s, id: s.id != null ? s.id : idx, name: s.name || "Player " + (idx + 1), type: s.type || (streamUrl ? "hls" : "embed"), streamUrl, embedUrl });
         });
         if (!servers.length && Array.isArray(data.streams)) data.streams.forEach((s, idx) => { const u = toAbsolute(s.proxyUri || s.uri); if (u) servers.push({ id: idx, name: s.quality || s.name || "Server " + (idx + 1), type: "hls", streamUrl: u }); });

@@ -5,17 +5,25 @@ import vm from 'node:vm';
 import { leanCatalog } from '../src/export-catalog.js';
 import { parseFmoviesList } from '../src/fmovies.js';
 
-function fixture(shows) {
+function fixture(shows, streams = {}) {
   const requests=[];
   const catalog={product:'flixer',shows};
   const context=vm.createContext({window:{FLIXER_CONFIG:{live:false},dispatchEvent:()=>{}},console,URLSearchParams,CustomEvent:class {},localStorage:{getItem:()=>null,setItem:()=>{}},AbortController,setTimeout,clearTimeout,fetch:async input=>{
     const url=String(input);requests.push(url);
-    const body=/\/(bootstrap|index)\.json/.test(url)?catalog:{};
+    const body=url.includes('/api/stream?')?streams:/\/(bootstrap|index)\.json/.test(url)?catalog:{};
     return {ok:true,status:200,headers:{get:()=>null},text:async()=>JSON.stringify(body)};
   }});
   for(const name of ['universes.js','tvmaze.js','api.js'])vm.runInContext(fs.readFileSync(new URL(`../../client-terrarium/js/${name}`,import.meta.url),'utf8'),context);
   return {api:new context.window.Api.FlixerApi(),requests};
 }
+
+test('source YouTube servers reach the APK player with validated video IDs',async()=>{
+  const {api}=fixture([], {servers:[{type:'youtube',videoId:'P4UF0xAnc0M',name:'Source video'},{type:'youtube',videoId:'../invalid'}]});
+  const result=await api.stream('sp:streamtunisie:e:example');
+  assert.equal(result.servers.length,1);
+  assert.equal(result.servers[0].name,'Source video');
+  assert.equal(result.servers[0].embedUrl,'https://www.youtube.com/embed/P4UF0xAnc0M?autoplay=1&playsinline=1&rel=0');
+});
 
 test('Arabic titles, bilingual aliases and regional collections remain searchable independently',async()=>{
   const {api}=fixture([{id:'tn',kind:'film',title:'الإبرة',altTitles:['The Needle'],countries:['TN']},{id:'eg',kind:'film',title:'مسرحية',countries:['EG'],collections:['plays'],tags:['theatre']},{id:'us',kind:'film',title:'An English film',countries:['US']}]);
