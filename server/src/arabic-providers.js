@@ -183,7 +183,7 @@ export function parseArabicDetails(id,html){
 }
 export async function getArabicDetails(id){
   const saved=arabicSnapshot(id);
-  if(saved?.id===id&&saved.metadataVersion>=2&&Date.now()-Date.parse(saved.detailsFetchedAt||0)<6*3600000)return saved;
+  if(saved?.id===id&&(saved.metadataVersion>=2||saved.synopsis?.trim()&&saved.poster?.custom)&&Date.now()-Date.parse(saved.detailsFetchedAt||0)<6*3600000)return saved;
   try{return await getLiveArabicDetails(id);}catch(error){if(saved?.id===id)return {...saved,providerErrors:[{provider:parseArabicId(id).provider,error:error.message,cached:true}]};throw error;}
 }
 async function getLiveArabicDetails(id){
