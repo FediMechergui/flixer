@@ -17,6 +17,13 @@ function fixture(shows) {
   return {api:new context.window.Api.FlixerApi(),requests};
 }
 
+test('Arabic titles, bilingual aliases and regional collections remain searchable independently',async()=>{
+  const {api}=fixture([{id:'tn',kind:'film',title:'الإبرة',altTitles:['The Needle'],countries:['TN']},{id:'eg',kind:'film',title:'مسرحية',countries:['EG'],collections:['plays'],tags:['theatre']},{id:'us',kind:'film',title:'An English film',countries:['US']}]);
+  const found=await api.search('The Needle');assert.equal(found.items[0].id,'tn');
+  const arabic=await api.search('الابرة');assert.equal(arabic.items[0].id,'tn');
+  const all=await api.all();assert.equal(api.inCollection(all.find(i=>i.id==='tn'),'tunisian'),true);assert.equal(api.inCollection(all.find(i=>i.id==='us'),'arabic'),false);assert.equal(api.inCollection(all.find(i=>i.id==='eg'),'plays'),true);
+});
+
 test('known episode playback does not wait for title refresh or the optional episode guide',async()=>{
   const {api,requests}=fixture([{id:'series',kind:'series',title:'A series',tvm:{id:99},episodes:[{id:'ep1',season:1,number:1},{id:'ep2',season:1,number:2}]}]);
   await api.catalog();api.liveEnabled=true;

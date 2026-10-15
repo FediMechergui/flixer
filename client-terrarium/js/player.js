@@ -94,7 +94,7 @@
       teardownMedia();
       const s = servers[i];
       if (!s) return showError();
-      if (["hls","mp4"].includes(s.type) && s.streamUrl) return loadHls(s);
+      if (["hls","mp4","file"].includes(s.type) && s.streamUrl) return loadHls(s);
       if (s.embedUrl) return loadEmbed(s);
       failover();
     }
@@ -115,11 +115,11 @@
       v.addEventListener("timeupdate", () => { if (v.duration > 0 && opts.onProgress) opts.onProgress(v.currentTime, v.duration); });
       v.addEventListener("ended", () => { if (opts.onEnded) opts.onEnded(); });
       const seek = () => { if (opts.startAt > 0) { try { v.currentTime = opts.startAt; } catch { /* not seekable yet */ } } };
-      if(s.type!=='mp4' && !v.canPlayType("application/vnd.apple.mpegurl") && !window.Hls) {
+      if(!['mp4','file'].includes(s.type) && !v.canPlayType("application/vnd.apple.mpegurl") && !window.Hls) {
         try {await loadHlsLibrary();} catch {if(!st.destroyed && stage.contains(v)) failover();return;}
         if(st.destroyed || !stage.contains(v))return;
       }
-      if (s.type === 'mp4' || v.canPlayType("application/vnd.apple.mpegurl")) {
+      if (['mp4','file'].includes(s.type) || v.canPlayType("application/vnd.apple.mpegurl")) {
         v.src = s.streamUrl;
         v.addEventListener("loadedmetadata", seek, { once: true });
         v.play().catch(() => {});

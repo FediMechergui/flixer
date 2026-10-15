@@ -1,9 +1,11 @@
 import { load } from 'cheerio';
 import { safeRemoteFetch } from './stream-security.js';
+import { ARABIC_PROVIDERS,parseArabicId,arabicUrl,arabicIdFromUrl,getArabicDetails,fetchArabicPage,resolveArabicServers } from './arabic-providers.js';
 
 // Public catalogue/player pages only. IDs reconstruct a fixed origin and a strict
 // path; caller URLs never authorize a fetch or a player destination.
 export const SPECIALISTS = {
+  ...ARABIC_PROVIDERS,
   animegg:{name:'AnimeGG',origin:'https://www.animegg.org',kind:'series',collections:['anime','anime-sub','anime-dub']},
   megacartoons:{name:'MegaCartoons',origin:'https://www.megacartoons.net',kind:'series',collections:['cartoons','classic-cartoons']},
   toontales:{name:'ToonTales',origin:'https://www.toontales.net',kind:'film',collections:['cartoons','classic-cartoons']},
@@ -13,6 +15,7 @@ export const SPECIALISTS = {
 };
 const slugPattern='[a-z0-9][a-z0-9_-]{0,259}';
 export function parseSpecialistId(id){
+  const arabic=parseArabicId(id);if(arabic)return arabic;
   const m=new RegExp(String.raw`^sp:(animegg|megacartoons|toontales|myasiantv|multimovies|yoturkish):([sme]):(${slugPattern})(?::(\d{1,3}):([1-9]\d{0,4}))?$`).exec(String(id));
   if(!m || m[3].length>260)return null;
   if(m[1]==='toontales' && m[2]!=='m' || !['toontales','multimovies'].includes(m[1]) && m[2]==='m')return null;
@@ -20,6 +23,7 @@ export function parseSpecialistId(id){
   return {provider:m[1],type:m[2],slug:m[3],...(m[4]?{season:Number(m[4]),number:Number(m[5])}:{})};
 }
 export function specialistUrl(id){
+  const arabic=arabicUrl(id);if(arabic)return arabic;
   const p=parseSpecialistId(id);if(!p)return null;
   if(p.provider==='multimovies')return `${SPECIALISTS.multimovies.origin}/${p.type==='m'?'movie':'series'}/${p.slug}${p.type==='e'?`/season/${p.season}/episode/${p.number}`:''}`;
   const prefix=p.type==='s'?({animegg:'/series/',megacartoons:'/video-serie/',myasiantv:'/series/',yoturkish:'/'}[p.provider]):p.provider==='toontales'?'/short/':'/';
@@ -27,7 +31,9 @@ export function specialistUrl(id){
   return `${SPECIALISTS[p.provider].origin}${prefix}${p.slug}${p.provider==='animegg'?'':'/'}`;
 }
 export function specialistIdFromUrl(value){
+  const arabic=arabicIdFromUrl(value);if(arabic)return arabic;
   try{const u=new URL(value);for(const [provider,cfg] of Object.entries(SPECIALISTS)){
+    if(ARABIC_PROVIDERS[provider])continue;
     if(u.origin!==cfg.origin || u.search || u.hash || u.username || u.password)continue;
     if(provider==='multimovies'){const m=new RegExp(`^/(movie|series)/(${slugPattern})$`).exec(u.pathname);if(m)return `sp:${provider}:${m[1]==='movie'?'m':'s'}:${m[2]}`;continue;}
     const pattern=provider==='animegg'?'/series/':provider==='megacartoons'?'/video-serie/':provider==='toontales'?'/short/':provider==='yoturkish'?'/':'/series/';
@@ -182,6 +188,7 @@ export function parseSpecialistDetails(id,html){
   return {...result,...pagination($,url,result.episodeCount)};
 }
 export async function getSpecialistDetails(id){
+  if(parseArabicId(id))return getArabicDetails(id);
   const url=specialistUrl(id);if(!url)throw new Error('Invalid specialist ID');
   let result=parseSpecialistDetails(id,await page(url));
   if(parseSpecialistId(id).provider==='multimovies' && result.kind==='series'){
@@ -202,6 +209,7 @@ export function specialistJobs({kind,collection='',latest=false}={}){
     .flatMap(([provider,cfg])=>(!cfg.kind&&!kind?['film','series']:[kind||cfg.kind]).map(kind=>({provider,kind,page:1,latest,collection})));
 }
 export async function fetchSpecialistPage({provider,page:pageNum=1,search,latest=false,kind='series',collection=''}={}){
+  if(ARABIC_PROVIDERS[provider])return fetchArabicPage({provider,page:pageNum,search,kind,collection});
   const cfg=SPECIALISTS[provider];if(!cfg)throw new Error('Invalid specialist provider');
   const n=Math.min(500,Math.max(1,Math.floor(Number(pageNum)||1)));
   if(provider==='multimovies'){
@@ -286,7 +294,7 @@ export async function searchSpecialists(q){
   }));
   return results.flatMap(r=>r.status==='fulfilled'?r.value.items:[]).filter(r=>{
     const norm=s=>String(s||'').normalize('NFKD').replace(/\p{M}/gu,'').toLowerCase().replace(/&/g,' and ').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
-    return norm(q).split(/\s+/).every(term=>norm(r.title).includes(term));
+    return norm(q).split(/\s+/).every(term=>norm([r.title,...(r.altTitles||[])].join(' ')).includes(term));
   });
 }
 export function parseSpecialistServers(id,html){
@@ -328,6 +336,7 @@ export function parseSpecialistServers(id,html){
   return [...new Map(servers.map(s=>[s.embedUrl||s.streamUrl,s])).values()];
 }
 export async function resolveSpecialistServers(id){
+  if(parseArabicId(id))return resolveArabicServers(id);
   const p=parseSpecialistId(id);if(!p || p.type==='s')return [];
   return parseSpecialistServers(id,await page(specialistUrl(id),{ttl:30000}));
 }

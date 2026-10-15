@@ -40,9 +40,11 @@ jobs:
         run: npm ci --prefix server && npm ci --prefix client
       - name: Restore data snapshot
         run: node scripts/snapshot.js restore
+      - name: Fill missing metadata from provider pages
+        run: node scripts/fill-provider-metadata.js --limit 40
       - name: Refresh Flixer providers
         id: refresh
-        run: node scripts/refresh-providers.js --product flixer --pages 60 --matches 100 ${{ inputs.full && '--full' || '' }}
+        run: node scripts/refresh-providers.js --product flixer --pages 180 --matches 100 ${{ inputs.full && '--full' || '' }}
       # "vercel build" runs the buildCommand from vercel.json (static build with the exported data);
       # the prebuilt deploy then uploads the result, including the data files that git ignores.
       - name: Build & deploy to Vercel

@@ -236,6 +236,7 @@
   /* ---------- Home ---------- */
   function renderSources(view) {
     const groups = [
+      ["Arabic, Egyptian & Tunisian", [["CimaTN","https://www.cimatn.com","Integrated Tunisian films and actual episode/server lists"],["Tuniflix","https://tuniflix.site","Tunisian catalogue; cached entries remain available when upstream access is blocked"],["Kirmalk","https://kirmalk.com","Integrated Egyptian series and theatre"],["AhwakTV","https://yam.ahwaktv.net","Integrated Arabic films and Egyptian series"],["EgyDead","https://tv10.egydead.live","Integrated Arabic films, series and player choices"],["StreamTunisie","https://streamtunisie.net","Integrated Tunisian episodes"],["Cinetimes","https://cinetimes.org","Free Tunisian archive films; availability varies"]]],
       ["K-drama & Asian drama", [["MyAsianTV","https://myasiantv.com.bz","Integrated catalogue and episode players"],["Rakuten Viki","https://www.viki.com","Official service; subtitles, account and region restrictions vary"],["AsianCrush","https://www.asiancrush.com","Listed in FMHY; regional availability varies"],["FMHY drama directory","https://fmhy.net/video#drama-streaming","More specialist providers; directory only"]]],
       ["Indian movies & TV", [["MultiMovies","https://multimovies.garden","Integrated movies, series, episodes and server choices"],["Einthusan","https://einthusan.tv","FMHY-listed South Asian movie catalogue; external website"],["IndianCine","https://indiancine.ma","Indian film archive; external website"],["FMHY Indian-language directory","https://fmhy.net/non-english#indian-languages","Movies, television and regional languages"]]],
       ["Anime - sub & dub", [["AnimeGG","https://www.animegg.org","Integrated anime with source-confirmed subbed and dubbed choices"],["Crunchyroll","https://www.crunchyroll.com","Official service; audio and subtitle availability depends on title and region"],["FMHY anime directory","https://fmhy.net/video#anime-streaming","Compare specialist catalogues and listed sub/dub coverage"]]],
@@ -300,7 +301,7 @@
     // Genre quick row
     const mg = (state.meta.genres.movie || []).slice(0, 12);
     const collections = await api.collections();
-    const collectionRow = `<section class="section"><div class="section__head"><div><h2 class="section__title">Around the world & animation</h2><span class="section__sub eyebrow">Metadata matches - playback availability varies</span></div></div><div class="row">${collections.map(c => `<a class="chip" href="#/recent" data-collection="${esc(c.id)}">${esc(c.name)} <span class="chip__val">${c.count}</span></a>`).join("")}</div><a class="section__link" href="#/sources">Explore specialist sources</a></section>`;
+    const collectionRow = `<section class="section"><div class="section__head"><div><h2 class="section__title">Around the world & animation</h2><span class="section__sub eyebrow">Saved titles so far - browse to load more</span></div></div><div class="row">${collections.map(c => `<a class="chip" href="#/recent" data-collection="${esc(c.id)}">${esc(c.name)} <span class="chip__val">${c.count} saved</span></a>`).join("")}</div><a class="section__link" href="#/sources">Explore specialist sources</a></section>`;
     const genreRow = mg.length ? `<section class="section fade-in"><div class="section__head"><div><h2 class="section__title">Browse by genre</h2><span class="section__sub eyebrow">Movies · tap to filter</span></div></div>
       <div class="row">${mg.map(g => `<button class="chip" data-genre="${esc(g.id)}">${esc(g.name)} <span class="chip__val">${g.count}</span></button>`).join("")}</div></section>` : "";
     // Universes row: small scrollable logo tiles, in order of how much of each universe Flixer has.
@@ -515,7 +516,7 @@
     if (key === "reset") return applyFilters(defaultFilters());
     if (key === "sort") return openRadioSheet("Sort by", SORT_OPTIONS[type], f.sort, v => applyFilters(Object.assign({}, f, { sort: v })));
     if (key === "collection") {
-      api.collections().then(list => openRadioSheet("Collection", [["", "All titles", ""], ...list.map(c => [c.id,c.name,c.count + " metadata matches"])], f.collection || "", v => applyFilters(Object.assign({}, f, {collection:v}))));
+      api.collections().then(list => openRadioSheet("Collection", [["", "All titles", ""], ...list.map(c => [c.id,c.name,c.count + " saved titles; more load while browsing"])], f.collection || "", v => applyFilters(Object.assign({}, f, {collection:v}))));
       return;
     }
     if (key === "genre") return openGenreSheet(type, f);

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { discoverLibrary } from '../src/library-service.js';
 import { parseHdtodayList } from '../src/hdtoday.js';
 import { fmoviesServers } from '../src/fmovies.js';
+import { fetchFmoviesPage } from '../src/fmovies.js';
 import { unifiedStream } from '../src/library-service.js';
 
 test('regional discovery rejects invalid filters and never widens Dahsha',async()=>{
@@ -22,6 +23,14 @@ test('imported Flixer episodes resolve their existing servers without title netw
 });
 
 const row=(id,title='Shared',extra={})=>({id,title,kind:'film',year:2024,tags:['animation'],...extra});
+test('regional pages retry inconsistent empty query variants instead of truncating the catalogue',async()=>{
+  const calls=[],filter='<select name="country"><option value="KR" selected>Korea</option></select>';
+  const result=await fetchFmoviesPage({country:'KR',kind:'series',page:6,fetchHtml:async path=>{
+    calls.push(path);return filter+(calls.length===1?'Page 6 of 1 No results':'<a href="/tv/example-123"><article><h3>Example</h3></article></a> Page 6 of 42');
+  }});
+  assert.equal(calls.length,2);assert.equal(result.totalPages,42);assert.equal(result.items.length,1);assert.deepEqual(result.items[0].countries,['KR']);
+  await assert.rejects(fetchFmoviesPage({country:'KR',kind:'series',page:6,fetchHtml:async()=>filter+'Page 6 of 1 No results'}),/cursor retained/);
+});
 test('discovery combines all three providers, preserves canonical IDs and survives one failure',async()=>{
   const result=await discoverLibrary({product:'flixer',kind:'film',page:2,genre:'animation',catalog:{shows:[row('mf:m:shared')]},fetchers:[
     async()=>({items:[row('fm:m:12','Shared',{offerings:[{provider:'fmovies',id:'fm:m:12',tmdbId:12}]})],totalPages:5}),

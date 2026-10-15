@@ -1,24 +1,46 @@
-# Arabic catalogue research
+﻿# Arabic providers for the Flixer APK
 
-Checked 15 October 2026. These are research candidates, not integrated adapters.
-FMHY discovery: https://fmhy.net/non-english#streaming-البث
+Checked 15 October 2026. Implementation: `server/src/arabic-providers.js`.
+The APK is the product; hosted APIs and catalogue data support its search,
+playback and automatic updates. Dahsha remains separate and documentary-only.
 
-| Source | Observed coverage | Access/playback findings | Decision |
-| --- | --- | --- | --- |
-| Kirmalk (`kirmalk.com`) | Egyptian series category advertises 222 pages; Maghreb series 74 pages; theatre category 2 pages. These are source pages containing episodes/recordings, not counts of unique shows. | Public listings and a sampled play detail return 200. `watch.php?vid={id}` and structured-data `embedUrl` expose the advertised player; sampled theatre player was `s1.hdup400.com/embed-*.html`. Actual video start still needs verification. The Maghreb category contains at least one title that does not establish Tunisian origin. | Priority candidate for Egyptian drama and plays; preserve exact source IDs and verify country separately. |
-| AhwakTV (`yam.ahwaktv.net`) | Arabic films category advertises 51 pages, alongside explicit Egyptian and Arabic series categories and year-specific film categories. | Public catalogue and a sampled `watch.php?vid={id}` film page return 200. Player and complete pagination validation are pending. | Broad film candidate to compare against Kirmalk and EgyDead. |
-| EgyDead (`tv10.egydead.live`) | Dedicated Arabic film category, `/series-category/arabic-series/`, `/show/` for performances, and Egyptian-dubbed cartoons. Detail metadata includes actual country and year. | Ordinary HTTP 200. A sampled film uses a normal POST form with `View=1`; browser submission reveals selectable `data-link` servers on hgcloud.to, morencius.com, mixdrop.top and playmogo.com. Trailer and hidden ad frames must be excluded. Catalogue/category completeness and actual video start still need verification. | Strong broad Arabic candidate; do not infer Egyptian origin solely from Arabic language. |
-| MyCima (`mycima.gdn`) | Arabic film and series category links, alongside international categories. | Public pages return 200, but category pages need comparison against the home grid: the displayed page title is generic. Pagination links alone do not prove a complete filtered library. | Secondary candidate, pending pagination and player validation. |
-| StreamTunisie (`streamtunisie.net`) | `/series-category/tunisian/` has source pagination; explicit series pages and actual episode links. Sample El Khottaifa shows 22 listed episodes, including irregular URL patterns. | First episode's embedded YouTube video reached readyState 4 in a browser. The same page also has a failed direct video element (error 4): selecting the first video blindly would break playback. Never generate episode URLs from the count: links include both `episode-01` and `3-episode` forms. Historical breadth still needs validation. | Promising Tunisian supplement with one actual playback check passed. |
-| TunisiaTV (`www.tunisiatv.tn/ar/series`) | Official Tunisian archive lists classics including Choufli Hal and other drama, plus some films. | Archive returned 200. Several advertised detail links literally end in `/undefined`; a sampled link displayed no episode player. Those links cannot be treated as playable. | Official archive candidate; resolve actual episode access first. |
-| Artify (`artify.tn`) | Specializes in Tunisian cinema; public catalogue exists. | Has official login and subscription/rental flows. No authenticated or paid playback was accessed. | Catalogue/source links where supported; no promise of unrestricted embedded playback. |
-| Shahid / WATCH IT | Broad official Arabic and Egyptian catalogues. | Account, subscription and regional availability vary. | Potential official catalogue links/integration; not a replacement for verified public player adapters. |
-| TopCinema (`web.topcinema.io`) | Current menu emphasizes foreign/Asian/anime content. | Public home page returned 200, but inspected menu had no Arabic film/series section. | Not a priority for this expansion. |
+| Provider | Catalogue and episode handling | Playback |
+| --- | --- | --- |
+| Tuniflix | Tunisian, Arabic and Turkish tag archives, source pagination. Only the main MovieList is imported; sidebar recommendations are excluded. Actual season pages and episode tables supply coordinates. | Source iframe and OptionBx entries identify fixed-origin trembed wrappers. Approved external players include easyvidplayer, strp2p and YouTube. |
+| CimaTN | Public Blogger post feeds supply catalogue entries and release-year labels, separately from publication dates. Entries without their own watch-page data are excluded. Exact seriesData.episodes keys and availableEpisodes establish the available episodes; missing numbers are never generated. | Object/array literals are parsed as JSON5 data, never executed. Only advertised, approved YouTube, VK, MediaDelivery and Videas destinations are retained. |
+| StreamTunisie | Tunisian categories, actual episode links and irregular URL patterns retained. Film-category entries advertising TV seasons are excluded from films. | Follow the actual film watch link or parse the literal source-player URL. Failed placeholder videos and ads are excluded. A sampled El Khottaifa YouTube episode reached readyState 4. |
+| Kirmalk | Egyptian-series episode listings resolve their actual title-specific season category before importing a show. Theatre uses the explicit source category and plays/theatre tags. Main category links and pagination supply actual episodes. | Structured VideoObject/embed metadata supplies approved players such as hdup400. |
+| AhwakTV | Arabic-film and Egyptian-series categories. Where no show category exists, exact source episode-title prefixes form a stable search group. Only matching explicit episode links are retained; unknown seasons remain unknown. | Follow fixed-origin see.php?vid and read actual data-embed-url choices, excluding ads. |
+| EgyDead | Arabic films and season containers. Episode cards are not imported as separate series. Season details retain only episode URLs belonging to that source title stem. | Submit the ordinary View=1 form and read serversList links, excluding trailers and hidden advertising frames. |
+| Cinetimes | Small free Tunisian archive collection, not a large modern-film library. Country comes from the source collection. Silent films are not labelled Arabic-audio films. | Public Wikimedia Commons videos use native direct-file playback, including WebM. |
 
-No source has been established as the largest: independently verified title
-counts and complete pagination are still required. A new adapter must validate
-ordinary access from the deployment host as well as locally, actual episode
-coordinates, selectable working players, artwork, recent releases, Unicode
-search and conservative matching before inclusion. Plays need an explicit
-theatre classification, not an invented TV season. Tunisian origin, Tunisian
-dubbing and general Arabic language must remain separate evidence.
+All seven catalogue origins returned HTTP 200 on the hosted runner with an
+explicit Flixer request identity. Tuniflix and Cinetimes refused the earlier
+generic request identity. No proxy rotation, browser challenge solving, account,
+premium access or DRM bypass is used. Upstream formats and availability can
+change; imported records remain cached.
+
+## Metadata and catalogue counts
+
+Posters and actual plot sections come from each source. Existing valid metadata
+is retained; empty poster objects do not prevent source artwork filling the gap.
+Bilingual aliases survive export and search. Missing source synopses stay missing.
+
+Collection badges report saved titles, not total upstream library sizes. Live
+browsing combines relevant providers. Regional historical imports continue
+incrementally; the scheduled crawl budget is 180 pages. FMovies sometimes returns
+empty, inconsistent filtered pagination for a query variant. Bounded equivalent
+requests retry it; still-failing pages retain retry cursors without preventing
+other regional partitions from making progress.
+
+Validated player choices can be cached with source episodes. A narrow Arabic
+snapshot avoids parsing the whole deployment catalogue for each title request.
+Fixed origins, strict paths and approved player hosts apply throughout.
+
+## Sources not integrated
+
+MyCima did not pass filtered-pagination and playback validation. Artify, Shahid
+and WATCH IT have account, subscription or regional requirements; their paid
+catalogues are not advertised as unrestricted in-app streams. TunisiaTV's sampled
+undefined archive links did not expose a usable player. These remain research
+candidates, not functioning Flixer adapters.

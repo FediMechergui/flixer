@@ -12,6 +12,7 @@
   "dependencies": {
     "cheerio": "^1.2.0",
     "express": "^5.1.0",
+    "json5": "^2.2.3",
     "youtubei.js": "^15.0.1"
   }
 }

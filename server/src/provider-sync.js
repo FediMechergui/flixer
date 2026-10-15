@@ -31,11 +31,13 @@ function scopes(product) {
     {provider:'fmovies',kind:'series',documentary,page:1},
     ...(documentary?[{provider:'hdtoday',documentary:true,page:1}]:[{provider:'hdtoday',kind:'film',page:1},{provider:'hdtoday',kind:'series',page:1}]),
     ...(!documentary?[
-      ...['KR','IN','TR'].flatMap(country=>['film','series'].map(kind=>({provider:'fmovies',kind,country,page:1}))),
+      ...['KR','IN','TR','EG','TN'].flatMap(country=>['film','series'].map(kind=>({provider:'fmovies',kind,country,page:1}))),
       {provider:'fmovies',kind:'series',country:'JP',genre:'animation',page:1},
       ...specialistJobs(),
       {provider:'multimovies',kind:'film',collection:'indian',page:1},
       {provider:'multimovies',kind:'series',collection:'indian',page:1},
+      {provider:'kirmalk',kind:'film',collection:'plays',page:1},
+      {provider:'egydead',kind:'film',collection:'plays',page:1},
     ]:[]),
   ];
 }
@@ -49,6 +51,8 @@ export async function refreshProviders({product='dahsha',full=false,pageBudget=N
 async function scan({product,full,pageBudget,log}) {
   const cache=providerCache(product),items=new Map(cache.items.map(i=>[i.id,i]));
   const errors={};let requests=0;
+  const deferred=new Set();
+  const unavailable=provider=>errors[provider]&&!/inconsistent empty pagination/.test(errors[provider]);
   // Cached HDToday data is the default until ordinary hosted access returns.
   // Independent feeds require explicit configuration, never just a file's presence.
   const feed=process.env.HDTODAY_EXTERNAL_FEED==='1'?validateHdtodayFeed(readJson('hdtoday-feed.json',null)):null;
@@ -77,16 +81,16 @@ async function scan({product,full,pageBudget,log}) {
   }
   if(!cache.queue.length && !cache.completed)cache.queue=scopes(product);
   // Existing resumable scans keep their cursors when new source families arrive.
-  if(product==='flixer' && cache.specialistScopesVersion!==2){
+  if(product==='flixer' && cache.specialistScopesVersion!==3){
     const key=job=>JSON.stringify([job.provider,job.kind,job.country,job.genre,job.year,job.collection]);
     const known=new Set(cache.queue.map(key));
     cache.queue.push(...seeds.filter(job=>(job.country||!['fmovies','hdtoday'].includes(job.provider))&&!known.has(key(job))));
-    cache.specialistScopesVersion=2;cache.completed=false;
+    cache.specialistScopesVersion=3;cache.completed=false;
   }
   if(full && cache.completed){cache.queue=scopes(product);cache.completed=false;}
   let scanned=0;
   while(cache.queue.length && (full || scanned<pageBudget)) {
-    if(cache.queue.every(job=>errors[job.provider]||paused.has(job.provider)))break;
+    if(cache.queue.every(job=>unavailable(job.provider)||paused.has(job.provider)||deferred.has(job)))break;
     // Give each provider/region a turn. Hundreds of old FMovies year partitions
     // must not keep a new animation or regional catalogue waiting for weeks.
     const lane=job=>`${job.provider}:${job.country||'all'}`;
@@ -94,10 +98,10 @@ async function scan({product,full,pageBudget,log}) {
     const start=lanes.indexOf(cache.lastScanLane);
     for(let offset=1;offset<=lanes.length;offset++){
       const next=lanes[(start+offset)%lanes.length];
-      const index=cache.queue.findIndex(job=>lane(job)===next&&!errors[job.provider]&&!paused.has(job.provider));
+      const index=cache.queue.findIndex(job=>lane(job)===next&&!unavailable(job.provider)&&!paused.has(job.provider)&&!deferred.has(job));
       if(index>=0){cache.queue.unshift(cache.queue.splice(index,1)[0]);cache.lastScanLane=next;break;}
     }
-    if(errors[cache.queue[0].provider]||paused.has(cache.queue[0].provider)){cache.queue.push(cache.queue.shift());continue;}
+    if(unavailable(cache.queue[0].provider)||paused.has(cache.queue[0].provider)||deferred.has(cache.queue[0])){cache.queue.push(cache.queue.shift());continue;}
     const job=cache.queue[0];
     try {
       const result=await fetchPage(job);put(result.items);requests++;scanned++;
@@ -118,9 +122,10 @@ async function scan({product,full,pageBudget,log}) {
       if(scanned%10===0)writeJson(filename(product),{...cache,items:[...items.values()],errors,completed:false});
     }catch(e){
       errors[job.provider]=e.message;
+      deferred.add(job);
       // Keep the failed cursor for the next refresh, but let other providers make progress.
       cache.queue.push(cache.queue.shift());
-      if(cache.queue.every(j=>errors[j.provider]))break;
+      if(cache.queue.every(j=>unavailable(j.provider)||paused.has(j.provider)||deferred.has(j)))break;
       if(full && scanned===0 && cache.queue[0].provider===job.provider)break;
       scanned++;
     }

@@ -24,7 +24,11 @@ public class PlayerWebViewClient extends BridgeWebViewClient {
                 boolean source = "myflixerz.day".equals(host) || "hdtoday.sx".equals(host) || "www.f-movies.org".equals(host)
                     || "www.animegg.org".equals(host) || "www.megacartoons.net".equals(host)
                     || "www.toontales.net".equals(host) || "myasiantv.com.bz".equals(host)
-                    || "multimovies.garden".equals(host) || "www1.yoturkish.com".equals(host);
+                    || "multimovies.garden".equals(host) || "www1.yoturkish.com".equals(host)
+                    || "streamtunisie.net".equals(host) || "kirmalk.com".equals(host)
+                    || "yam.ahwaktv.net".equals(host) || "tv10.egydead.live".equals(host)
+                    || "tuniflix.site".equals(host) || "www.cimatn.com".equals(host)
+                    || "cinetimes.org".equals(host);
                 if (!(request.hasGesture() && "https".equals(scheme) && source)) return true;
             }
         }

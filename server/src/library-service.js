@@ -212,19 +212,22 @@ export async function discoverLibrary({kind='film',page=1,genre,year,collection=
   if(!['film','series'].includes(kind))throw new Error('Invalid catalogue kind');
   page=Math.min(500,Math.max(1,Math.floor(Number(page)||1)));
   const documentary=product==='dahsha';
-  const regional = !documentary && ({kdrama:{country:'KR'},indian:{country:'IN'},turkish:{country:'TR'},anime:{country:'JP',genre:'animation'},'anime-sub':{country:'JP',genre:'animation'},'anime-dub':{country:'JP',genre:'animation'},cartoons:{genre:'animation'},'classic-cartoons':{genre:'animation'}}[collection]);
+  const regional = !documentary && ({arabic:{country:'EG'},egyptian:{country:'EG'},tunisian:{country:'TN'},plays:{},kdrama:{country:'KR'},indian:{country:'IN'},turkish:{country:'TR'},anime:{country:'JP',genre:'animation'},'anime-sub':{country:'JP',genre:'animation'},'anime-dub':{country:'JP',genre:'animation'},cartoons:{genre:'animation'},'classic-cartoons':{genre:'animation'}}[collection]);
   if(collection && !regional)throw new Error('Invalid collection');
   if(collection==='kdrama' && kind!=='series')return {items:[],page,totalPages:page,providers:[],providerErrors:[]};
+  if(collection==='plays' && kind==='series')return {items:[],page,totalPages:page,providers:[],providerErrors:[]};
   genre=regional?.genre || genre;
   latest=latest===true||latest==='true';
   const jobs=product==='flixer'?specialistJobs({kind,collection,latest}):[];
   const sources=fetchers || [
-    ()=>fetchFmoviesPage({kind,page,genre,year,documentary,...regional,...(latest?{sort:kind==='film'?'primary_release_date.desc':'first_air_date.desc'}:{})}),
-    ()=>fetchHdtodayPage({kind,page,documentary,genre,latest}),
-    async()=>{const result=await (kind==='film'?fetchMovies:fetchSeries)({page,category:documentary?'documentary':genre,year});return {...result,items:result.items.map(s=>({...s,documentary:s.tags?.includes('documentary')}))};},
+    ()=>collection==='plays'?{items:[],totalPages:1}:fetchFmoviesPage({kind,page,genre,year,documentary,...regional,...(latest?{sort:kind==='film'?'primary_release_date.desc':'first_air_date.desc'}:{})}),
+    ()=>collection && !genre?{items:[],totalPages:1}:fetchHdtodayPage({kind,page,documentary,genre,latest}),
+    async()=>{if(collection&&!genre)return {items:[],totalPages:1};const result=await (kind==='film'?fetchMovies:fetchSeries)({page,category:documentary?'documentary':genre,year});return {...result,items:result.items.map(s=>({...s,documentary:s.tags?.includes('documentary')}))};},
     ...jobs.map(job=>()=>fetchSpecialistPage({...job,page})),
   ];
-  const results=await Promise.allSettled(sources.map(fetch=>fetch()));
+  const results=await Promise.allSettled(sources.map(async fetch=>{
+    let timer;try{return await Promise.race([Promise.resolve().then(fetch),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Catalogue provider timeout')),6000);})]);}finally{clearTimeout(timer);}
+  }));
   const names=['fmovies','hdtoday','myflixer',...jobs.map(job=>job.provider)];
   const pages=results.map((result,index)=>{
     if(result.status==='fulfilled')return result.value;

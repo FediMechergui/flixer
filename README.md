@@ -53,8 +53,9 @@ Release signing uses a private `mobile/keystore.properties` and keystore; neithe
 
 ## Hosting and refresh
 
-Flixer integrates Myflixer, FMovies, HDToday, AnimeGG, MegaCartoons, ToonTales,
-MyAsianTV, MultiMovies, and YoTurkish. Search and catalogue discovery combine
+Flixer's Android APK integrates Myflixer, FMovies, cached HDToday, AnimeGG,
+MegaCartoons, ToonTales, MyAsianTV, MultiMovies, YoTurkish, Tuniflix, CimaTN,
+StreamTunisie, Kirmalk, AhwakTV, EgyDead and Cinetimes. Search and catalogue discovery combine
 providers; matching titles retain existing IDs and gain player choices. Uncertain
 editions remain selectable rather than having their episode lists silently merged.
 
@@ -83,5 +84,6 @@ HDToday challenges GitHub's runner. Hosted refreshes retain its cached titles
 and retry ordinary access while other providers continue updating. Independent
 metadata feeds and PC refresh tasks are disabled; see
 [HDToday refresh setup](docs/hdtoday-refresh.md).
-[Arabic source research](docs/arabic-sources.md) records candidates and remaining
-playback/coverage checks; these candidates are not advertised as integrated.
+[Arabic provider contracts](docs/arabic-sources.md) records catalogue, episode,
+player and metadata handling, together with sources that did not pass validation.
+Collection counts show saved titles; they are not upstream library totals.

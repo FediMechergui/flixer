@@ -1,5 +1,6 @@
 export const titleKey = value => String(value || '').normalize('NFKD').replace(/\p{M}/gu,'').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim();
 const unique = values => [...new Map(values.map(v => [`${v.provider}:${v.id}`,v])).values()];
+const hasArtwork=poster=>poster&&Object.values(poster).some(value=>typeof value==='string'&&value.trim()||value&&typeof value.url==='string'&&value.url.trim());
 const posterKey = show => { try { return new URL(show.portrait || show.poster?.custom || '').pathname.split('/').pop(); } catch { return null; } };
 const episodesOf = show => show.episodes?.length ? show.episodes : show.kind === 'film' ? [{id:show.id,title:show.title,season:1,number:1,sourceUrl:show.sourceUrl,offerings:showOfferings(show)}] : [];
 export function episodeOfferings(episode) {
@@ -46,7 +47,7 @@ export function mergeShow(existing, incoming) {
     collections:[...new Set([...(existing.collections||[]),...(incoming.collections||[])])],
     synopsis:existing.synopsis && !existing.synopsisGenerated ? existing.synopsis : incoming.synopsis || existing.synopsis,
     synopsisGenerated:existing.synopsis && !existing.synopsisGenerated ? false : !incoming.synopsis && existing.synopsisGenerated,
-    poster:existing.poster || incoming.poster, portrait:existing.portrait || incoming.portrait,
+    poster:hasArtwork(existing.poster)?existing.poster:incoming.poster||existing.poster, portrait:existing.portrait || incoming.portrait,
     documentary:existing.documentary === true || incoming.documentary === true,
     tags:[...new Set([...(existing.tags || []),...(incoming.tags || [])])],
     altTitles:[...new Set([...(existing.altTitles || []),...(incoming.altTitles || []),incoming.title].filter(t => t && t !== existing.title))],

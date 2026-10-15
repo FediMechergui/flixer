@@ -100,6 +100,7 @@
       sourceUrl: s.sourceUrl,
       type,
       title,
+      altTitles: s.altTitles || [],
       date: String(s.publishedAt || s.firstSeenAt || "").slice(0,10),
       updatedAt: [s.latestEpisode?s.providerUpdatedAt:null,s.latestAt,s.publishedAt].filter(Boolean).sort().pop() || "",
       year: s.year ? String(s.year) : "",
@@ -321,7 +322,7 @@
       return this._loading;
     }
     /* ----- Universe membership, recomputed on every reindex (so live additions join at once) ----- */
-    _key(s) { return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/^(the|a|an)\s+/, "").replace(/&/g, " and ").replace(/[^a-z0-9]+/g, " ").trim(); }
+    _key(s) { return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/^(the|a|an)\s+/, "").replace(/&/g, " and ").replace(/[^\p{L}\p{N}]+/gu, " ").trim(); }
     _titleIndex() {
       if (this._titleIdx) return this._titleIdx;
       const m = new Map();
@@ -521,7 +522,7 @@
           if (r.tags && r.tags.length) cur.tags = [...new Set([...(cur.tags || []),...r.tags])];
           if (r.year) cur.year = r.year;
           for (const key of ["publishedAt","latestAt","providerUpdatedAt","latestEpisode","firstSeenAt","tmdbId","imdbId","firstEpisodeId","originalLanguage"]) if (r[key]) cur[key] = r[key];
-          for(const key of ['countries','audioModes','collections'])if(r[key])cur[key]=[...new Set([...(cur[key]||[]),...r[key]])];
+          for(const key of ['countries','audioModes','collections','altTitles'])if(r[key])cur[key]=[...new Set([...(cur[key]||[]),...r[key]])];
           if (r.episodeCount) cur.episodeCount = Math.max(cur.episodeCount || 0,r.episodeCount);
           if (r.wpId) cur.wpId = r.wpId;
           if (r.tvm) cur.tvm = r.tvm;
@@ -540,7 +541,7 @@
     }
     _persistDelta(rows) {
       const delta = store.get("delta", []);
-      const incoming=new Map(rows.map(r=>[r.id, {id:r.id,kind:r.kind,title:r.title,year:r.year,tags:r.tags,slug:r.slug,wpId:r.wpId,publishedAt:r.publishedAt,latestAt:r.latestAt,providerUpdatedAt:r.providerUpdatedAt,tvm:r.tvm,offerings:r.offerings,versions:r.versions,sourceUrl:r.sourceUrl,poster:r.poster,tmdbId:r.tmdbId,documentary:r.documentary,originalLanguage:r.originalLanguage,countries:r.countries,audioModes:r.audioModes,collections:r.collections}]));
+      const incoming=new Map(rows.map(r=>[r.id, {id:r.id,kind:r.kind,title:r.title,altTitles:r.altTitles,year:r.year,tags:r.tags,slug:r.slug,wpId:r.wpId,publishedAt:r.publishedAt,latestAt:r.latestAt,providerUpdatedAt:r.providerUpdatedAt,tvm:r.tvm,offerings:r.offerings,versions:r.versions,sourceUrl:r.sourceUrl,poster:r.poster,tmdbId:r.tmdbId,documentary:r.documentary,originalLanguage:r.originalLanguage,countries:r.countries,audioModes:r.audioModes,collections:r.collections}]));
       store.set("delta",[...incoming.values(),...delta.filter(r=>!incoming.has(r.id))].slice(0,DELTA_CAP));
     }
 
@@ -682,6 +683,10 @@
       const japanese = countries.includes("JP") || ["ja", "japanese"].includes(lang);
       const anime = animation && (japanese || i.collections.includes('anime') || i.genreIds.includes('anime'));
       if (id === "kdrama") return i.type === "tv" && (i.collections.includes('kdrama') || countries.includes("KR") || ["ko", "korean"].includes(lang)) && !animation;
+      if (id === "arabic") return i.collections.includes('arabic') || lang==='ar' || countries.some(c=>['TN','EG','MA','DZ','LB','SY','SA','JO','IQ','KW','AE','QA','BH','OM','YE','PS','SD','LY'].includes(c));
+      if (id === "egyptian") return i.collections.includes('egyptian') || countries.includes('EG');
+      if (id === "tunisian") return i.collections.includes('tunisian') || countries.includes('TN');
+      if (id === "plays") return i.collections.includes('plays') || i.genreIds.includes('theatre');
       if (id === "indian") return i.collections.includes('indian') || countries.includes("IN") || ["hi", "hindi", "ta", "tamil", "te", "telugu", "ml", "malayalam", "kn", "kannada", "bn", "bengali", "mr", "marathi", "pa", "punjabi"].includes(lang);
       if (id === "turkish") return countries.includes("TR") || ["tr", "turkish"].includes(lang);
       if (id === "anime") return anime;
@@ -693,7 +698,7 @@
     }
     async collections() {
       const items = await this.all();
-      return [["kdrama","K-drama"],["indian","Indian movies & TV"],["turkish","Turkish movies & TV"],["anime","Anime"],["anime-sub","Anime - confirmed sub"],["anime-dub","Anime - confirmed dub"],["cartoons","Cartoons"],["classic-cartoons","Classic cartoons"]]
+      return [["arabic","Arabic movies & TV"],["egyptian","Egyptian"],["tunisian","Tunisian movies & TV"],["plays","Plays & theatre"],["kdrama","K-drama"],["indian","Indian movies & TV"],["turkish","Turkish movies & TV"],["anime","Anime"],["anime-sub","Anime - confirmed sub"],["anime-dub","Anime - confirmed dub"],["cartoons","Cartoons"],["classic-cartoons","Classic cartoons"]]
         .map(([id,name]) => ({id,name,count:items.filter(i=>this.inCollection(i,id)).length}));
     }
     async countries() { return []; }
@@ -830,7 +835,7 @@
       if(!terms.length)return {items:[],totalPages:1};
       const hit = value => {const text=norm(value);return terms.every(term=>text.includes(term));};
       await this.catalog(); await this._indexReady;
-      const local = (await this.all()).filter(i => hit(i.title) || (i.alt && hit(i.alt))).sort(byWeight).slice(0, 60);
+      const local = (await this.all()).filter(i => hit(i.title) || (i.alt && hit(i.alt)) || i.altTitles.some(hit)).sort(byWeight).slice(0, 60);
       if (onLocal) onLocal({ items:local, totalPages:1 });
       if (!this.liveEnabled) return { items: local, totalPages: 1 };
       const liveHits = await Promise.race([

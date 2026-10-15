@@ -63,7 +63,7 @@ async function request(path) {
   }
   throw error;
 }
-export async function fetchFmoviesPage({ kind = 'film', documentary = false, page = 1, year, sort = 'popularity.desc', genre, country, language } = {}) {
+export async function fetchFmoviesPage({ kind = 'film', documentary = false, page = 1, year, sort = 'popularity.desc', genre, country, language,fetchHtml=request } = {}) {
   const params = new URLSearchParams();
   // The upstream currently serves empty cached responses for some page-first URLs.
   if (country) params.set('country', country);
@@ -73,14 +73,22 @@ export async function fetchFmoviesPage({ kind = 'film', documentary = false, pag
   if (year) params.set('year', String(year));
   params.set('sort',sort);
   params.set('page',String(Math.max(1, Number(page) || 1)));
-  const html=await request(`/${kind === 'film' ? 'movies' : 'tv-series'}?${params}`);
+  const variants=[params,new URLSearchParams([['sort',sort],...[...params].filter(([key])=>key!=='sort')]),new URLSearchParams([['page',String(Math.max(1,Number(page)||1))],...[...params].filter(([key])=>key!=='page')])];
+  if(sort==='popularity.desc')variants.push(new URLSearchParams([...params].filter(([key])=>key!=='sort')));
+  let html,result;
+  for(const query of [...new Set(variants.map(p=>p.toString()))]){
+    html=await fetchHtml(`/${kind === 'film' ? 'movies' : 'tv-series'}?${query}`);
+    result=parseFmoviesList(html, { kind, documentary, page, genre:typeof genre === 'number' ? FMOVIES_GENRES[genre] : genre });
+    if(result.items.length || (!country&&!language&&Number(page)===1))break;
+  }
+  // An empty cached response must not terminate a known historical cursor.
+  if(!result.items.length&&Number(page)>result.totalPages)throw new Error('FMovies returned inconsistent empty pagination; cursor retained');
   // Only attach region evidence after the upstream confirms the requested filter.
   for(const [name,value] of Object.entries({country,language}))if(value){
     const select=[...html.matchAll(/<select\b([^>]*)>([\s\S]*?)<\/select>/gi)].find(m=>new RegExp(`name=["']${name}["']`,'i').test(m[1]));
     const selected=select && [...select[2].matchAll(/<option\b([^>]*)>/gi)].some(m=>/\bselected\b/i.test(m[1]) && new RegExp(`value=["']${value}["']`,'i').test(m[1]));
     if(!selected)throw new Error(`FMovies ${name} filter was not confirmed`);
   }
-  const result=parseFmoviesList(html, { kind, documentary, page, genre:typeof genre === 'number' ? FMOVIES_GENRES[genre] : genre });
   for(const item of result.items){if(country)item.countries=[country];if(language)item.originalLanguage=language;}
   return result;
 }
