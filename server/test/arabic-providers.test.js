@@ -1,9 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {parseArabicId,arabicId,arabicUrl,parseArabicList,parseArabicDetails,parseArabicServers,dataLiteral} from '../src/arabic-providers.js';
+import {parseArabicId,arabicId,arabicUrl,parseArabicList,parseArabicDetails,parseArabicServers,dataLiteral,collectArabicPages,cimaEpisodeEntries} from '../src/arabic-providers.js';
 import {specialistUrl,specialistJobs} from '../src/specialist-providers.js';
 import {unifiedTitle,discoverLibrary} from '../src/library-service.js';
 import {mergeShow} from '../src/merge-library.js';
+
+test('large source episode lists are fully traversed with bounded concurrency and visible failures',async()=>{
+  let active=0,peak=0;const pages=Array.from({length:25},(_,i)=>i+1);
+  const results=await collectArabicPages(pages,async n=>{active++;peak=Math.max(peak,active);await new Promise(r=>setTimeout(r,1));active--;if(n===17)throw new Error('Source unavailable');return n;});
+  assert.equal(results.length,25);assert.equal(results.at(-1).value,25);assert.equal(results[16].status,'rejected');assert.ok(peak<=4);
+});
 
 test('Arabic IDs reconstruct fixed origins and reject traversal, wrong episode types and arbitrary URLs',()=>{
   const id=arabicId('cimatn','s','https://www.cimatn.com/2026/02/show.html');
@@ -40,6 +46,22 @@ test('CimaTN data literals retain sparse actual episode maps and reject executab
   assert.deepEqual(Object.keys(data.episodes),['1','4']);
   assert.equal(dataLiteral('const servers = [{url: process.exit()}];','servers'),null);
   assert.equal(dataLiteral('const servers = eval("[]");','servers'),null);
+  assert.deepEqual(cimaEpisodeEntries({episodes:{1:[{url:'real'}],14:[{url:'real'}],15:[]}}).map(([n])=>n),['1','14']);
+  assert.deepEqual(cimaEpisodeEntries({availableEpisodes:1,episodes:{1:[{url:'real'}],14:[{url:'future'}]}}).map(([n])=>n),['1']);
+});
+
+test('EgyDead accepts English episode slugs only inside the actual season list',()=>{
+  const id=arabicId('egydead','s','https://tv10.egydead.live/season/an-arabic-title-2020/');
+  const d=parseArabicDetails(id,'<h1>Series</h1><div class="EpsList"><li><a href="/episode/wasawes-e08/">Episode 8</a></li></div><aside><a href="/episode/unrelated-s01e99/">Episode 99</a></aside>');
+  assert.deepEqual(d.episodes.map(e=>e.number),[8]);
+});
+
+test('direct source HLS uses an approved host and rejects expired signed links',()=>{
+  const id=arabicId('streamtunisie','e','https://streamtunisie.net/example-episode-01/');
+  const html=url=>`<button onclick="switchHlsTvServer(this, '${url}')"></button>`;
+  assert.equal(parseArabicServers(id,html('https://s2.savefiles.com/hls2/video/master.m3u8'))[0].type,'hls');
+  assert.equal(parseArabicServers(id,html('https://s2.savefiles.com/hls2/video/master.m3u8?s=100&e=100')).length,0);
+  assert.equal(parseArabicServers(id,html('https://unknown.test/master.m3u8')).length,0);
 });
 test('free Tunisian archive files use the source media host and preserve their actual format',()=>{
   const s=parseArabicServers('sp:cinetimes:m:zohra','<video><source src="https://upload.wikimedia.org/wikipedia/commons/transcoded/film.webm"></video><iframe src="https://evil.test"></iframe>');

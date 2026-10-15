@@ -40,8 +40,17 @@ jobs:
         run: npm ci --prefix server && npm ci --prefix client
       - name: Restore data snapshot
         run: node scripts/snapshot.js restore
+      - name: Continue complete Arabic catalogue traversal and sample playback routes
+        run: node scripts/audit-arabic.js --crawl --pages 180 --samples 1
+      - name: Preserve Arabic source coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arabic-source-audit
+          path: artifacts/arabic-audit.json
+          if-no-files-found: ignore
       - name: Fill missing metadata from provider pages
-        run: node scripts/fill-provider-metadata.js --limit 40
+        run: node scripts/fill-provider-metadata.js --limit 200
       - name: Refresh Flixer providers
         id: refresh
         run: node scripts/refresh-providers.js --product flixer --pages 180 --matches 100 ${{ inputs.full && '--full' || '' }}

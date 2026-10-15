@@ -5,17 +5,61 @@ import vm from 'node:vm';
 import { leanCatalog } from '../src/export-catalog.js';
 import { parseFmoviesList } from '../src/fmovies.js';
 
-function fixture(shows, streams = {}) {
+function fixture(shows, streams = {}, respond, options = {}) {
   const requests=[];
-  const catalog={product:'flixer',shows};
-  const context=vm.createContext({window:{FLIXER_CONFIG:{live:false},dispatchEvent:()=>{}},console,URLSearchParams,CustomEvent:class {},localStorage:{getItem:()=>null,setItem:()=>{}},AbortController,setTimeout,clearTimeout,fetch:async input=>{
+  const catalog={product:'flixer',shows,generatedAt:options.generatedAt};
+  const storage=options.storage||new Map();
+  const context=vm.createContext({window:{FLIXER_CONFIG:{live:false},dispatchEvent:()=>{}},console,URLSearchParams,CustomEvent:class {},localStorage:{getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,value)},AbortController,setTimeout,clearTimeout,fetch:async input=>{
     const url=String(input);requests.push(url);
-    const body=url.includes('/api/stream?')?streams:/\/(bootstrap|index)\.json/.test(url)?catalog:{};
+    const body=url.includes('/data/index.json')&&options.index?await options.index:url.includes('/api/discover?')&&respond?await respond(url):url.includes('/api/stream?')?streams:/\/(bootstrap|index)\.json/.test(url)?catalog:{};
     return {ok:true,status:200,headers:{get:()=>null},text:async()=>JSON.stringify(body)};
   }});
   for(const name of ['universes.js','tvmaze.js','api.js'])vm.runInContext(fs.readFileSync(new URL(`../../client-terrarium/js/${name}`,import.meta.url),'utf8'),context);
   return {api:new context.window.Api.FlixerApi(),requests};
 }
+
+test('scrolling saved catalogue pages never waits for a slow provider',async()=>{
+  let complete;const remote=new Promise(resolve=>{complete=resolve;});
+  const {api}=fixture(Array.from({length:100},(_,i)=>({id:`film-${i}`,kind:'film',title:`Film ${i}`})),{},()=>remote);
+  await api.catalog();await api._indexReady;await api._metadataReady;api.liveEnabled=true;
+  try{
+    const first=await api.discover('movie',{sort:'title'},1);
+    const second=await Promise.race([api.discover('movie',{sort:'title'},2),new Promise((_,reject)=>setTimeout(()=>reject(new Error('Saved page blocked on provider')),100))]);
+    assert.ok(first.items.length);assert.ok(second.items.length);assert.equal(second.items.some(i=>first.items.some(j=>i.id===j.id)),false);
+  }finally{api.liveEnabled=false;complete({items:[],totalPages:1});await Promise.all([...api._browseSessions.values()].map(s=>s.pending));}
+});
+
+test('delayed bundled index cannot revert live titles, slugs, artwork or recent ordering',async()=>{
+  const old={id:'mf:m:old',kind:'film',title:'Old title',slug:'old',sourceUrl:'https://source.test/old',poster:{custom:'https://source.test/old.jpg'},publishedAt:'2025-01-01'};
+  let finish;const index=new Promise(resolve=>{finish=resolve;});
+  const {api}=fixture([old],{},{}, {generatedAt:'2026-01-01',index});
+  await api.catalog();
+  api._merge([{...old,title:'Correct title',slug:'correct',sourceUrl:'https://source.test/correct',poster:{custom:'https://source.test/new.jpg'},latestAt:'2026-10-15'}]);api._reindex();
+  finish({product:'flixer',generatedAt:'2026-01-01',shows:[{...old}]});await api._indexReady;await api._metadataReady;
+  const item=await api.item(old.id),raw=await api.show(old.id);
+  assert.equal(item.title,'Correct title');assert.equal(item.poster,'https://source.test/new.jpg');assert.equal(raw.slug,'correct');assert.equal(item.sourceUrl,'https://source.test/correct');assert.equal(item.updatedAt,'2026-10-15');
+});
+
+test('fresh cached entries survive an app restart and alternate providers preserve canonical URLs',async()=>{
+  const storage=new Map(),base={id:'mf:m:original',kind:'film',title:'A title',slug:'original',year:2024,sourceUrl:'https://source.test/original'};
+  const first=fixture([{...base}],{},null,{storage,generatedAt:'2026-01-01'});await first.api.catalog();await first.api._indexReady;await first.api._metadataReady;
+  first.api._merge([{...base,title:'Updated title',slug:'updated',firstEpisodeId:'mf:e:updated',sourceUrl:'https://source.test/updated'}]);first.api._reindex();
+  const restarted=fixture([{...base}],{},null,{storage,generatedAt:'2026-01-01'});await restarted.api.catalog();await restarted.api._indexReady;await restarted.api._metadataReady;
+  assert.equal((await restarted.api.item(base.id)).title,'Updated title');assert.equal((await restarted.api.item(base.id)).firstEpisodeId,'mf:e:updated');
+  restarted.api._merge([{id:'fm:m:other',kind:'film',title:'Updated title',year:2024,sourceUrl:'https://another.test/title'}]);restarted.api._reindex();
+  assert.equal((await restarted.api.item(base.id)).sourceUrl,'https://source.test/updated');assert.equal(restarted.api._byId.get('fm:m:other').id,base.id);
+});
+
+test('Arabic recent titles remain recent across empty refreshes and app restarts',async()=>{
+  const storage=new Map(),row={id:'sp:ahwaktv:m:sample',kind:'film',title:'Arabic title',publishedAt:'2026-10-15'};
+  let empty=false;
+  const first=fixture([],{},()=>({items:empty?[]:[row],totalPages:1}),{storage,generatedAt:'2026-01-01'});
+  await first.api.catalog();await first.api._indexReady;await first.api._metadataReady;
+  await first.api.sync();assert.equal((await first.api.trending())[0].id,row.id);
+  empty=true;await first.api.sync();assert.equal((await first.api.trending())[0].id,row.id);
+  const restarted=fixture([],{},null,{storage,generatedAt:'2026-01-01'});await restarted.api.catalog();await restarted.api._indexReady;await restarted.api._metadataReady;
+  assert.equal((await restarted.api.trending())[0].id,row.id);
+});
 
 test('source YouTube servers reach the APK player with validated video IDs',async()=>{
   const {api}=fixture([], {servers:[{type:'youtube',videoId:'P4UF0xAnc0M',name:'Source video'},{type:'youtube',videoId:'../invalid'}]});
@@ -23,6 +67,13 @@ test('source YouTube servers reach the APK player with validated video IDs',asyn
   assert.equal(result.servers.length,1);
   assert.equal(result.servers[0].name,'Source video');
   assert.equal(result.servers[0].embedUrl,'https://www.youtube.com/embed/P4UF0xAnc0M?autoplay=1&playsinline=1&rel=0');
+});
+
+test('episode cards use source artwork and summaries before the show poster fallback',async()=>{
+  const {api}=fixture([{id:'series',kind:'series',title:'A series',portrait:'https://source.test/show.jpg',episodes:[{id:'ep1',season:null,number:1,poster:{custom:'https://source.test/episode.jpg'},synopsis:'An episode summary'},{id:'ep2',season:null,number:2}]}]);
+  const detail=await api.details(null,'series');
+  assert.equal(detail.episodes[0].still,'https://source.test/episode.jpg');assert.equal(detail.episodes[0].overview,'An episode summary');assert.equal(detail.episodes[1].still,'https://source.test/show.jpg');
+  await api._indexReady;await api._metadataReady;
 });
 
 test('Arabic titles, bilingual aliases and regional collections remain searchable independently',async()=>{

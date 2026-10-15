@@ -52,6 +52,17 @@ test('uncertain versions share one card without combining episodes or confirmed 
   assert.equal(leanCatalog(again.catalog,'flixer').shows[0].versions[0].id,'fm:m:77');
 });
 
+test('source refresh retains updated player caches and episode completeness',()=>{
+  const old={id:'sp:kirmalk:s:example',title:'Example',kind:'series',episodesComplete:false,episodes:[{id:'sp:kirmalk:e:one',number:1,season:1,cachedPlayers:[]}]};
+  const fresh={...old,episodesComplete:true,metadataVersion:3,detailsFetchedAt:'2026-10-15T15:00:00Z',episodes:[{...old.episodes[0],cachedPlayers:[{type:'embed',embedUrl:'https://s1.hdup400.com/e/real'}]}]};
+  const merged=mergeShow(old,fresh);assert.equal(merged.episodesComplete,true);assert.equal(merged.metadataVersion,3);assert.equal(merged.detailsFetchedAt,fresh.detailsFetchedAt);assert.equal(merged.episodes[0].cachedPlayers.length,1);
+});
+
+test('confirmed matches leave no stale uncertain edition under another title',()=>{
+  const source=fm();const catalog=base();catalog.shows.push({id:'other',kind:'film',title:'Other',versions:[source],episodes:[]});
+  const merged=mergeLibrary(catalog,[source]);assert.equal(merged.catalog.shows.find(s=>s.id==='other').versions.length,0);assert.equal(merged.report.matched,1);
+});
+
 test('FMovies card import preserves numeric identity, year and documentary filter evidence',()=>{
   const html='<select><option value="99" selected>Documentary</option></select>Page 1 of 2 <a href="/movie/a-shared-film-77"><article><img src="https://image.tmdb.org/t/p/w500/a.jpg"><h3>A Shared Film</h3></article><span>2024</span><span>EN</span></a>';
   const result=parseFmoviesList(html,{documentary:true});

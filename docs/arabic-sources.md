@@ -37,6 +37,38 @@ Validated player choices can be cached with source episodes. A narrow Arabic
 snapshot avoids parsing the whole deployment catalogue for each title request.
 Fixed origins, strict paths and approved player hosts apply throughout.
 
+### Complete traversal and latency checks
+
+`node scripts/audit-arabic.js --crawl --pages 180 --samples 2` resumes each
+Arabic source/category from its own saved cursor. There is no first-N-pages
+import limit. Each category is complete only after its advertised final page.
+Failures retain the first unsuccessful cursor. Raw episode-link fingerprints
+detect repeated upstream pages without mistaking consecutive pages of the same
+series for duplicates. Completed categories are revisited weekly; regular latest
+refreshes continue between full sweeps. `--rescan` explicitly starts another sweep.
+
+The scheduled refresh stores `artifacts/arabic-audit.json` as a workflow artifact.
+It records pages, elapsed times, missing watch posts, fresh title metadata and
+first/last episode server resolution samples. A resolved route is not proof that
+every external server plays: removed media, expired signed URLs, geographic
+restrictions and source access failures remain source limitations. CimaTN feed
+batches, season pages and episode lists no longer stop at 150 posts, 12 seasons
+or 8 pages. Theatre uses Kirmalk's verified category; EgyDead has no verified
+theatre catalogue route and is excluded from that category.
+
+Saved app browse pages render while providers refresh in the background. Source
+episode lookup uses an indexed map; catalogue merge indexes uncertain edition
+owners instead of rescanning every title for each confirmed match. Fresh player
+caches and episode-completeness flags survive metadata merges. Episode cards use
+source summaries/artwork, falling back to source show posters when needed.
+
+Mobile catalogue updates carry revision timestamps. A delayed bundled index or
+older saved detail cannot overwrite newer live titles, slugs, artwork or source
+URLs. Alternate providers retain the canonical title's URL and contribute their
+own offerings. Recent IDs and first episode IDs survive restarts. The mobile app
+checks the hosted snapshot in the background and revalidates JSON responses.
+Home and browse renders ignore results from abandoned navigation requests.
+
 ## Sources not integrated
 
 MyCima did not pass filtered-pagination and playback validation. Artify, Shahid

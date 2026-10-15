@@ -22,6 +22,8 @@ export function mergeShow(existing, incoming) {
   for (const candidate of incoming.episodes || []) {
     const current = byId.get(candidate.id) || (existing.kind === 'film' && episodes.length === 1 ? episodes[0] : Number.isInteger(candidate.season) && Number.isInteger(candidate.number) ? slots.get(`${candidate.season}:${candidate.number}`) : null);
     if (current) {
+      if(current.id===candidate.id&&Array.isArray(candidate.cachedPlayers))current.cachedPlayers=candidate.cachedPlayers;
+      if(!hasArtwork(current.poster)&&hasArtwork(candidate.poster))current.poster=candidate.poster;
       current.offerings = unique([...episodeOfferings(current),...episodeOfferings(candidate)]);
       current.audioModes=[...new Set([...(current.audioModes||[]),...(candidate.audioModes||[])])];
       if (!current.synopsis && candidate.synopsis) current.synopsis = candidate.synopsis;
@@ -53,6 +55,11 @@ export function mergeShow(existing, incoming) {
     altTitles:[...new Set([...(existing.altTitles || []),...(incoming.altTitles || []),incoming.title].filter(t => t && t !== existing.title))],
     offerings:unique([...showOfferings(existing),...showOfferings(incoming)]),
     episodes, episodeCount:episodes.length,
+    ...(incoming.id===existing.id?{
+      episodesComplete:incoming.episodesComplete??existing.episodesComplete,
+      detailsFetchedAt:incoming.detailsFetchedAt||existing.detailsFetchedAt,
+      metadataVersion:Math.max(incoming.metadataVersion||0,existing.metadataVersion||0),
+    }:{}),
     seasons:[...new Set(episodes.map(e => e.season).filter(Number.isInteger))].sort((a,b) => a-b),
     providerUpdatedAt:incoming.providerUpdatedAt || existing.providerUpdatedAt,
     latestEpisode:incoming.latestEpisode || existing.latestEpisode,
@@ -63,7 +70,8 @@ export function mergeShow(existing, incoming) {
 export function mergeLibrary(base, incoming, { product = 'flixer', aliases = {} } = {}) {
   const shows = (base.shows || []).map(s => ({...s,offerings:showOfferings(s),episodes:episodesOf(s).map(e => ({...e,offerings:episodeOfferings(e)}))}));
   const byId = new Map(shows.map(s => [s.id,s]));
-  const index = new Map(), external = new Map(), offerings = new Map();
+  const index = new Map(), external = new Map(), offerings = new Map(),versionOwners=new Map();
+  for(const show of shows)for(const version of show.versions||[]){if(!versionOwners.has(version.id))versionOwners.set(version.id,new Set());versionOwners.get(version.id).add(show);}
   const addIndex = s => {
     for (const t of [s.title,...(s.altTitles || [])]) {
       const key = `${s.kind}:${titleKey(t)}`;
@@ -97,12 +105,14 @@ export function mergeLibrary(base, incoming, { product = 'flixer', aliases = {} 
         const group = candidates[0];
         if (group) {
           group.versions = [...(group.versions || []).filter(v => v.id !== source.id), {...source, uncertainMatch:true}];
+          if(!versionOwners.has(source.id))versionOwners.set(source.id,new Set());versionOwners.get(source.id).add(group);
           continue;
         }
       }
     }
     if (match) {
-      for (const group of shows) if (group.versions) group.versions=group.versions.filter(v=>v.id!==source.id);
+      for (const group of versionOwners.get(source.id)||[]) group.versions=group.versions.filter(v=>v.id!==source.id);
+      versionOwners.delete(source.id);
       const updated = mergeShow(match,source);
       Object.assign(match,updated);
       report.aliases[source.id] = match.id;

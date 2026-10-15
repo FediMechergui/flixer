@@ -34,10 +34,11 @@ function scopes(product) {
       ...['KR','IN','TR','EG','TN'].flatMap(country=>['film','series'].map(kind=>({provider:'fmovies',kind,country,page:1}))),
       {provider:'fmovies',kind:'series',country:'JP',genre:'animation',page:1},
       ...specialistJobs(),
+      ...['arabic','turkish'].flatMap(collection=>['film','series'].map(kind=>({provider:'tuniflix',kind,collection,page:1}))),
+      {provider:'streamtunisie',kind:'series',collection:'arabic',page:1},
       {provider:'multimovies',kind:'film',collection:'indian',page:1},
       {provider:'multimovies',kind:'series',collection:'indian',page:1},
       {provider:'kirmalk',kind:'film',collection:'plays',page:1},
-      {provider:'egydead',kind:'film',collection:'plays',page:1},
     ]:[]),
   ];
 }
@@ -50,6 +51,7 @@ export async function refreshProviders({product='dahsha',full=false,pageBudget=N
 }
 async function scan({product,full,pageBudget,log}) {
   const cache=providerCache(product),items=new Map(cache.items.map(i=>[i.id,i]));
+  cache.queue=cache.queue.filter(job=>!(job.provider==='egydead'&&job.collection==='plays'));
   const errors={};let requests=0;
   const deferred=new Set();
   const unavailable=provider=>errors[provider]&&!/inconsistent empty pagination/.test(errors[provider]);
@@ -81,11 +83,11 @@ async function scan({product,full,pageBudget,log}) {
   }
   if(!cache.queue.length && !cache.completed)cache.queue=scopes(product);
   // Existing resumable scans keep their cursors when new source families arrive.
-  if(product==='flixer' && cache.specialistScopesVersion!==3){
+  if(product==='flixer' && cache.specialistScopesVersion!==4){
     const key=job=>JSON.stringify([job.provider,job.kind,job.country,job.genre,job.year,job.collection]);
     const known=new Set(cache.queue.map(key));
     cache.queue.push(...seeds.filter(job=>(job.country||!['fmovies','hdtoday'].includes(job.provider))&&!known.has(key(job))));
-    cache.specialistScopesVersion=3;cache.completed=false;
+    cache.specialistScopesVersion=4;cache.completed=false;
   }
   if(full && cache.completed){cache.queue=scopes(product);cache.completed=false;}
   let scanned=0;

@@ -222,6 +222,7 @@
     if (state.renderedTab) state.scroll[state.renderedTab] = window.scrollY;
     clearInterval(state.heroTimer);
     if (state.browse && state.browse.observer) state.browse.observer.disconnect();
+    state.browse=null;
     state.renderedTab = tab;
     const view = $("#view");
     view.innerHTML = "";
@@ -247,12 +248,14 @@
   }
 
   async function renderHome(view) {
+    const generation=state.homeGeneration=(state.homeGeneration||0)+1;
+    const current=()=>state.renderedTab==='home'&&state.homeGeneration===generation;
     view.innerHTML = `<div style="height:12px"></div>
       <div class="hero" id="hero"><div class="skel" style="position:absolute;inset:0;border-radius:0"></div></div>
       <div id="home-rows">${["Recently updated", "New movies", "New series"].map(t => `<section class="section"><div class="section__head"><h2 class="section__title">${t}</h2></div>${skelRow(5)}</section>`).join("")}</div>`;
 
     const results = await Promise.allSettled([api.trending(), api.nowPlaying(), api.onTheAir(), api.topRated("movie"), api.topRated("tv"), ensureMeta("movie"), ensureMeta("tv")]);
-    if (state.renderedTab !== "home") return;
+    if (!current()) return;
     const [trend, now, air, topM, topT] = results.map(r => r.status === "fulfilled" ? r.value : null);
     const firstErr = results.find(r => r.status === "rejected");
     if (firstErr && !trend) {
@@ -265,6 +268,7 @@
     const hero = $("#hero");
     let idx = 0;
     function paintHero(i) {
+      if(!current())return;
       const s = slides[i]; if (!s) return;
       const genres = s.genreIds.slice(0, 2).map(g => genreName(s.type, g)).filter(Boolean).join(", ");
       hero.innerHTML = `<img class="hero__bg" src="${esc(s.backdrop || s.poster)}" alt="" ${s.poster && s.backdrop !== s.poster ? `onerror="this.onerror=null;this.src='${esc(s.poster)}';this.onerror=()=>this.remove()"` : ""}>
@@ -296,7 +300,7 @@
 
     // Continue watching
     const resumeRow = await continueWatchingRow();
-    if (state.renderedTab !== "home") return;
+    if (!current()) return;
 
     // Genre quick row
     const mg = (state.meta.genres.movie || []).slice(0, 12);
@@ -313,7 +317,7 @@
       <div class="ulogos">${services.map(s => `<a class="utile utile--svc" href="#/shows" data-svc="${esc(s.name)}" title="${esc(s.name)}">${s.logo ? `<img src="${esc(s.logo)}" alt="${esc(s.name)}" loading="lazy" onerror="this.outerHTML='<span class=\\'utile__mono\\'>'+this.alt.replace(/</g,'')+'</span>'">` : `<span class="utile__mono">${esc(s.name)}</span>`}<span class="utile__n">${s.count} series</span></a>`).join("")}</div></section>` : "";
     const [popularTv, ratedTv, topUni] = await Promise.all([api.popular("tv", 14), api.topRated("tv", 14), api.topUniverses(3)]);
     const uniRails = await Promise.all(topUni.map(async u => section(u.name, `${u.count} titles in Flixer`, await api.universeRail(u.id, 14), { showType: true, rating: true })));
-    if (state.renderedTab !== "home") return;
+    if (!current()) return;
 
     $("#home-rows").innerHTML =
       resumeRow +
@@ -440,10 +444,11 @@
     $$("[data-go]", view).forEach(b => b.addEventListener("click", () => { location.hash = b.dataset.go; }));
 
     const b = state.browse = { type, page: 0, totalPages: 1, loading: false, observer: null, seq: 0 };
-    try { await ensureMeta(type); } catch (e) { $("#grid").innerHTML = ""; $("#count").textContent = ""; view.insertAdjacentHTML("beforeend", emptyState("Could not load filters", e.message)); return; }
-    if (state.renderedTab !== (type === "all" ? "recent" : type === "movie" ? "movies" : "shows")) return;
+    try { await ensureMeta(type); } catch (e) { if(state.browse!==b)return;$("#grid").innerHTML = ""; $("#count").textContent = ""; view.insertAdjacentHTML("beforeend", emptyState("Could not load filters", e.message)); return; }
+    if (state.browse!==b||state.renderedTab !== (type === "all" ? "recent" : type === "movie" ? "movies" : "shows")) return;
     renderRail();
     await loadPage(true);
+    if(state.browse!==b)return;
 
     b.observer = new IntersectionObserver(entries => { if (entries[0].isIntersecting && !b.loading && b.page < b.totalPages) loadPage(false); }, { rootMargin: "600px" });
     b.observer.observe($("#sentinel"));
@@ -488,7 +493,7 @@
     const seq = ++b.seq;
     try {
       const r = await api.discover(type, state.filters[type], b.page + 1);
-      if (seq !== b.seq) return;
+      if (seq !== b.seq||state.browse!==b||!grid.isConnected) return;
       b.page = r.page; b.totalPages = r.totalPages;
       b.loaded = (reset ? 0 : (b.loaded || 0)) + r.items.length;
       const html = r.items.map(i => card(i, { rating: true, showType:type==="all" })).join("");
@@ -497,7 +502,7 @@
       if (!r.items.length && reset) grid.innerHTML = `<div style="grid-column:1/-1">${emptyState("Nothing matches these filters", "Loosen the year range or remove a genre to see more.", `<button class="btn btn--outline" data-reset>Reset filters</button>`)}</div>`;
       $("[data-reset]", grid)?.addEventListener("click", () => applyFilters(defaultFilters()));
     } catch (e) {
-      if (seq !== b.seq) return;
+      if (seq !== b.seq||state.browse!==b||!grid.isConnected) return;
       grid.innerHTML = `<div style="grid-column:1/-1">${emptyState("Could not load titles", e.message, `<button class="btn btn--primary" data-retry>Try again</button>`)}</div>`;
       $("[data-retry]", grid)?.addEventListener("click", () => loadPage(true));
       $("#count").textContent = "";
