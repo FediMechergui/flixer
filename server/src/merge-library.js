@@ -22,6 +22,7 @@ export function mergeShow(existing, incoming) {
     const current = byId.get(candidate.id) || (existing.kind === 'film' && episodes.length === 1 ? episodes[0] : Number.isInteger(candidate.season) && Number.isInteger(candidate.number) ? slots.get(`${candidate.season}:${candidate.number}`) : null);
     if (current) {
       current.offerings = unique([...episodeOfferings(current),...episodeOfferings(candidate)]);
+      current.audioModes=[...new Set([...(current.audioModes||[]),...(candidate.audioModes||[])])];
       if (!current.synopsis && candidate.synopsis) current.synopsis = candidate.synopsis;
       if (/^Episode \d+$/i.test(current.title || '') && candidate.title) current.title = candidate.title;
       if (!current.durationSec && candidate.durationSec) current.durationSec = candidate.durationSec;
@@ -33,11 +34,16 @@ export function mergeShow(existing, incoming) {
   }
   if (existing.kind === 'series') episodes.sort((a,b) => (a.season ?? Infinity)-(b.season ?? Infinity) || (a.number ?? Infinity)-(b.number ?? Infinity));
   return { ...incoming, ...existing, id:existing.id,
+    kind:incoming.id===existing.id && /^sp:myasiantv:/.test(existing.id) && incoming.kindVerified?incoming.kind:existing.kind,
     title:existing.title || incoming.title,
     year:existing.year || incoming.year || null,
     tmdbId:existing.tmdbId || incoming.tmdbId,
     imdbId:existing.imdbId || incoming.imdbId,
     tvm:existing.tvm || incoming.tvm,
+    originalLanguage:existing.originalLanguage || incoming.originalLanguage,
+    countries:[...new Set([...(existing.countries||[]),...(incoming.countries||[])])],
+    audioModes:[...new Set([...(existing.audioModes||[]),...(incoming.audioModes||[])])],
+    collections:[...new Set([...(existing.collections||[]),...(incoming.collections||[])])],
     synopsis:existing.synopsis && !existing.synopsisGenerated ? existing.synopsis : incoming.synopsis || existing.synopsis,
     synopsisGenerated:existing.synopsis && !existing.synopsisGenerated ? false : !incoming.synopsis && existing.synopsisGenerated,
     poster:existing.poster || incoming.poster, portrait:existing.portrait || incoming.portrait,

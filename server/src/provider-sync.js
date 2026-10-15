@@ -1,7 +1,8 @@
 import { readJson, writeJson } from './store.js';
 import { fetchFmoviesPage, FMOVIES_GENRES } from './fmovies.js';
 import { fetchHdtodayPage } from './hdtoday.js';
-import { mergeLibrary } from './merge-library.js';
+import { mergeLibrary, mergeShow } from './merge-library.js';
+import { specialistJobs, fetchSpecialistPage } from './specialist-providers.js';
 
 const running=new Map();
 const filename=product=>`providers-${product}.json`;
@@ -28,10 +29,17 @@ function scopes(product) {
     {provider:'fmovies',kind:'film',documentary,page:1},
     {provider:'fmovies',kind:'series',documentary,page:1},
     ...(documentary?[{provider:'hdtoday',documentary:true,page:1}]:[{provider:'hdtoday',kind:'film',page:1},{provider:'hdtoday',kind:'series',page:1}]),
+    ...(!documentary?[
+      ...['KR','IN','TR'].flatMap(country=>['film','series'].map(kind=>({provider:'fmovies',kind,country,page:1}))),
+      {provider:'fmovies',kind:'series',country:'JP',genre:'animation',page:1},
+      ...specialistJobs(),
+      {provider:'multimovies',kind:'film',collection:'indian',page:1},
+      {provider:'multimovies',kind:'series',collection:'indian',page:1},
+    ]:[]),
   ];
 }
 async function fetchPage(job) {
-  return job.provider==='fmovies'?fetchFmoviesPage(job):fetchHdtodayPage(job);
+  return job.provider==='fmovies'?fetchFmoviesPage(job):job.provider==='hdtoday'?fetchHdtodayPage(job):fetchSpecialistPage(job);
 }
 export async function refreshProviders({product='dahsha',full=false,pageBudget=Number(process.env.PROVIDER_SCAN_PAGES||12),log=console.log}={}) {
   if(running.has(product))return running.get(product);
@@ -40,21 +48,45 @@ export async function refreshProviders({product='dahsha',full=false,pageBudget=N
 async function scan({product,full,pageBudget,log}) {
   const cache=providerCache(product),items=new Map(cache.items.map(i=>[i.id,i]));
   const errors={};let requests=0;
-  const put=rows=>{for(const row of rows){const old=items.get(row.id);const now=new Date().toISOString();items.set(row.id,{...old,...row,tags:[...new Set([...(old?.tags||[]),...(row.tags||[])])],year:row.year||old?.year||null,firstSeenAt:old?.firstSeenAt||now,providerUpdatedAt:row.latestEpisode && row.latestEpisode!==old?.latestEpisode ? row.providerUpdatedAt||now : old?.providerUpdatedAt||row.providerUpdatedAt||now});}};
+  const put=rows=>{for(const row of rows){const old=items.get(row.id);const now=new Date().toISOString();
+    const fresh=!old?.latestAt || !row.latestAt || row.latestAt>=old.latestAt;
+    const merged=old?mergeShow(old,row):row;
+    items.set(row.id,{...merged,firstSeenAt:old?.firstSeenAt||now,latestEpisode:fresh?row.latestEpisode||old?.latestEpisode:old.latestEpisode,
+      providerUpdatedAt:fresh && row.latestEpisode && row.latestEpisode!==old?.latestEpisode ? row.providerUpdatedAt||now : old?.providerUpdatedAt||row.providerUpdatedAt||now});
+  }};
   // New releases / new episodes are refreshed independently of the long historical crawl.
   const currentYear=new Date().getUTCFullYear();
-  for(const seed of scopes(product)) {
-    try {
+  const seeds=scopes(product);
+  for(let offset=0;offset<seeds.length;offset+=4){
+    const chunk=seeds.slice(offset,offset+4);
+    const results=await Promise.allSettled(chunk.map(seed=>{
       const sort=seed.kind==='series'?'first_air_date.desc':'primary_release_date.desc';
-      const result=await fetchPage(seed.provider==='fmovies'?{...seed,year:currentYear,sort}:{...seed,latest:true});
-      put(result.items);requests++;
-    }catch(e){errors[seed.provider]=e.message;}
+      return fetchPage(seed.provider==='fmovies'?{...seed,year:currentYear,sort}:{...seed,latest:true});
+    }));
+    results.forEach((result,index)=>{if(result.status==='fulfilled'){put(result.value.items);requests++;}else errors[chunk[index].provider]=result.reason.message;});
   }
   if(!cache.queue.length && !cache.completed)cache.queue=scopes(product);
+  // Existing resumable scans keep their cursors when new source families arrive.
+  if(product==='flixer' && cache.specialistScopesVersion!==2){
+    const key=job=>JSON.stringify([job.provider,job.kind,job.country,job.genre,job.year,job.collection]);
+    const known=new Set(cache.queue.map(key));
+    cache.queue.push(...seeds.filter(job=>(job.country||!['fmovies','hdtoday'].includes(job.provider))&&!known.has(key(job))));
+    cache.specialistScopesVersion=2;cache.completed=false;
+  }
   if(full && cache.completed){cache.queue=scopes(product);cache.completed=false;}
   let scanned=0;
   while(cache.queue.length && (full || scanned<pageBudget)) {
     if(cache.queue.every(job=>errors[job.provider]))break;
+    // Give each provider/region a turn. Hundreds of old FMovies year partitions
+    // must not keep a new animation or regional catalogue waiting for weeks.
+    const lane=job=>`${job.provider}:${job.country||'all'}`;
+    const lanes=[...new Set(seeds.map(lane))];
+    const start=lanes.indexOf(cache.lastScanLane);
+    for(let offset=1;offset<=lanes.length;offset++){
+      const next=lanes[(start+offset)%lanes.length];
+      const index=cache.queue.findIndex(job=>lane(job)===next&&!errors[job.provider]);
+      if(index>=0){cache.queue.unshift(cache.queue.splice(index,1)[0]);cache.lastScanLane=next;break;}
+    }
     if(errors[cache.queue[0].provider]){cache.queue.push(cache.queue.shift());continue;}
     const job=cache.queue[0];
     try {

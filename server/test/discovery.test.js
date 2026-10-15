@@ -3,6 +3,23 @@ import assert from 'node:assert/strict';
 import { discoverLibrary } from '../src/library-service.js';
 import { parseHdtodayList } from '../src/hdtoday.js';
 import { fmoviesServers } from '../src/fmovies.js';
+import { unifiedStream } from '../src/library-service.js';
+
+test('regional discovery rejects invalid filters and never widens Dahsha',async()=>{
+  await assert.rejects(discoverLibrary({collection:'invalid',catalog:{shows:[]}}),/Invalid collection/);
+  await assert.rejects(discoverLibrary({product:'dahsha',collection:'indian',catalog:{shows:[]}}),/Invalid collection/);
+  const result=await discoverLibrary({product:'flixer',kind:'film',collection:'kdrama',catalog:{shows:[]},fetchers:[()=>{throw new Error('Must not request films for K-drama');}]});
+  assert.deepEqual(result.items,[]);
+});
+
+test('imported Flixer episodes resolve their existing servers without title network enrichment',async()=>{
+  const id='fm:e:123:2:3';
+  const catalog={product:'flixer',shows:[{id:'fm:s:123',kind:'series',tmdbId:123,episodes:[{id,season:2,number:3,offerings:[{provider:'fmovies',id}]}]}]};
+  const result=await unifiedStream(id,{showId:'fm:s:123',product:'flixer',catalog});
+  assert.ok(result.servers.length>=3);
+  assert.ok(result.servers.some(s=>s.embedUrl.includes('season=2') || s.embedUrl.includes('/2/3') || s.embedUrl.includes('s=2&e=3')));
+  assert.equal(await unifiedStream('fm:e:123:2:99',{showId:'fm:s:123',product:'flixer',catalog,resolveTitle:async()=>catalog.shows[0]}),null);
+});
 
 const row=(id,title='Shared',extra={})=>({id,title,kind:'film',year:2024,tags:['animation'],...extra});
 test('discovery combines all three providers, preserves canonical IDs and survives one failure',async()=>{

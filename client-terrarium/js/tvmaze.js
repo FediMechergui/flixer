@@ -10,13 +10,13 @@
   const norm = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/^(the|a|an)\s+/, "").replace(/&/g, " and ").replace(/[^a-z0-9]+/g, " ").trim();
   const plain = html => String(html || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 
-  async function getJson(url, ms = 10000) {
+  async function getJson(url, ms = 10000, retries = 1) {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), ms);
     try {
       const res = await fetch(url, { signal: ctrl.signal });
       if (res.status === 404) return null;
-      if (res.status === 429) { await new Promise(r => setTimeout(r, 1500)); return getJson(url, ms); }
+      if (res.status === 429 && retries > 0) { await new Promise(r => setTimeout(r, 1500)); return getJson(url, ms, retries - 1); }
       if (!res.ok) throw new Error("TVmaze request failed (" + res.status + ")");
       return res.json();
     } finally { clearTimeout(t); }

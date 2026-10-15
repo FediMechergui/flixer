@@ -41,8 +41,9 @@ export function isPublicAddress(address) {
 }
 
 // Pin the validated DNS result to the connection, and revalidate every redirect.
-export async function safeRemoteFetch(input, { headers = {}, redirects = 5, timeoutMs=30000 } = {}) {
+export async function safeRemoteFetch(input, { headers = {}, redirects = 5, timeoutMs=30000, method='GET' } = {}) {
   const url = new URL(input);
+  if(!['GET','HEAD','POST'].includes(method))throw new Error('Unsupported upstream method');
   if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || (url.port && !['80', '443'].includes(url.port))) throw new Error('Invalid media destination');
   const hostname = url.hostname.replace(/^\[|\]$/g, '');
   const addresses = await lookup(hostname, { all: true });
@@ -52,6 +53,7 @@ export async function safeRemoteFetch(input, { headers = {}, redirects = 5, time
     const transport = url.protocol === 'https:' ? https : http;
     const request = transport.request(url, {
       headers,
+      method,
       agent: false,
       lookup: (_host, opts, cb) => opts?.all ? cb(null, [chosen]) : cb(null, chosen.address, chosen.family),
       signal: AbortSignal.timeout(Math.max(1,Math.min(30000,Number(timeoutMs)||30000))),
@@ -62,7 +64,7 @@ export async function safeRemoteFetch(input, { headers = {}, redirects = 5, time
   if ([301,302,303,307,308].includes(upstream.statusCode) && upstream.headers.location) {
     upstream.destroy();
     if (redirects <= 0) throw new Error('Too many media redirects');
-    return safeRemoteFetch(new URL(upstream.headers.location, url).href, { headers, redirects: redirects - 1, timeoutMs });
+    return safeRemoteFetch(new URL(upstream.headers.location, url).href, { headers, redirects: redirects - 1, timeoutMs,method:upstream.statusCode===303 || ([301,302].includes(upstream.statusCode) && method==='POST')?'GET':method });
   }
   const response = new Response([204,304].includes(upstream.statusCode) ? null : Readable.toWeb(upstream), {
     status: upstream.statusCode,

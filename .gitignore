@@ -27,6 +27,8 @@ build.log
 .env*
 
 client/public/data-flixer/
+client/public/data-flixer.stage-*/
+client/public/data-flixer.backup-*/
 client-terrarium/dist/
 client-terrarium/dist-*/
 docs/research/fmovies/

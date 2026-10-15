@@ -38,7 +38,8 @@ export function parseFmoviesList(html, { kind = 'film', documentary = false, gen
     const title = text(/<h3\b[^>]*>([\s\S]*?)<\/h3>/.exec(card)?.[1] || /\balt="([^"]+)"/.exec(card)?.[1]);
     if (!id || !title) continue;
     const year = Number(/<span[^>]*>\s*((?:18|19|20|21)\d{2})\s*<\/span>/.exec(card)?.[1]) || null;
-    const lang = /<span[^>]*>\s*([A-Z]{2})\s*<\/span>/.exec(card)?.[1]?.toLowerCase() || null;
+    // Poster badges such as HD, SD and TV describe quality/media, not audio language.
+    const lang = null;
     const poster = /<img\b[^>]*src="(https:\/\/image\.tmdb\.org\/[^" ]+)"/.exec(card)?.[1];
     const item = baseItem({ id, kind, title, year, lang, poster, tags:documentary ? ['documentary'] : genre ? [genre] : [], sourceUrl:FMOVIES_BASE + href });
     items.set(item.id, item);
@@ -63,13 +64,25 @@ async function request(path) {
   throw error;
 }
 export async function fetchFmoviesPage({ kind = 'film', documentary = false, page = 1, year, sort = 'popularity.desc', genre, country, language } = {}) {
-  const params = new URLSearchParams({ page:String(Math.max(1, Number(page) || 1)), sort });
+  const params = new URLSearchParams();
+  // The upstream currently serves empty cached responses for some page-first URLs.
+  if (country) params.set('country', country);
+  if (language) params.set('language', language);
   if (documentary) params.set('genre', '99');
   else if (genre) { const id = typeof genre === 'number' ? genre : (kind === 'series' ? {action:10759,'sci-fi':10765,war:10768}[genre] : null) || Object.entries(FMOVIES_GENRES).find(([, slug]) => slug === genre)?.[0]; if (id) params.set('genre', String(id)); }
   if (year) params.set('year', String(year));
-  if (country) params.set('country', country);
-  if (language) params.set('language', language);
-  return parseFmoviesList(await request(`/${kind === 'film' ? 'movies' : 'tv-series'}?${params}`), { kind, documentary, page, genre:typeof genre === 'number' ? FMOVIES_GENRES[genre] : genre });
+  params.set('sort',sort);
+  params.set('page',String(Math.max(1, Number(page) || 1)));
+  const html=await request(`/${kind === 'film' ? 'movies' : 'tv-series'}?${params}`);
+  // Only attach region evidence after the upstream confirms the requested filter.
+  for(const [name,value] of Object.entries({country,language}))if(value){
+    const select=[...html.matchAll(/<select\b([^>]*)>([\s\S]*?)<\/select>/gi)].find(m=>new RegExp(`name=["']${name}["']`,'i').test(m[1]));
+    const selected=select && [...select[2].matchAll(/<option\b([^>]*)>/gi)].some(m=>/\bselected\b/i.test(m[1]) && new RegExp(`value=["']${value}["']`,'i').test(m[1]));
+    if(!selected)throw new Error(`FMovies ${name} filter was not confirmed`);
+  }
+  const result=parseFmoviesList(html, { kind, documentary, page, genre:typeof genre === 'number' ? FMOVIES_GENRES[genre] : genre });
+  for(const item of result.items){if(country)item.countries=[country];if(language)item.originalLanguage=language;}
+  return result;
 }
 export function parseFmoviesDetails(html, sourceUrl) {
   const url = new URL(sourceUrl, FMOVIES_BASE);
@@ -148,6 +161,7 @@ export async function searchFmovies(query, { documentary = false, page = 1, limi
     const kind = r.media_type === 'movie' ? 'film' : 'series';
     const item = baseItem({ id:r.id, kind, title:text(r.title || r.name), year:Number((r.release_date || r.first_air_date || '').slice(0,4)) || null, lang:r.original_language || null,
       poster:r.poster_path ? `https://image.tmdb.org/t/p/w500${r.poster_path}` : null, synopsis:text(r.overview), tags:(r.genre_ids || []).map(id => FMOVIES_GENRES[id]).filter(Boolean), sourceUrl:new URL(r.href,FMOVIES_BASE).href });
+    if (r.original_language) item.originalLanguage = r.original_language;
     return item;
   });
 }

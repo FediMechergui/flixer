@@ -13,6 +13,14 @@
 
   // Player 2 first when present: the most reliable embed in practice, then the list order.
   function initialIndex(servers) {
+    try{
+      const preference=JSON.parse(localStorage.getItem('flixer:player-preference')||'null');
+      if(preference){
+        let index=servers.findIndex(s=>s.provider===preference.provider && s.name===preference.name);
+        if(index<0 && preference.audioMode)index=servers.findIndex(s=>s.audioMode===preference.audioMode);
+        if(index>=0)return index;
+      }
+    }catch{}
     const i = servers.findIndex(s => (s.name || "").toLowerCase().includes("player 2"));
     return i !== -1 ? i : 0;
   }
@@ -29,7 +37,7 @@
   }
   function mount(container, opts) {
     const servers = Array.isArray(opts.servers) ? opts.servers : [];
-    const st = { idx: initialIndex(servers), hls: null, destroyed: false, noticeTimer: null };
+    const st = { idx: initialIndex(servers), hls: null, destroyed: false, noticeTimer: null, switchTimer: null, startupTimer: null, generation: 0, attempted: new Set() };
 
     container.innerHTML = `<div class="player" tabindex="-1">
       <div class="player__bar">
@@ -51,7 +59,11 @@
       bar.hidden = false;
       bar.innerHTML = `<span class="player__bar-title"><i class="dot"></i>Server</span>` +
         servers.map((s, i) => `<button type="button" class="player__srv ${i === st.idx ? "is-active" : ""}" data-i="${i}" title="Switch to ${esc(s.name)}">${esc(s.name)}</button>`).join("");
-      $$("[data-i]", bar).forEach(b => b.addEventListener("click", () => load(+b.dataset.i)));
+      $$("[data-i]", bar).forEach(b => b.addEventListener("click", () => {
+        const index=+b.dataset.i,server=servers[index];
+        try{localStorage.setItem('flixer:player-preference',JSON.stringify({provider:server.provider,name:server.name,audioMode:server.audioMode}));}catch{}
+        load(index);
+      }));
       const active = $(".is-active", bar);
       if (active && active.scrollIntoView) active.scrollIntoView({ inline: "nearest", block: "nearest" });
     }
@@ -64,20 +76,25 @@
     }
 
     function teardownMedia() {
+      clearTimeout(st.switchTimer);
+      clearTimeout(st.startupTimer);
+      st.generation++;
       if (st.hls) { try { st.hls.destroy(); } catch { /* already gone */ } st.hls = null; }
       const v = $("video", stage);
       if (v) { try { v.pause(); v.removeAttribute("src"); v.load(); } catch { /* ignore */ } }
       stage.innerHTML = "";
     }
 
-    function load(i) {
+    function load(i, automatic = false) {
       if (st.destroyed) return;
+      if (!automatic) st.attempted.clear();
+      st.attempted.add(i);
       st.idx = i;
       renderBar();
       teardownMedia();
       const s = servers[i];
       if (!s) return showError();
-      if (s.type === "hls" && s.streamUrl) return loadHls(s);
+      if (["hls","mp4"].includes(s.type) && s.streamUrl) return loadHls(s);
       if (s.embedUrl) return loadEmbed(s);
       failover();
     }
@@ -85,25 +102,34 @@
     async function loadHls(s) {
       stage.innerHTML = `<video controls playsinline preload="auto" ${opts.poster ? `poster="${esc(opts.poster)}"` : ""}></video>`;
       const v = $("video", stage);
-      v.addEventListener("error", () => failover());
+      const generation = st.generation;
+      const current = () => !st.destroyed && generation === st.generation;
+      const failed = () => { if (current()) failover(); };
+      const ready = () => { if (current()) { clearTimeout(st.startupTimer); notice.hidden = true; } };
+      showNotice("Loading video...");
+      st.startupTimer = setTimeout(failed, 25000);
+      v.addEventListener("loadeddata", ready, { once: true });
+      v.addEventListener("playing", ready);
+      v.addEventListener("waiting", () => { if (current()) showNotice("Buffering... You can switch servers above"); });
+      v.addEventListener("error", failed);
       v.addEventListener("timeupdate", () => { if (v.duration > 0 && opts.onProgress) opts.onProgress(v.currentTime, v.duration); });
       v.addEventListener("ended", () => { if (opts.onEnded) opts.onEnded(); });
       const seek = () => { if (opts.startAt > 0) { try { v.currentTime = opts.startAt; } catch { /* not seekable yet */ } } };
-      if(!v.canPlayType("application/vnd.apple.mpegurl") && !window.Hls) {
+      if(s.type!=='mp4' && !v.canPlayType("application/vnd.apple.mpegurl") && !window.Hls) {
         try {await loadHlsLibrary();} catch {if(!st.destroyed && stage.contains(v)) failover();return;}
         if(st.destroyed || !stage.contains(v))return;
       }
-      if (v.canPlayType("application/vnd.apple.mpegurl")) {
+      if (s.type === 'mp4' || v.canPlayType("application/vnd.apple.mpegurl")) {
         v.src = s.streamUrl;
         v.addEventListener("loadedmetadata", seek, { once: true });
         v.play().catch(() => {});
       } else if (window.Hls && window.Hls.isSupported()) {
-        const hls = new window.Hls({ enableWorker: true, lowLatencyMode: true, backBufferLength: 90 });
+        const hls = new window.Hls({ enableWorker: true, lowLatencyMode: true, backBufferLength: 30, maxBufferLength: 30, manifestLoadingTimeOut: 10000, manifestLoadingMaxRetry: 1, fragLoadingTimeOut: 15000, fragLoadingMaxRetry: 1 });
         st.hls = hls;
         hls.loadSource(s.streamUrl);
         hls.attachMedia(v);
         hls.on(window.Hls.Events.MANIFEST_PARSED, () => { seek(); v.play().catch(() => {}); });
-        hls.on(window.Hls.Events.ERROR, (_, data) => { if (data && data.fatal) { console.warn("[player] HLS fatal error:", data.type, data.details); failover(); } });
+        hls.on(window.Hls.Events.ERROR, (_, data) => { if (data && data.fatal) { console.warn("[player] HLS fatal error:", data.type, data.details); failed(); } });
       } else {
         v.src = s.streamUrl;
         v.play().catch(() => {});
@@ -111,23 +137,27 @@
     }
 
     function loadEmbed(s) {
+      showNotice("Opening player...");
+      // Cross-origin load cannot confirm playback: offer help without interrupting a working film.
+      st.startupTimer = setTimeout(() => {
+        if (!st.destroyed) showNotice("Taking a while? Try another server above");
+      }, 12000);
       stage.innerHTML = `<iframe src="${esc(s.embedUrl)}" title="${esc(opts.title || "Player")}" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" allowfullscreen ${s.sandbox === null ? "" : 'sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"'} frameborder="0" referrerpolicy="no-referrer-when-downgrade"></iframe>`;
     }
 
     function failover() {
       if (st.destroyed) return;
       const cur = servers[st.idx];
-      let next = st.idx + 1;
-      if (cur && cur.type === "hls") {
-        const e = servers.findIndex((s, i) => i > st.idx && s.type === "embed");
-        if (e !== -1) next = e;
-      }
-      if (next < servers.length) {
-        showNotice(`${cur ? cur.name : "Server"} unavailable. Switching to ${servers[next].name}…`);
-        setTimeout(() => load(next), 600);
-      } else {
-        showError();
-      }
+      clearTimeout(st.startupTimer);
+      clearTimeout(st.switchTimer);
+      // Wrap around so a preferred middle server cannot skip earlier alternatives.
+      const next = servers.map((_, offset) => (st.idx + offset + 1) % servers.length)
+        .find(index => !st.attempted.has(index));
+      if (next !== undefined) {
+        showNotice(`${cur ? cur.name : "Server"} unavailable. Switching to ${servers[next].name}...`);
+        const generation = st.generation;
+        st.switchTimer = setTimeout(() => { if (!st.destroyed && generation === st.generation) load(next, true); }, 200);
+      } else showError();
     }
 
     function showError() {

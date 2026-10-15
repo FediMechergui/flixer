@@ -42,7 +42,7 @@ async function run() {
     pages += 1;
     for (const s of rows) {
       shows += 1;
-      const rec = { id: s.id, name: s.name, year: +String(s.premiered || '').slice(0, 4) || 0, w: s.weight || 0, r: (s.rating && s.rating.average) || 0, svc: (s.webChannel && s.webChannel.name) || (s.network && s.network.name) || null, img: s.image && s.image.medium ? s.image.medium : null, st: s.status || null, genres: s.genres || [], country: (s.network && s.network.country && s.network.country.code) || (s.webChannel && s.webChannel.country && s.webChannel.country.code) || null };
+      const rec = { id: s.id, name: s.name, year: +String(s.premiered || '').slice(0, 4) || 0, w: s.weight || 0, r: (s.rating && s.rating.average) || 0, svc: (s.webChannel && s.webChannel.name) || (s.network && s.network.name) || null, img: s.image && s.image.medium ? s.image.medium : null, st: s.status || null, genres: s.genres || [], language: s.language || null, country: (s.network && s.network.country && s.network.country.code) || (s.webChannel && s.webChannel.country && s.webChannel.country.code) || null };
       const k = key(s.name);
       if (!k) continue;
       const arr = index.get(k); if (arr) arr.push(rec); else index.set(k, [rec]);
@@ -60,7 +60,7 @@ async function run() {
     let hit = y ? cands.find((c) => c.year === y) || cands.find((c) => Math.abs(c.year - y) <= 1) : null;
     if (!hit && (cands.length === 1 || !y)) hit = cands.slice().sort((a, b) => b.w - a.w)[0];
     if (!hit) continue;
-    s.tvm = { id: hit.id, w: hit.w, r: hit.r, svc: hit.svc, img: hit.img, st: hit.st, g: hit.genres, c: hit.country };
+    s.tvm = { id: hit.id, w: hit.w, r: hit.r, svc: hit.svc, img: hit.img, st: hit.st, g: hit.genres, c: hit.country, l: hit.language };
     matched += 1;
   }
   cat.tvmazeAt = new Date().toISOString();

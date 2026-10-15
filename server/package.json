@@ -10,6 +10,7 @@
     "rebuild": "node src/cli.js rebuild"
   },
   "dependencies": {
+    "cheerio": "^1.2.0",
     "express": "^5.1.0",
     "youtubei.js": "^15.0.1"
   }

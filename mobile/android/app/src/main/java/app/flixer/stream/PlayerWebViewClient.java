@@ -21,7 +21,10 @@ public class PlayerWebViewClient extends BridgeWebViewClient {
             if (!java.util.Objects.equals(origin.getHost(), target.getHost())) {
                 // The app's explicit Source link remains usable; player ad destinations do not.
                 String host = target.getHost();
-                boolean source = "myflixerz.day".equals(host) || "hdtoday.sx".equals(host) || "www.f-movies.org".equals(host);
+                boolean source = "myflixerz.day".equals(host) || "hdtoday.sx".equals(host) || "www.f-movies.org".equals(host)
+                    || "www.animegg.org".equals(host) || "www.megacartoons.net".equals(host)
+                    || "www.toontales.net".equals(host) || "myasiantv.com.bz".equals(host)
+                    || "multimovies.garden".equals(host) || "www1.yoturkish.com".equals(host);
                 if (!(request.hasGesture() && "https".equals(scheme) && source)) return true;
             }
         }

@@ -41,7 +41,7 @@ app.use((req, res, next) => {
   next();
 });
 
-app.get('/api/discover', async (req,res) => res.json(await discoverLibrary({kind:req.query.kind || 'film',page:req.query.page,genre:req.query.genre,year:req.query.year,latest:req.query.latest})));
+app.get('/api/discover', async (req,res) => res.json(await discoverLibrary({kind:req.query.kind || 'film',page:req.query.page,genre:req.query.genre,year:req.query.year,latest:req.query.latest,collection:req.query.collection})));
 
 // Dahsha's catalogue and source management never use Flixer's all-genre feed.
 if (catalogue) {
@@ -207,6 +207,7 @@ app.get('/api/status', (_req, res) => {
 });
 
 // ---- static client ----------------------------------------------------------------------------
+app.use('/data',express.static(path.resolve(__dirname,PRODUCT==='dahsha'?'../../client/public/data':'../../client/public/data-flixer'),{maxAge:'5m'}));
 if (fs.existsSync(CLIENT_DIST)) {
   app.use(express.static(CLIENT_DIST, { index: 'index.html', maxAge: '1h' }));
   app.get('/{*splat}', (req, res, next) => {

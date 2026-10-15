@@ -29,6 +29,7 @@ jobs:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
       TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
     steps:
       - uses: actions/checkout@v4
@@ -40,6 +41,7 @@ jobs:
       - name: Restore data snapshot
         run: node scripts/snapshot.js restore
       - name: Refresh Flixer providers
+        id: refresh
         run: node scripts/refresh-providers.js --product flixer --pages 60 --matches 100 ${{ inputs.full && '--full' || '' }}
       # "vercel build" runs the buildCommand from vercel.json (static build with the exported data);
       # the prebuilt deploy then uploads the result, including the data files that git ignores.
@@ -56,5 +58,14 @@ jobs:
         if: env.VERCEL_TOKEN == ''
         run: node scripts/product.js flixer build
       - name: Save data snapshot
+        id: snapshot
         if: always()
         run: node scripts/snapshot.js save
+      - name: Deploy refreshed snapshot through the project hook
+        if: steps.refresh.outcome == 'success' && steps.snapshot.outcome == 'success' && env.VERCEL_TOKEN == '' && env.VERCEL_DEPLOY_HOOK != ''
+        run: |
+          node --input-type=module - <<'NODE'
+          const response = await fetch(process.env.VERCEL_DEPLOY_HOOK.trim(), { method: 'POST', signal: AbortSignal.timeout(30000) });
+          if (!response.ok) throw new Error(`Snapshot deployment failed: HTTP ${response.status}`);
+          console.log('Flixer deployment requested with the refreshed snapshot.');
+          NODE

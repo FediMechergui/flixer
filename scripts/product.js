@@ -13,7 +13,11 @@ const run = (file, extra = []) => {
 };
 switch (command) {
   case 'dev':
-    if(product==='flixer'){run('scripts/build-terrarium.js',['--out','client/dist-flixer',...args]);run('server/src/index.js');}
+    if(product==='flixer'){
+      const local=`http://localhost:${env.PORT||4545}`;
+      run('scripts/build-terrarium.js',['--out','client/dist-flixer',...(args.includes('--data-base')?[]:['--data-base',local,'--api-base',local]),...args]);
+      run('server/src/index.js');
+    }
     else run('scripts/dev.js', args);
     break;
   case 'start':

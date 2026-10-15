@@ -35,7 +35,7 @@
   const RATING_STEPS = [[0, "Any rating"], [6, "6+"], [7, "7+"], [8, "8+"]];
 
   /* ---------- State ---------- */
-  const defaultFilters = () => ({ sort: "added", genres: [], yearFrom: null, yearTo: null, services: [], minRating: 0, universe: "", country: "", lang: "" });
+  const defaultFilters = () => ({ sort: "added", genres: [], yearFrom: null, yearTo: null, services: [], minRating: 0, universe: "", country: "", lang: "", collection: "" });
   const state = {
     settings: Object.assign({ autoplay: true }, store.get("settings", {})),
     watchlist: store.get("watchlist", []),
@@ -73,7 +73,7 @@
     return diff >= 0 && diff <= 14;
   }
   const fmtClock = s => { s = Math.max(0, Math.floor(s || 0)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(x).padStart(2, "0"); };
-  const epLabel = (type, e) => type === "tv" ? `S${e.season} · E${String(e.n).padStart(2, "0")}` : "Film";
+  const epLabel = (type, e) => type === "tv" ? e.season<=0?e.n==null?'Source episode':`Episode ${e.n}`:`S${e.season} · E${String(e.n).padStart(2, "0")}` : "Film";
 
   function toast(msg) {
     const t = $("#toast"); t.textContent = msg; t.hidden = false;
@@ -169,6 +169,7 @@
     syncRoot();
   }
   function closeDetails() {
+    if (state.streamRequest) { state.streamRequest.abort(); state.streamRequest = null; }
     if (state.player) { state.player.destroy(); state.player = null; }
     clearInterval(state.countdown); state.countdown = null;
     $$("#sheet-root > .detail").forEach(n => n.remove());
@@ -179,7 +180,7 @@
   });
 
   /* ---------- Router ---------- */
-  const TAB_RENDERERS = { home: renderHome, movies: v => renderBrowse(v, "movie"), shows: v => renderBrowse(v, "tv"), search: renderSearch, library: renderLibrary, universes: renderUniverses, recent: v => renderBrowse(v,"all") };
+  const TAB_RENDERERS = { home: renderHome, movies: v => renderBrowse(v, "movie"), shows: v => renderBrowse(v, "tv"), search: renderSearch, library: renderLibrary, universes: renderUniverses, recent: v => renderBrowse(v,"all"), sources: renderSources };
 
   function route() {
     const h = location.hash || "#/home";
@@ -233,6 +234,17 @@
   }
 
   /* ---------- Home ---------- */
+  function renderSources(view) {
+    const groups = [
+      ["K-drama & Asian drama", [["MyAsianTV","https://myasiantv.com.bz","Integrated catalogue and episode players"],["Rakuten Viki","https://www.viki.com","Official service; subtitles, account and region restrictions vary"],["AsianCrush","https://www.asiancrush.com","Listed in FMHY; regional availability varies"],["FMHY drama directory","https://fmhy.net/video#drama-streaming","More specialist providers; directory only"]]],
+      ["Indian movies & TV", [["MultiMovies","https://multimovies.garden","Integrated movies, series, episodes and server choices"],["Einthusan","https://einthusan.tv","FMHY-listed South Asian movie catalogue; external website"],["IndianCine","https://indiancine.ma","Indian film archive; external website"],["FMHY Indian-language directory","https://fmhy.net/non-english#indian-languages","Movies, television and regional languages"]]],
+      ["Anime - sub & dub", [["AnimeGG","https://www.animegg.org","Integrated anime with source-confirmed subbed and dubbed choices"],["Crunchyroll","https://www.crunchyroll.com","Official service; audio and subtitle availability depends on title and region"],["FMHY anime directory","https://fmhy.net/video#anime-streaming","Compare specialist catalogues and listed sub/dub coverage"]]],
+      ["Cartoons & classics", [["MegaCartoons","https://www.megacartoons.net","Integrated classic series and titled episode lists"],["ToonTales","https://www.toontales.net","Integrated animated shorts and direct playback"],["WCO","https://www.wco.tv","FMHY-listed cartoons and anime; external website, not an integrated player"],["Internet Archive","https://archive.org/details/animationandcartoons","Archive collection; availability and provenance vary by item"],["FMHY cartoon directory","https://fmhy.net/video#cartoon-streaming","Includes classic cartoon specialists and official channels"]]],
+      ["Turkish movies & TV", [["YoTurkish","https://www1.yoturkish.com","Integrated Turkish series, original episode numbering and player choices"],["tabii","https://www.tabii.com","Official TRT service; subscription, language and region availability vary"],["FMHY Turkish directory","https://fmhy.net/non-english#turkish-turkce","Specialist catalogues and English-subtitle options"]]]
+    ];
+    view.innerHTML = `<div class="section"><h1 class="h-display">Specialist sources</h1><p class="overview">Flixer now searches AnimeGG, MegaCartoons, ToonTales, MyAsianTV, MultiMovies and YoTurkish alongside its existing providers. Open titles through Flixer for available players. The links below open external websites; availability varies by title.</p><a class="section__link" href="#/home">Back to home</a></div>` + groups.map(([title,links]) => `<section class="section"><h2 class="section__title">${esc(title)}</h2><div class="list">${links.map(([name,url,note]) => `<a class="list-item" href="${esc(url)}" target="_blank" rel="noopener noreferrer"><div><p class="list-item__title">${esc(name)} ${ICON.ext}</p><p class="meta">${esc(note)}</p></div></a>`).join("")}</div></section>`).join("");
+  }
+
   async function renderHome(view) {
     view.innerHTML = `<div style="height:12px"></div>
       <div class="hero" id="hero"><div class="skel" style="position:absolute;inset:0;border-radius:0"></div></div>
@@ -270,14 +282,14 @@
         </div>`;
       $("[data-save]", hero).addEventListener("click", e => { toggleList(s); e.currentTarget.classList.toggle("is-on", inList(s)); });
       // Lean index entries have no synopsis: fetch it live and fill it in while the slide is up.
-      if (!s.overview) api.details(s.type, s.id).then(d => { if (d.overview && slides[idx] === s) { s.overview = d.overview; const p = $(".hero__overview", hero); if (p) p.textContent = d.overview; } }).catch(() => {});
+      if (!s.overview && !$("#sheet-root > .detail")) api.details(s.type, s.id).then(d => { if (d.overview && slides[idx] === s) { s.overview = d.overview; const p = $(".hero__overview", hero); if (p) p.textContent = d.overview; } }).catch(() => {});
     }
     if (slides.length) {
       paintHero(0);
       let x0 = null;
       hero.addEventListener("touchstart", e => { x0 = e.touches[0].clientX; }, { passive: true });
       hero.addEventListener("touchend", e => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; if (Math.abs(dx) > 40) { idx = (idx + (dx < 0 ? 1 : slides.length - 1)) % slides.length; paintHero(idx); restart(); } x0 = null; });
-      const restart = () => { clearInterval(state.heroTimer); state.heroTimer = setInterval(() => { idx = (idx + 1) % slides.length; paintHero(idx); }, 7000); };
+      const restart = () => { clearInterval(state.heroTimer); state.heroTimer = setInterval(() => { if($("#sheet-root > .detail"))return;idx = (idx + 1) % slides.length; paintHero(idx); }, 7000); };
       restart();
     } else hero.remove();
 
@@ -287,6 +299,8 @@
 
     // Genre quick row
     const mg = (state.meta.genres.movie || []).slice(0, 12);
+    const collections = await api.collections();
+    const collectionRow = `<section class="section"><div class="section__head"><div><h2 class="section__title">Around the world & animation</h2><span class="section__sub eyebrow">Metadata matches - playback availability varies</span></div></div><div class="row">${collections.map(c => `<a class="chip" href="#/recent" data-collection="${esc(c.id)}">${esc(c.name)} <span class="chip__val">${c.count}</span></a>`).join("")}</div><a class="section__link" href="#/sources">Explore specialist sources</a></section>`;
     const genreRow = mg.length ? `<section class="section fade-in"><div class="section__head"><div><h2 class="section__title">Browse by genre</h2><span class="section__sub eyebrow">Movies · tap to filter</span></div></div>
       <div class="row">${mg.map(g => `<button class="chip" data-genre="${esc(g.id)}">${esc(g.name)} <span class="chip__val">${g.count}</span></button>`).join("")}</div></section>` : "";
     // Universes row: small scrollable logo tiles, in order of how much of each universe Flixer has.
@@ -306,12 +320,15 @@
       section("Popular series", "TVmaze popularity", popularTv, { rating: true }) +
       section("New movies", "Latest additions", now, { link: "#/movies" }) +
       section("New series", "Latest additions", air, { link: "#/shows" }) +
-      genreRow + universeRow + serviceRow +
+      collectionRow + genreRow + universeRow + serviceRow +
       uniRails.join("") +
       section("Top rated series", "TVmaze rating", ratedTv, { rating: true }) +
       section("Recent releases", "Films by release year", topM, { genre: true }) +
       section("Longest series", "Most episodes available", topT, { genre: true });
 
+    $$("[data-collection]", view).forEach(b => b.addEventListener("click", () => {
+      state.filters.all = Object.assign(defaultFilters(), { collection:b.dataset.collection }); saveFilters(); state.renderedTab = null;
+    }));
     $$("[data-svc]", view).forEach(b => b.addEventListener("click", () => {
       state.filters.tv = Object.assign(defaultFilters(), { services: [b.dataset.svc], sort: "popularity" }); saveFilters(); state.renderedTab = null;
     }));
@@ -434,6 +451,7 @@
   function filterSummary(type) {
     const f = state.filters[type];
     const parts = [];
+    if (f.collection) parts.push(f.collection);
     if (f.genres.length) parts.push(f.genres.length === 1 ? genreName(type, f.genres[0]) : f.genres.length + " genres");
     if (f.yearFrom || f.yearTo) parts.push((f.yearFrom || "…") + (f.yearTo && f.yearTo !== f.yearFrom ? "–" + f.yearTo : f.yearTo ? "" : "–now"));
     if (f.services && f.services.length) parts.push(f.services.join(", "));
@@ -447,8 +465,9 @@
     const chip = (key, label, val) => `<button class="chip ${val ? "is-set" : ""}" data-filter="${key}">${esc(label)}${val ? ` <span class="chip__val">${esc(val)}</span>` : ""} ${ICON.chev}</button>`;
     const yearVal = (f.yearFrom || f.yearTo) ? (f.yearFrom && f.yearTo && f.yearFrom === f.yearTo ? String(f.yearFrom) : (f.yearFrom || "…") + "–" + (f.yearTo || "now")) : "";
     const svcVal = f.services && f.services.length ? (f.services.length === 1 ? f.services[0] : String(f.services.length)) : "";
-    const any = f.genres.length || f.yearFrom || f.yearTo || f.sort !== "added" || svcVal || f.minRating || f.universe;
+    const any = f.collection || f.genres.length || f.yearFrom || f.yearTo || f.sort !== "added" || svcVal || f.minRating || f.universe;
     $("#rail").innerHTML =
+      chip("collection", "Collection", f.collection || "") +
       chip("sort", "Sort", f.sort !== "added" ? sortLabel(type, f.sort) : "") +
       chip("genre", "Genre", f.genres.length ? (f.genres.length === 1 ? genreName(type, f.genres[0]) : f.genres.length) : "") +
       chip("year", "Year", yearVal) +
@@ -495,6 +514,10 @@
     const type = state.browse.type, f = state.filters[type];
     if (key === "reset") return applyFilters(defaultFilters());
     if (key === "sort") return openRadioSheet("Sort by", SORT_OPTIONS[type], f.sort, v => applyFilters(Object.assign({}, f, { sort: v })));
+    if (key === "collection") {
+      api.collections().then(list => openRadioSheet("Collection", [["", "All titles", ""], ...list.map(c => [c.id,c.name,c.count + " metadata matches"])], f.collection || "", v => applyFilters(Object.assign({}, f, {collection:v}))));
+      return;
+    }
     if (key === "genre") return openGenreSheet(type, f);
     if (key === "year") return openYearSheet(f);
     if (key === "rating") return openRadioSheet("Minimum rating", RATING_STEPS.map(([v, l]) => [String(v), l, v ? "TVmaze rating" : ""]), String(f.minRating || 0), v => applyFilters(Object.assign({}, f, { minRating: +v })));
@@ -608,17 +631,21 @@
       const t = text.trim(); const my = ++seq;
       if (!t) return showRecent();
       out.innerHTML = `<div class="list">${Array(5).fill('<div class="list-item"><div class="list-item__art skel"></div><div><div class="skel skel-line" style="width:60%"></div><div class="skel skel-line" style="width:35%"></div></div></div>').join("")}</div>`;
-      try {
-        const r = await api.search(t);
-        if (my !== seq) return;
-        if (commit) { state.recent = [t, ...state.recent.filter(x => x !== t)].slice(0, 8); store.set("recent", state.recent); }
+      const paint = r => {
+        if (my !== seq || !out.isConnected) return;
         if (!r.items.length) { out.innerHTML = emptyState("No matches for “" + t + "”", "Check the spelling or try a shorter title."); return; }
         out.innerHTML = `<div class="list fade-in">${r.items.map(i => `<a class="list-item" href="#/${i.type}/${esc(i.id)}">
           <div class="list-item__art">${i.poster ? `<img src="${esc(i.poster)}" alt="" loading="lazy" data-art="${esc(i.id)}">` : ""}</div>
           <div><p class="list-item__title">${esc(i.title)}</p><div class="meta list-item__meta">${i.type === "tv" ? "Series" : "Film"} · ${esc(i.year || "—")}${i.type === "tv" && i.episodeCount > 1 ? ` · ${i.episodeCount} ep` : ""}</div></div></a>`).join("")}</div>`;
+      };
+      try {
+        const r = await api.search(t, {onLocal: local => {if(local.items.length) paint(local);}});
+        if (my !== seq || !out.isConnected) return;
+        if (commit) { state.recent = [t, ...state.recent.filter(x => x !== t)].slice(0, 8); store.set("recent", state.recent); }
+        paint(r);
       } catch (e) { if (my === seq) out.innerHTML = emptyState("Search failed", e.message); }
     }
-    q.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(() => run(q.value, false), 250); });
+    q.addEventListener("input", () => { seq++; clearTimeout(timer); timer = setTimeout(() => run(q.value, false), 250); });
     q.addEventListener("keydown", e => { if (e.key === "Enter") { clearTimeout(timer); run(q.value, true); q.blur(); } });
     showRecent();
     setTimeout(() => q.focus(), 50);
@@ -677,7 +704,7 @@
       ? (type === "tv" ? `Resume ${epLabel(type, entry)}` : "Resume")
       : (type === "tv" && entry && entry !== d.episodes[0] ? `Play ${epLabel(type, entry)}` : "Play");
     const facts = [
-      type === "tv" ? ["Seasons", `${d.seasonCount}${d.episodeCount ? ` <span class="meta">· ${d.episodeCount} ep</span>` : ""}`] : ["Type", "Feature film"],
+      type === "tv" ? [d.seasons.every(s=>s.season_number<=0)?"Episode lists":"Seasons", `${d.seasonCount}${d.episodeCount ? ` <span class="meta">· ${d.episodeCount} ep</span>` : ""}`] : ["Type", "Feature film"],
       d.date ? ["Added", esc(d.date)] : null,
       d.year ? ["Released", esc(d.year), "amber"] : null
     ].filter(Boolean).slice(0, 3);
@@ -705,7 +732,7 @@
         ${d.overview.length > 220 ? `<button class="more" data-more>Read more</button>` : ""}
         <div class="facts">${facts.map(([k, v, cls]) => `<div class="fact"><div class="fact__k">${k}</div><div class="fact__v ${cls || ""}">${v}</div></div>`).join("")}</div>
 
-        ${type === "tv" ? `<section class="sub-section"><h3 class="sub-section__title">Episodes</h3>
+        ${type === "tv" ? `<section class="sub-section"><h3 class="sub-section__title">${d.seasons.length===1 && d.seasons[0].season_number<=0?esc(d.seasons[0].name):'Episodes'}</h3>
           ${d.seasons.length > 1 ? `<select class="season-select" id="season">${d.seasons.map(s => `<option value="${s.season_number}">${esc(s.name)} · ${s.episode_count} episodes</option>`).join("")}</select>` : ""}
           <div id="episodes" style="margin-top:6px"></div></section>` : ""}
 
@@ -773,6 +800,7 @@
   /* ---------- Watch ---------- */
   async function openWatch(showId, epId) {
     const r = root();
+    const request = new AbortController(); state.streamRequest = request;
     const el = document.createElement("div"); el.className = "detail watch"; el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true");
     el.innerHTML = `<button class="detail__back" data-back aria-label="Back">${ICON.back}</button>
       <div class="watch__player"><div class="player"><div class="player__loading"><span class="spinner"></span>Finding sources…</div></div></div>
@@ -809,7 +837,7 @@
     paintInfo();
 
     let sources;
-    try { sources = await api.stream(episode.id, episode.sourceUrl, show); }
+    try { sources = await api.stream(episode.id, episode.sourceUrl, show, {signal:request.signal}); }
     catch (e) { sources = { servers: [] }; }
     if (!el.isConnected) return;
 

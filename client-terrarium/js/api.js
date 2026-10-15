@@ -39,9 +39,11 @@
     set(k, v) { try { localStorage.setItem("flixer:" + k, JSON.stringify(v)); } catch { /* quota or unavailable */ } }
   };
 
-  async function getJson(url, ms = 12000) {
+  async function getJson(url, ms = 12000, signal) {
     const ctrl = typeof AbortController === "function" ? new AbortController() : null;
     const timer = ctrl ? setTimeout(() => ctrl.abort(), ms) : null;
+    const abort = () => ctrl && ctrl.abort();
+    if (signal) { if (signal.aborted) abort(); else signal.addEventListener("abort", abort, { once:true }); }
     try {
       const res = await fetch(url, ctrl ? { signal: ctrl.signal } : undefined);
       const text = await res.text();
@@ -53,7 +55,7 @@
         throw e;
       }
       return { body, headers: res.headers };
-    } finally { if (timer) clearTimeout(timer); }
+    } finally { if (timer) clearTimeout(timer); if (signal) signal.removeEventListener("abort", abort); }
   }
 
   const titleCase = s => String(s || "").replace(/[-_]+/g, " ").replace(/\b\w/g, c => c.toUpperCase());
@@ -100,7 +102,7 @@
       title,
       date: String(s.publishedAt || s.firstSeenAt || "").slice(0,10),
       updatedAt: [s.latestEpisode?s.providerUpdatedAt:null,s.latestAt,s.publishedAt].filter(Boolean).sort().pop() || "",
-      year: s.year ? String(s.year) : (date ? date.slice(0, 4) : ""),
+      year: s.year ? String(s.year) : "",
       poster: s.portrait || poster.custom || poster.default || posterFor(s.wpId),
       backdrop: poster.backdrop || poster.hq || backdropFor(s.wpId) || poster.custom || null,
       rating: tvm ? tvm.r || 0 : 0,
@@ -113,7 +115,11 @@
       genreIds: Array.isArray(s.tags) ? s.tags : [],
       overview: decodeEntities(s.synopsis || s.blurb),
       lang: s.contentLang || s.lang || "",
-      country: tvm && tvm.c ? [tvm.c] : [],
+      country: [...new Set([...(Array.isArray(s.countries)?s.countries:[]),...(tvm && typeof tvm.c==='string'?[tvm.c]:[])])],
+      originalLanguage: s.originalLanguage || (tvm && tvm.l) || "",
+      audioMode: s.audioMode || "",
+      audioModes:s.audioModes || [],
+      collections:s.collections || [],
       episodeCount: s.episodeCount || episodes.length || (type === "movie" ? 1 : 0),
       firstEpisodeId: episodes[0] ? episodes[0].id : s.firstEpisodeId || s.id,
       sourceUrl: s.sourceUrl || (type === "tv" ? `${SOURCE}/series/${s.slug}/` : `${SOURCE}/${s.slug}/`),
@@ -136,12 +142,15 @@
     const isMovie = show.kind !== "series";
     const thumbs = e.thumbs || {};
     const slug = e.slug || String(e.id || "").replace(/^mf:[mse]:/, "");
+    const sourceProvider=(e.offerings||[]).find(o=>o.id.startsWith('sp:'))?.provider || '';
+    const sourceGroups=['animegg','megacartoons','myasiantv','yoturkish'];
     return {
       id: e.id,
       offerings: e.offerings || [],
       showId: show.id,
-      n: e.number || e.episode || i + 1,
-      season: e.season || 1,
+      n: e.absoluteNumber || e.number || e.episode || (e.season===null?null:i + 1),
+      season: e.season === null ? -(sourceGroups.indexOf(sourceProvider)+1) : e.season || 1,
+      sourceProvider,
       title: decodeEntities(episodeTitle(e.title, show, isMovie)),
       overview: "",
       still: thumbs.custom || thumbs.default || posterFor(show.wpId) || null,
@@ -155,12 +164,13 @@
   /* ----- live source tier: the same requests the Flixer server makes ----- */
   const live = {
     hasServer: null,
+    checking: null,
     years: null,
     async serverOk() {
       if (this.hasServer != null) return this.hasServer;
-      try { await getJson(`${API_BASE}/api/genres`, 5000); this.hasServer = true; }
-      catch { this.hasServer = false; }
-      return this.hasServer;
+      if (!this.checking) this.checking = getJson(`${API_BASE}/api/genres`, 5000)
+        .then(() => (this.hasServer = true), () => (this.hasServer = false));
+      return this.checking;
     },
     async yearTerms() {
       if (this.years) return this.years;
@@ -199,7 +209,9 @@
     async list(kind, { page = 1, perPage = 50, category, search, fields } = {}) {
       if (await this.serverOk()) {
         if (search) {
-          const {body} = await getJson(`${API_BASE}/api/search?q=${encodeURIComponent(search)}`);
+          this.searchRequests ||= new Map();
+          if(!this.searchRequests.has(search))this.searchRequests.set(search,getJson(`${API_BASE}/api/search?q=${encodeURIComponent(search)}`).finally(()=>this.searchRequests.delete(search)));
+          const {body} = await this.searchRequests.get(search);
           const items=(Array.isArray(body)?body:body.items || []).filter(s=>s.kind===(kind==='movie'?'film':'series'));
           return {items,total:items.length,totalPages:1};
         }
@@ -502,12 +514,14 @@
         if(cur) this._byId.set(r.id,cur);
         this._dirtyItems ||= new Set(); this._dirtyItems.add(cur ? cur.id : r.id);
         if (cur) {
+          if(r.kindVerified && /^sp:myasiantv:/.test(cur.id))cur.kind=r.kind;
           if(r.title && r.title!==cur.title || r.year && +r.year!==+cur.year)this._universeDirty=true;
           if (r.title) cur.title = r.title;
           if (r.synopsis && (!cur.synopsis || r.synopsis.length > cur.synopsis.length)) cur.synopsis = r.synopsis;
           if (r.tags && r.tags.length) cur.tags = [...new Set([...(cur.tags || []),...r.tags])];
           if (r.year) cur.year = r.year;
-          for (const key of ["publishedAt","latestAt","providerUpdatedAt","latestEpisode","firstSeenAt","tmdbId","imdbId","firstEpisodeId"]) if (r[key]) cur[key] = r[key];
+          for (const key of ["publishedAt","latestAt","providerUpdatedAt","latestEpisode","firstSeenAt","tmdbId","imdbId","firstEpisodeId","originalLanguage"]) if (r[key]) cur[key] = r[key];
+          for(const key of ['countries','audioModes','collections'])if(r[key])cur[key]=[...new Set([...(cur[key]||[]),...r[key]])];
           if (r.episodeCount) cur.episodeCount = Math.max(cur.episodeCount || 0,r.episodeCount);
           if (r.wpId) cur.wpId = r.wpId;
           if (r.tvm) cur.tvm = r.tvm;
@@ -526,14 +540,14 @@
     }
     _persistDelta(rows) {
       const delta = store.get("delta", []);
-      const incoming=new Map(rows.map(r=>[r.id, {id:r.id,kind:r.kind,title:r.title,year:r.year,tags:r.tags,slug:r.slug,wpId:r.wpId,publishedAt:r.publishedAt,latestAt:r.latestAt,providerUpdatedAt:r.providerUpdatedAt,tvm:r.tvm,offerings:r.offerings,versions:r.versions,sourceUrl:r.sourceUrl,poster:r.poster,tmdbId:r.tmdbId,documentary:r.documentary}]));
+      const incoming=new Map(rows.map(r=>[r.id, {id:r.id,kind:r.kind,title:r.title,year:r.year,tags:r.tags,slug:r.slug,wpId:r.wpId,publishedAt:r.publishedAt,latestAt:r.latestAt,providerUpdatedAt:r.providerUpdatedAt,tvm:r.tvm,offerings:r.offerings,versions:r.versions,sourceUrl:r.sourceUrl,poster:r.poster,tmdbId:r.tmdbId,documentary:r.documentary,originalLanguage:r.originalLanguage,countries:r.countries,audioModes:r.audioModes,collections:r.collections}]));
       store.set("delta",[...incoming.values(),...delta.filter(r=>!incoming.has(r.id))].slice(0,DELTA_CAP));
     }
 
     /* ----- background sync: newest titles on the source, every few minutes ----- */
     _startSync() {
       if (!this.liveEnabled || this._timer) return;
-      const tick = () => this.sync().catch(() => {});
+      const tick = () => {if(window.location && /^#\/watch\//.test(window.location.hash))return;this.sync().catch(() => {});};
       setTimeout(tick, 1500);
       this._timer = setInterval(tick, SYNC_EVERY);
       document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && Date.now() - this._lastSync > SYNC_EVERY / 2) tick(); });
@@ -549,7 +563,7 @@
           successful = true;
           const rows=result.value.body.items || [];
           added += this._merge(rows);
-          for(const provider of ["myflixer","fmovies","hdtoday"]) groups.push(rows.filter(row=>(row.offerings || []).some(o=>o.provider===provider) || row.id.startsWith({myflixer:"mf:",fmovies:"fm:",hdtoday:"hd:"}[provider])).map(row=>this._byId.get(row.id)?.id || row.id));
+          for(const provider of ["myflixer","fmovies","hdtoday","animegg","megacartoons","toontales","myasiantv","multimovies","yoturkish"]) groups.push(rows.filter(row=>(row.offerings || []).some(o=>o.provider===provider) || row.id.startsWith({myflixer:"mf:",fmovies:"fm:",hdtoday:"hd:"}[provider] || `sp:${provider}:`)).map(row=>this._byId.get(row.id)?.id || row.id));
         }});
         if(!successful) throw new Error("Providers are temporarily unavailable");
         for(let index=0;groups.some(group=>index<group.length);index++) groups.forEach(group=>{if(group[index])recent.add(group[index]);});
@@ -622,6 +636,7 @@
         const genre=GENRES.find(g=>g[2]===(f.genres || [])[0]);
         const params=new URLSearchParams({kind:type==='tv'?'series':'film',page:String(session.remotePage+1)});
         if(f.sort==="updated") params.set("latest","true");
+        if(f.collection) params.set("collection",f.collection);
         if(genre) params.set('genre',genre[2]);
         if(f.yearFrom && f.yearFrom===f.yearTo) params.set('year',f.yearFrom);
         const fetchPage=async()=>{
@@ -645,6 +660,7 @@
       if (f.yearTo) list = list.filter(i => +i.year <= f.yearTo);
       if (f.services && f.services.length) { const set = new Set(f.services); list = list.filter(i => set.has(i.service)); }
       if (f.minRating) list = list.filter(i => i.rating >= f.minRating);
+      if (f.collection) list = list.filter(i => this.inCollection(i, f.collection));
       if (f.universe) list = list.filter(i => i.universes.includes(f.universe));
       const sorters = { updated: byUpdated, added: byAdded, year: byYearDesc, oldest: byYearAsc, episodes: byEpisodes, title: byTitle, popularity: byWeight, rating: byRating };
       list = list.slice().sort(sorters[f.sort] || byAdded);
@@ -659,6 +675,27 @@
       return {items,page,totalPages:more?page+1:page,total:list.length};
     }
     async genres(type) { const c = await this.catalog(); return type==='all'?[...new Map([...c.genres.movie,...c.genres.tv].map(genre=>[genre.id,genre])).values()]:c.genres[type] || []; }
+    inCollection(i, id) {
+      const lang = String(i.originalLanguage || i.lang || "").toLowerCase();
+      const countries = i.country.map(c => String(c).toUpperCase());
+      const animation = i.genreIds.some(g => /^(97|animation|anime)$/i.test(String(g)));
+      const japanese = countries.includes("JP") || ["ja", "japanese"].includes(lang);
+      const anime = animation && (japanese || i.collections.includes('anime') || i.genreIds.includes('anime'));
+      if (id === "kdrama") return i.type === "tv" && (i.collections.includes('kdrama') || countries.includes("KR") || ["ko", "korean"].includes(lang)) && !animation;
+      if (id === "indian") return i.collections.includes('indian') || countries.includes("IN") || ["hi", "hindi", "ta", "tamil", "te", "telugu", "ml", "malayalam", "kn", "kannada", "bn", "bengali", "mr", "marathi", "pa", "punjabi"].includes(lang);
+      if (id === "turkish") return countries.includes("TR") || ["tr", "turkish"].includes(lang);
+      if (id === "anime") return anime;
+      if (id === "anime-sub") return anime && (i.audioMode === "sub" || i.audioModes.includes('sub'));
+      if (id === "anime-dub") return anime && (i.audioMode === "dub" || i.audioModes.includes('dub'));
+      if (id === "cartoons") return animation && !anime;
+      if (id === "classic-cartoons") return animation && !anime && +i.year > 0 && +i.year < 2000;
+      return false;
+    }
+    async collections() {
+      const items = await this.all();
+      return [["kdrama","K-drama"],["indian","Indian movies & TV"],["turkish","Turkish movies & TV"],["anime","Anime"],["anime-sub","Anime - confirmed sub"],["anime-dub","Anime - confirmed dub"],["cartoons","Cartoons"],["classic-cartoons","Classic cartoons"]]
+        .map(([id,name]) => ({id,name,count:items.filter(i=>this.inCollection(i,id)).length}));
+    }
     async countries() { return []; }
     async languages() { return []; }
 
@@ -695,21 +732,26 @@
         try { const { body } = await getJson(`${DATA_BASE}/data/shows/${encodeURIComponent(encodeURIComponent(id))}.json`, 8000); if (body && Array.isArray(body.episodes) && body.episodes.length) { raw.episodes = body.episodes; raw.episodeCount = body.episodes.length; } }
         catch { /* not bundled: the live tier fills it below */ }
       }
-      const needsLive = this.liveEnabled;
-      if (needsLive && !this._details.has(id)) {
+      if (this.liveEnabled && !this._details.has(id)) {
         const cached = store.get("title:" + id, null);
-        if (cached && Date.now() - cached.t < 6 * 3600e3) { this._merge([cached.show]); }
-        else {
-          try {
-            const fresh = await live.details(id, [raw.sourceUrl, ...(raw.offerings || []).map(o => o.sourceUrl)]);
-            if (fresh) { this._merge([fresh]); store.set("title:" + id, { t: Date.now(), show: fresh }); }
-          } catch (e) { console.warn("[flixer] live details unavailable:", e.message); }
+        if (cached && Date.now() - cached.t < 6 * 3600e3) {
+          this._merge([cached.show]); this._details.set(id, true);
+        } else {
+          this._titleRequests ||= new Map();
+          if (!this._titleRequests.has(id)) {
+            const refresh = live.details(id, [raw.sourceUrl, ...(raw.offerings || []).map(o => o.sourceUrl)])
+              .then(fresh => { if(fresh) { this._merge([fresh]); this._reindex(); store.set("title:" + id, {t:Date.now(),show:fresh}); this._details.set(id,true); } })
+              .catch(e => console.warn("[flixer] live details unavailable:",e.message))
+              .finally(() => this._titleRequests.delete(id));
+            this._titleRequests.set(id,refresh);
+          }
+          // Only an unresolved series needs a blocking refresh to obtain real episode IDs.
+          if (raw.kind === "series" && !(raw.episodes || []).length) await this._titleRequests.get(id);
         }
-        this._details.set(id, true);
       }
       return this._build(this._byId.get(id) || raw);
     }
-    async _build(raw) {
+    async _build(raw, { guide = true } = {}) {
       const item = normalize(raw);
       const c = await this.catalog();
       const labels = new Map(c.genres[item.type].map(g => [g.id, g.name]));
@@ -718,12 +760,18 @@
       const list = raw.kind === "series" && (raw.episodes || []).length ? raw.episodes : [Object.assign(movieEpisode(raw), raw.kind === "series" ? { title: "Whole series", sourceUrl: raw.sourceUrl || `${SOURCE}/series/${raw.slug}/` } : {})];
       const episodes = list.map((e, i) => normalizeEpisode(e, i, raw));
       // TVmaze episode guide: titles, stills, air dates and summaries for the source's episodes.
-      if (raw.kind === "series" && item.tvmazeId && episodes.length) {
-        const guide = await this._guide(item).catch(() => null);
-        if (guide) episodes.forEach(e => { const g = guide.get(e.season + ":" + e.n); if (g) { if (g.still) e.still = g.still; if (g.date) e.date = g.date; if (g.runtime) e.runtime = g.runtime; if (g.overview) e.overview = g.overview; if (g.title && /^episode \d+$/i.test(e.title)) e.title = g.title; } });
+      if (guide && raw.kind === "series" && item.tvmazeId && episodes.length) {
+        const guide = this._guides.get(item.id) || null;
+        if (!guide) {
+          this._guideRequests ||= new Map();
+          if(!this._guideRequests.has(item.id)) this._guideRequests.set(item.id,
+            this._guide(item).catch(() => null).finally(() => this._guideRequests.delete(item.id)));
+        }
+        if (guide) episodes.forEach(e => { const g = e.season>0 && guide.get(e.season + ":" + e.n); if (g) { if (g.still) e.still = g.still; if (g.date) e.date = g.date; if (g.runtime) e.runtime = g.runtime; if (g.overview) e.overview = g.overview; if (g.title && /^episode \d+$/i.test(e.title)) e.title = g.title; } });
       }
       const seasonNums = [...new Set(episodes.map(e => e.season))].sort((a, b) => a - b);
-      const seasons = seasonNums.map(n => ({ season_number: n, name: "Season " + n, episode_count: episodes.filter(e => e.season === n).length }));
+      const sourceNames={animegg:'AnimeGG',megacartoons:'MegaCartoons',myasiantv:'MyAsianTV',yoturkish:'YoTurkish'};
+      const seasons = seasonNums.map(n => ({ season_number: n, name: n<=0?`Source episodes - ${sourceNames[episodes.find(e=>e.season===n)?.sourceProvider]||'Original numbering'}`:"Season " + n, episode_count: episodes.filter(e => e.season === n).length }));
       return Object.assign(item, {
         tagline: "",
         genres: item.genreIds.map(g => ({ id: g, name: labels.get(g) || SLUG_LABEL.get(g) || titleCase(g) })),
@@ -746,10 +794,16 @@
     }
     async season(id, n) { const d = await this.details(null, id); return d.episodes.filter(e => e.season === n); }
     async episode(showId, epId) {
-      const show = await this.details(null, showId);
+      // A known playable episode does not depend on synopsis or an optional TVmaze guide.
+      const raw = await this.show(showId);
+      const known = raw.kind !== "series" ? raw.id === epId : (raw.episodes || []).some(e => e.id === epId);
+      const show = known ? await this._build(raw, { guide: false }) : await this.details(null, showId);
       const index = show.episodes.findIndex(e => e.id === epId);
       if (index < 0) throw new Error("Episode not found.");
-      return { show, episode: show.episodes[index], index, prev: show.episodes[index - 1] || null, next: show.episodes[index + 1] || null, total: show.episodes.length };
+      const episode=show.episodes[index];
+      const sequence=show.episodes.filter(e=>episode.season<=0?e.season===episode.season:e.season>0);
+      const position=sequence.findIndex(e=>e.id===epId);
+      return { show, episode, index:position, prev:sequence[position-1]||null, next:sequence[position+1]||null, total:sequence.length };
     }
     // TVmaze extras for a series: rating, where it airs or streams, status, cast, summary.
     async extras(item) {
@@ -769,7 +823,7 @@
     }
 
     /* ----- Search: index first, widened by the source's own search ----- */
-    async search(q) {
+    async search(q, { onLocal } = {}) {
       // Same normalization as shared/search.js, kept local for the classic-script client.
       const norm = value => String(value || '').normalize('NFKD').replace(/\p{M}/gu,'').toLowerCase().replace(/&amp;/g,'&').replace(/&/g,' and ').replace(/['’‘]/g,'').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
       const terms = norm(q).split(/\s+/).filter(Boolean);
@@ -777,6 +831,7 @@
       const hit = value => {const text=norm(value);return terms.every(term=>text.includes(term));};
       await this.catalog(); await this._indexReady;
       const local = (await this.all()).filter(i => hit(i.title) || (i.alt && hit(i.alt))).sort(byWeight).slice(0, 60);
+      if (onLocal) onLocal({ items:local, totalPages:1 });
       if (!this.liveEnabled) return { items: local, totalPages: 1 };
       const liveHits = await Promise.race([
         Promise.all([live.list("movie", { page: 1, perPage: 20, search: q }), live.list("tv", { page: 1, perPage: 20, search: q })]).then(([m, s]) => [...m.items, ...s.items]).catch(() => []),
@@ -789,13 +844,13 @@
     }
 
     /* ----- Playback sources (unchanged contract) ----- */
-    async stream(id, sourceUrl, show = {}) {
+    async stream(id, sourceUrl, show = {}, { signal } = {}) {
       const toAbsolute = url => !url ? null : (/^https?:\/\//.test(url) ? url : API_BASE + url);
       try {
         const params = new URLSearchParams({id});
         if (show.id) params.set('showId',show.id);
         [show.sourceUrl, ...(show.offerings || []).map(o => o.sourceUrl)].filter(Boolean).forEach(source => params.append('source',source));
-        const { body: data } = await getJson(`${API_BASE}/api/stream?${params}`, 45000);
+        const { body: data } = await getJson(`${API_BASE}/api/stream?${params}`, 45000, signal);
         const servers = [];
         (Array.isArray(data.servers) ? data.servers : []).forEach((s, idx) => {
           if(s.requiresBrowserVerification || /^https:\/\/hdtoday\.sx\//i.test(s.embedUrl || ''))return;
@@ -808,14 +863,20 @@
         if (!servers.length && data.embedUrl) servers.push({ id: 0, name: "Player 1", type: "embed", embedUrl: toAbsolute(data.embedUrl) });
         if (servers.length) return { servers, via: "api" };
       } catch (e) {
+        if (signal && signal.aborted) throw e;
         console.warn("[flixer] stream endpoint unavailable:", e.message);
       }
-      if(/^hd:/.test(id) || /^https:\/\/hdtoday\.sx\//i.test(sourceUrl || ''))return {servers:[],via:'unavailable'};
+      if(/^(hd:|sp:)/.test(id) || /^https:\/\/hdtoday\.sx\//i.test(sourceUrl || ''))return {servers:[],via:'unavailable'};
       const page = sourceUrl || `${SOURCE}/${String(id).replace(/^mf:[mse]:/, "")}/`;
       try {
-        const res = await fetch(page);
+        const ctrl = new AbortController();
+        const abort = () => ctrl.abort();
+        if (signal) { if (signal.aborted) abort(); else signal.addEventListener("abort", abort, {once:true}); }
+        const timer = setTimeout(abort, 10000);
+        let res, html;
+        try { res = await fetch(page, {signal:ctrl.signal}); html = res.ok ? await res.text() : ""; }
+        finally { clearTimeout(timer); if(signal)signal.removeEventListener("abort",abort); }
         if (res.ok) {
-          const html = await res.text();
           const tabs = [];
           const reTab = /<button[^>]*class="[^"]*player-tab-btn[^"]*"[^>]*data-player-url="([^"]+)"[^>]*>([\s\S]*?)<\/button>/gi;
           let m;
@@ -827,6 +888,7 @@
           if (tabs.length) return { servers: tabs.map(t => ({ id: "tab_" + t.id, name: t.name, type: "embed", embedUrl: t.url })), via: "page" };
         }
       } catch (e) {
+        if (signal && signal.aborted) throw e;
         console.warn("[flixer] client-side source lookup failed:", e.message);
       }
       return { servers: page ? [{ id: "direct", name: "Source page", type: "embed", embedUrl: page }] : [], via: "direct" };

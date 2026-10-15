@@ -53,8 +53,28 @@ Release signing uses a private `mobile/keystore.properties` and keystore; neithe
 
 ## Hosting and refresh
 
+Flixer integrates Myflixer, FMovies, HDToday, AnimeGG, MegaCartoons, ToonTales,
+MyAsianTV, MultiMovies, and YoTurkish. Search and catalogue discovery combine
+providers; matching titles retain existing IDs and gain player choices. Uncertain
+editions remain selectable rather than having their episode lists silently merged.
+
+Regional collections cover Korean drama, Indian and Turkish media, anime, and
+cartoons. Anime sub/dub filters use explicit version evidence. Sources with
+absolute or unknown episode numbering appear under their own source episode list;
+their numbers are not converted into invented seasons. Player choices remember
+the selected provider/version where available.
+
+Specialist history crawls are incremental and receive independent turns alongside
+regional FMovies scans. Recently advertised episodes refresh independently of the
+historical crawl. This does not guarantee every upstream title or server is
+available. See [specialist source contracts](docs/specialist-sources.md).
+
 `vercel.json` targets Flixer's own Vercel project and build output. Configure `STREAM_PROXY_SECRET` in Vercel for signed stream proxy URLs. Local development uses an ephemeral key.
 
 This repo's refresh workflow updates only Flixer and stores its cache in this repository's `data-snapshot` release. Android CI builds only Flixer. Scheduled Vercel deployment uses `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID` repository secrets. Android signing uses `ANDROID_KEYSTORE_B64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`. Without signing credentials CI produces an unsigned APK.
+
+Alternatively, `VERCEL_DEPLOY_HOOK` triggers a source deployment after a successful
+snapshot refresh. This project hook is configured for Flixer's `main` branch and
+stored as a repository secret. That path does not need a general Vercel API token.
 
 Read [Scraper behavior](docs/SCRAPERS.md) and [Provider integration](docs/FMOVIES.md) for parsing, matching, and playback details. Upstream streams and artwork may be unavailable; failed requests retain imported catalogue data.
