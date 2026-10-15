@@ -183,7 +183,7 @@ export function parseArabicDetails(id,html){
 }
 export async function getArabicDetails(id){
   const saved=arabicSnapshot(id);
-  if(saved?.id===id&&(saved.metadataVersion>=2||saved.synopsis?.trim()&&saved.poster?.custom)&&Date.now()-Date.parse(saved.detailsFetchedAt||0)<6*3600000)return saved;
+  if(saved?.id===id&&(!parseArabicId(id).query||saved.poster?.custom)&&(saved.metadataVersion>=2||saved.synopsis?.trim()&&saved.poster?.custom)&&Date.now()-Date.parse(saved.detailsFetchedAt||0)<6*3600000)return saved;
   try{return await getLiveArabicDetails(id);}catch(error){if(saved?.id===id)return {...saved,providerErrors:[{provider:parseArabicId(id).provider,error:error.message,cached:true}]};throw error;}
 }
 async function getLiveArabicDetails(id){
@@ -199,6 +199,10 @@ async function getLiveArabicDetails(id){
     item.episodes=dedupe([...item.episodes,...pages.flatMap(r=>r.status==='fulfilled'?r.value.episodes:[])]);item.episodeCount=item.episodes.length;item.episodesComplete=item.totalPages<=8&&pages.every(r=>r.status==='fulfilled');
   }
   item.episodes.sort((a,b)=>(a.season??0)-(b.season??0)||(a.number??Infinity)-(b.number??Infinity));
+  if(parseArabicId(id).query&&!item.poster?.custom&&item.episodes[0]){
+    const episode=item.episodes[0],detail=parseArabicDetails(episode.id,await arabicPage(arabicUrl(episode.id)));
+    if(detail.poster?.custom){item.poster=detail.poster;item.portrait=detail.portrait;}
+  }
   return item;
 }
 const scopes={kirmalk:{film:'movie14',series:'serieseg4',plays:'msr7'},ahwaktv:{film:'aflam-arabya1',series:'moslslat-msriya'}};
