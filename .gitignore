@@ -42,3 +42,4 @@ server/deployment-*.json
 
 .vercel
 .env*
+server/data/hdtoday-feed.json

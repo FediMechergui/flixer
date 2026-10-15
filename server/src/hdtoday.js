@@ -53,17 +53,27 @@ export function parseHdtodayList(html, {kind,documentary=false,page=1} = {}) {
   if (!items.size && !/class="bf-card"/.test(html) && !/no (?:movies|results|series|titles)|nothing found/i.test(text(html))) throw new Error('HDToday listing format changed');
   return {items:[...items.values()],page,totalPages:Math.max(page,...last,...next),hasNext:next.length>0};
 }
-let retryAt=0;
-async function request(path,{timeoutMs=12000}={}) {
-  if(Date.now()<retryAt)throw new Error('HDToday rate limited; cached data retained until retry');
+export function createHdtodayRequest({fetchRemote=safeRemoteFetch,now=Date.now}={}) {
+let retryAt=0,blockedReason=null;
+return async function request(path,{timeoutMs=12000}={}) {
+  if(now()<retryAt)throw new Error(blockedReason);
   const url=new URL(path,HDTODAY_BASE);
   if(url.origin!==HDTODAY_BASE)throw new Error('Invalid HDToday URL');
-  const r=await safeRemoteFetch(url.href,{timeoutMs,headers:{'User-Agent':'Mozilla/5.0','Referer':HDTODAY_BASE+'/home','Accept':'text/html,application/json;q=0.9,*/*;q=0.8'}});
-  if(!r.ok){if(r.status===429)retryAt=Date.now()+Math.max(60,Number(r.headers.get('retry-after'))||60)*1000;await r.body?.cancel();throw new Error(`HDToday HTTP ${r.status}`);}
+  const r=await fetchRemote(url.href,{timeoutMs,headers:{'User-Agent':'Mozilla/5.0','Referer':HDTODAY_BASE+'/home','Accept':'text/html,application/json;q=0.9,*/*;q=0.8'}});
+  if(r.headers.get('cf-mitigated')==='challenge'){
+    await r.body?.cancel();retryAt=now()+600000;
+    blockedReason='HDToday browser verification required on this host; cached data retained';
+    throw new Error(blockedReason);
+  }
+  if(!r.ok){if(r.status===429){retryAt=now()+Math.max(60,Number(r.headers.get('retry-after'))||60)*1000;blockedReason='HDToday rate limited; cached data retained until retry';}await r.body?.cancel();throw new Error(`HDToday HTTP ${r.status}`);}
   const html=await r.text();
-  if(/<title>\s*Quick check/i.test(html))throw new Error('HDToday requires browser verification; cached data retained');
+  if(/<title[^>]*>\s*(?:Quick check|Just a moment|Access denied)/i.test(html)){
+    retryAt=now()+600000;blockedReason='HDToday browser verification required on this host; cached data retained';throw new Error(blockedReason);
+  }
   return html;
+};
 }
+const request=createHdtodayRequest();
 export async function fetchHdtodayPage({kind='film',documentary=false,page=1,latest=false,genre}={}) {
   if(genre && !/^[a-z-]+$/.test(genre))throw new Error('Invalid HDToday genre');
   const slug=genre==='sci-fi'?(kind==='film'?'science-fiction':'sci-fi-fantasy'):genre;

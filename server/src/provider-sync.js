@@ -3,6 +3,7 @@ import { fetchFmoviesPage, FMOVIES_GENRES } from './fmovies.js';
 import { fetchHdtodayPage } from './hdtoday.js';
 import { mergeLibrary, mergeShow } from './merge-library.js';
 import { specialistJobs, fetchSpecialistPage } from './specialist-providers.js';
+import { validateHdtodayFeed } from './hdtoday-feed.js';
 
 const running=new Map();
 const filename=product=>`providers-${product}.json`;
@@ -15,7 +16,7 @@ export function mergeCachedProviders(base, product) {
   const identities=readJson(`provider-identities-${product}.json`,{});
   const enriched={...base,shows:(base.shows || []).map(s=>({...s,...identities[s.id]?.metadata}))};
   const result=mergeLibrary(enriched,cache.items,{product,aliases});
-  result.catalog.providerSync={lastRefreshAt:cache.lastRefreshAt,completed:cache.completed,remainingPartitions:cache.queue.length,errors:cache.errors,sourceRecords:cache.items.length};
+  result.catalog.providerSync={lastRefreshAt:cache.lastRefreshAt,completed:cache.completed,remainingPartitions:cache.queue.length,errors:cache.errors,sourceRecords:cache.items.length,externalFeeds:cache.externalFeeds||{}};
   if(cache.lastRefreshAt && (!result.catalog.generatedAt || cache.lastRefreshAt>result.catalog.generatedAt))result.catalog.generatedAt=cache.lastRefreshAt;
   return result;
 }
@@ -48,17 +49,24 @@ export async function refreshProviders({product='dahsha',full=false,pageBudget=N
 async function scan({product,full,pageBudget,log}) {
   const cache=providerCache(product),items=new Map(cache.items.map(i=>[i.id,i]));
   const errors={};let requests=0;
+  const feed=validateHdtodayFeed(readJson('hdtoday-feed.json',null));
+  const paused=new Set(feed?['hdtoday']:[]);
   const put=rows=>{for(const row of rows){const old=items.get(row.id);const now=new Date().toISOString();
     const fresh=!old?.latestAt || !row.latestAt || row.latestAt>=old.latestAt;
     const merged=old?mergeShow(old,row):row;
     items.set(row.id,{...merged,firstSeenAt:old?.firstSeenAt||now,latestEpisode:fresh?row.latestEpisode||old?.latestEpisode:old.latestEpisode,
       providerUpdatedAt:fresh && row.latestEpisode && row.latestEpisode!==old?.latestEpisode ? row.providerUpdatedAt||now : old?.providerUpdatedAt||row.providerUpdatedAt||now});
   }};
+  if(feed){
+    put(feed.items.filter(row=>product!=='dahsha'||row.documentary===true&&row.tags?.includes('documentary')));
+    cache.externalFeeds={...cache.externalFeeds,hdtoday:{updatedAt:feed.updatedAt,records:feed.items.length,complete:feed.complete===true}};
+    log(`[providers:${product}] synchronized HDToday snapshot: ${feed.items.length} source titles; updated ${feed.updatedAt}`);
+  }else if(cache.externalFeeds?.hdtoday)delete cache.externalFeeds.hdtoday;
   // New releases / new episodes are refreshed independently of the long historical crawl.
   const currentYear=new Date().getUTCFullYear();
   const seeds=scopes(product);
   for(let offset=0;offset<seeds.length;offset+=4){
-    const chunk=seeds.slice(offset,offset+4);
+    const chunk=seeds.slice(offset,offset+4).filter(seed=>!paused.has(seed.provider));
     const results=await Promise.allSettled(chunk.map(seed=>{
       const sort=seed.kind==='series'?'first_air_date.desc':'primary_release_date.desc';
       return fetchPage(seed.provider==='fmovies'?{...seed,year:currentYear,sort}:{...seed,latest:true});
@@ -76,7 +84,7 @@ async function scan({product,full,pageBudget,log}) {
   if(full && cache.completed){cache.queue=scopes(product);cache.completed=false;}
   let scanned=0;
   while(cache.queue.length && (full || scanned<pageBudget)) {
-    if(cache.queue.every(job=>errors[job.provider]))break;
+    if(cache.queue.every(job=>errors[job.provider]||paused.has(job.provider)))break;
     // Give each provider/region a turn. Hundreds of old FMovies year partitions
     // must not keep a new animation or regional catalogue waiting for weeks.
     const lane=job=>`${job.provider}:${job.country||'all'}`;
@@ -84,10 +92,10 @@ async function scan({product,full,pageBudget,log}) {
     const start=lanes.indexOf(cache.lastScanLane);
     for(let offset=1;offset<=lanes.length;offset++){
       const next=lanes[(start+offset)%lanes.length];
-      const index=cache.queue.findIndex(job=>lane(job)===next&&!errors[job.provider]);
+      const index=cache.queue.findIndex(job=>lane(job)===next&&!errors[job.provider]&&!paused.has(job.provider));
       if(index>=0){cache.queue.unshift(cache.queue.splice(index,1)[0]);cache.lastScanLane=next;break;}
     }
-    if(errors[cache.queue[0].provider]){cache.queue.push(cache.queue.shift());continue;}
+    if(errors[cache.queue[0].provider]||paused.has(cache.queue[0].provider)){cache.queue.push(cache.queue.shift());continue;}
     const job=cache.queue[0];
     try {
       const result=await fetchPage(job);put(result.items);requests++;scanned++;
