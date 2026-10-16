@@ -22,7 +22,7 @@ public class MainActivity extends BridgeActivity {
                 + "document.addEventListener('error',e=>{if(e.target instanceof HTMLVideoElement)fail()},true);"
                 + "const check=()=>{const text=(document.body?.innerText||'').trim();if(text.length<1800&&/we can't find the video|video (?:has been|was) (?:removed|deleted)|file (?:not found|was deleted)|403 Forbidden|404\\s*Page Not Found|404\\)?\\s*OOPS! SOMETHING WENT WRONG/i.test(text))fail()};"
                 + "document.addEventListener('DOMContentLoaded',()=>{check();const observer=new MutationObserver(check);observer.observe(document.body,{childList:true,subtree:true});setTimeout(()=>observer.disconnect(),15000)},{once:true});})()",
-                new java.util.HashSet<>(java.util.Arrays.asList("https://embos.top","https://mxdrop.click","https://mixdrop.top","https://hgcloud.to","https://vkvideo.ru","https://www.ok.ru","https://ok.ru","https://s1.hdup400.com","https://player.mediadelivery.net","https://playmogo.com","https://watch.easyvidplayer.com","https://vidcore.io","https://vidcore.net")));
+                new java.util.HashSet<>(java.util.Arrays.asList("https://embos.top","https://mxdrop.click","https://mixdrop.top","https://hgcloud.to","https://vkvideo.ru","https://www.ok.ru","https://ok.ru","https://s1.hdup400.com","https://vidzy.cc","https://vidzy.org","https://player.mediadelivery.net","https://playmogo.com","https://watch.easyvidplayer.com","https://vidcore.io","https://vidcore.net")));
         }
 
         android.webkit.WebSettings settings = webView.getSettings();

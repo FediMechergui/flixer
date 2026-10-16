@@ -4,6 +4,9 @@ import { fetchHdtodayPage } from './hdtoday.js';
 import { mergeLibrary, mergeShow } from './merge-library.js';
 import { specialistJobs, fetchSpecialistPage } from './specialist-providers.js';
 import { validateHdtodayFeed } from './hdtoday-feed.js';
+import {fetchMovies,fetchSeries} from './myflixer.js';
+import {getSpecialistDetails} from './specialist-providers.js';
+import {refreshSeriesEpisodes} from './episode-refresh.js';
 
 const running=new Map();
 const filename=product=>`providers-${product}.json`;
@@ -31,9 +34,13 @@ function scopes(product) {
     {provider:'fmovies',kind:'series',documentary,page:1},
     ...(documentary?[{provider:'hdtoday',documentary:true,page:1}]:[{provider:'hdtoday',kind:'film',page:1},{provider:'hdtoday',kind:'series',page:1}]),
     ...(!documentary?[
+      {provider:'myflixer',kind:'film',page:1},{provider:'myflixer',kind:'series',page:1},
+      ...['film','series'].map(kind=>({provider:'fmovies',kind,language:'fr',page:1})),
       ...['KR','IN','TR','EG','TN'].flatMap(country=>['film','series'].map(kind=>({provider:'fmovies',kind,country,page:1}))),
       {provider:'fmovies',kind:'series',country:'JP',genre:'animation',page:1},
       ...specialistJobs(),
+      ...['film','series'].map(kind=>({provider:'frenchstream',kind,collection:'french-originals',page:1})),
+      ...['film','series'].map(kind=>({provider:'dessinanime',kind,collection:'french-cartoons',page:1})),
       ...['arabic','turkish'].flatMap(collection=>['film','series'].map(kind=>({provider:'tuniflix',kind,collection,page:1}))),
       {provider:'streamtunisie',kind:'series',collection:'arabic',page:1},
       {provider:'multimovies',kind:'film',collection:'indian',page:1},
@@ -43,7 +50,10 @@ function scopes(product) {
   ];
 }
 async function fetchPage(job) {
-  return job.provider==='fmovies'?fetchFmoviesPage(job):job.provider==='hdtoday'?fetchHdtodayPage(job):fetchSpecialistPage(job);
+  if(job.provider==='myflixer')return (job.kind==='film'?fetchMovies:fetchSeries)({...job,perPage:100});
+  const result=await (job.provider==='fmovies'?fetchFmoviesPage(job):job.provider==='hdtoday'?fetchHdtodayPage(job):fetchSpecialistPage(job));
+  if(['frenchstream','dessinanime'].includes(job.provider)){let cursor=0;await Promise.all(Array.from({length:Math.min(4,result.items.length)},async()=>{while(cursor<result.items.length){const index=cursor++;try{const detail=await getSpecialistDetails(result.items[index].id);result.items[index]={...mergeShow(result.items[index],detail),title:detail.title};}catch{ /* retain discovered catalogue entries when detail access fails */ }}}));}
+  return result;
 }
 export async function refreshProviders({product='dahsha',full=false,pageBudget=Number(process.env.PROVIDER_SCAN_PAGES||12),log=console.log}={}) {
   if(running.has(product))return running.get(product);
@@ -62,8 +72,10 @@ async function scan({product,full,pageBudget,log}) {
   const put=rows=>{for(const row of rows){const old=items.get(row.id);const now=new Date().toISOString();
     const fresh=!old?.latestAt || !row.latestAt || row.latestAt>=old.latestAt;
     const merged=old?mergeShow(old,row):row;
+    const priorEpisodes=new Set((old?.episodes||[]).map(e=>e.id));
+    const addedEpisodes=!!old&&(row.episodes||[]).some(e=>!priorEpisodes.has(e.id));
     items.set(row.id,{...merged,firstSeenAt:old?.firstSeenAt||now,latestEpisode:fresh?row.latestEpisode||old?.latestEpisode:old.latestEpisode,
-      providerUpdatedAt:fresh && row.latestEpisode && row.latestEpisode!==old?.latestEpisode ? row.providerUpdatedAt||now : old?.providerUpdatedAt||row.providerUpdatedAt||now});
+      providerUpdatedAt:addedEpisodes || fresh && row.latestEpisode && row.latestEpisode!==old?.latestEpisode ? row.providerUpdatedAt||now : old?.providerUpdatedAt||row.providerUpdatedAt||now});
   }};
   if(feed){
     put(feed.items.filter(row=>product!=='dahsha'||row.documentary===true&&row.tags?.includes('documentary')));
@@ -76,18 +88,18 @@ async function scan({product,full,pageBudget,log}) {
   for(let offset=0;offset<seeds.length;offset+=4){
     const chunk=seeds.slice(offset,offset+4).filter(seed=>!paused.has(seed.provider));
     const results=await Promise.allSettled(chunk.map(seed=>{
-      const sort=seed.kind==='series'?'first_air_date.desc':'primary_release_date.desc';
-      return fetchPage(seed.provider==='fmovies'?{...seed,year:currentYear,sort}:{...seed,latest:true});
+      const sort=seed.kind==='series'?'popularity.desc':'primary_release_date.desc';
+      return fetchPage(seed.provider==='fmovies'?{...seed,...(seed.kind==='film'?{year:currentYear}:{}),sort}:{...seed,latest:true});
     }));
     results.forEach((result,index)=>{if(result.status==='fulfilled'){put(result.value.items);requests++;}else errors[chunk[index].provider]=result.reason.message;});
   }
   if(!cache.queue.length && !cache.completed)cache.queue=scopes(product);
   // Existing resumable scans keep their cursors when new source families arrive.
-  if(product==='flixer' && cache.specialistScopesVersion!==4){
-    const key=job=>JSON.stringify([job.provider,job.kind,job.country,job.genre,job.year,job.collection]);
+  if(product==='flixer' && cache.specialistScopesVersion!==6){
+    const key=job=>JSON.stringify([job.provider,job.kind,job.country,job.language,job.genre,job.year,job.collection]);
     const known=new Set(cache.queue.map(key));
-    cache.queue.push(...seeds.filter(job=>(job.country||!['fmovies','hdtoday'].includes(job.provider))&&!known.has(key(job))));
-    cache.specialistScopesVersion=4;cache.completed=false;
+    cache.queue.push(...seeds.filter(job=>(job.country||job.language||!['fmovies','hdtoday'].includes(job.provider))&&!known.has(key(job))));
+    cache.specialistScopesVersion=6;cache.completed=false;
   }
   if(full && cache.completed){cache.queue=scopes(product);cache.completed=false;}
   let scanned=0;
@@ -118,7 +130,7 @@ async function scan({product,full,pageBudget,log}) {
         cache.queue.push(...genres.map(genre=>({...job,genre,page:1})));
       } else {
         const more=result.hasNext ?? job.page<result.totalPages;
-        if(more){job.page++;cache.queue.push(cache.queue.shift());}else cache.queue.shift();
+        if(more){job.page++;if(result.nextCursor)job.cursor=result.nextCursor;cache.queue.push(cache.queue.shift());}else cache.queue.shift();
       }
       if(scanned%10===0)log(`[providers:${product}] ${items.size} records; ${cache.queue.length} scan partitions remain`);
       if(scanned%10===0)writeJson(filename(product),{...cache,items:[...items.values()],errors,completed:false});
@@ -134,6 +146,11 @@ async function scan({product,full,pageBudget,log}) {
     await new Promise(resolve=>setTimeout(resolve,500));
   }
   cache.items=[...items.values()];cache.errors=errors;cache.completed=cache.queue.length===0;
+  if(product==='flixer'){
+    const refreshed=await refreshSeriesEpisodes(cache.items,{limit:Number(process.env.PROVIDER_EPISODE_REFRESH_LIMIT||120)});
+    cache.items=refreshed.items;cache.episodeRefresh={...refreshed.report,at:new Date().toISOString()};
+    log(`[episodes:${product}] ${refreshed.report.checked} series checked; ${refreshed.report.addedEpisodes} episodes added; ${refreshed.report.errors.length} unavailable`);
+  }
   cache.lastRefreshAt=new Date().toISOString();
   writeJson(filename(product),cache);
   log(`[providers:${product}] ${cache.items.length} source records; complete=${cache.completed}; requests=${requests}${Object.keys(errors).length?`; errors=${JSON.stringify(errors)}`:''}`);

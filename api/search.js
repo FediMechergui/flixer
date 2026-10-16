@@ -1,5 +1,5 @@
 import { PRODUCT } from '../server/src/product.js';
-import { unifiedSearch } from '../server/src/library-service.js';
+import { unifiedSearch,SEARCH_PROVIDERS } from '../server/src/library-service.js';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -8,9 +8,11 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
-    const q = req.query.q || '';
+    if(req.query.providers==='1')return res.status(200).json({providers:PRODUCT==='flixer'?SEARCH_PROVIDERS:['fmovies','hdtoday']});
+    const q = typeof req.query.q === 'string' ? req.query.q : '';
     if (!q.trim()) return res.status(200).json({ items: [] });
-    const items = await unifiedSearch(q);
+    if(req.query.provider&&!SEARCH_PROVIDERS.includes(req.query.provider))return res.status(400).json({error:'Invalid search provider'});
+    const items = await unifiedSearch(q,{provider:req.query.provider});
     res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
     return res.status(200).json({ items });
   } catch (err) {

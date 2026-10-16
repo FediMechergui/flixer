@@ -68,3 +68,19 @@ test('Flixer latest updates browse includes both media types and does not wait f
   assert.deepEqual(Array.from(added.items,item=>item.id),['added','series','movie']);
   releaseMetadata();await api._metadataReady;
 });
+
+test('Flixer searches providers concurrently, publishes progressive results and cancels superseded searches',async()=>{
+ const catalog={product:'flixer',shows:[]};let release;const gate=new Promise(r=>release=r),started=[];const updates=[];
+ const context=vm.createContext({window:{FLIXER_CONFIG:{apiBase:'https://backend.test',live:false},dispatchEvent:()=>{}},console,URL,URLSearchParams,localStorage:{getItem:()=>null,setItem:()=>{}},AbortController,setTimeout,clearTimeout,CustomEvent:class {},fetch:async(input,options)=>{
+  const u=new URL(String(input),'https://backend.test');let body=catalog;
+  if(u.pathname==='/api/search'&&u.searchParams.get('providers'))body={providers:['fmovies','frenchstream','dessinanime']};
+  else if(u.pathname==='/api/search'){const provider=u.searchParams.get('provider');started.push(provider);if(provider!=='fmovies')await gate;body={items:[{id:provider,title:'A result '+provider,kind:'film',year:2024}]};}
+  else if(/services|universes/.test(u.pathname))body={};
+  return {ok:true,status:200,headers:{get:()=>null},text:async()=>JSON.stringify(body)};
+ }});
+ for(const name of ['universes.js','tvmaze.js','api.js'])vm.runInContext(fs.readFileSync(new URL(`../../client-terrarium/js/${name}`,import.meta.url),'utf8'),context);
+ const api=new context.window.Api.FlixerApi();await api.catalog();await api._indexReady;api.liveEnabled=true;
+ const pending=api.search('A result',{onLocal:r=>updates.push({length:r.items.length,pending:r.pending})});
+ await new Promise(r=>setTimeout(r,20));assert.deepEqual(new Set(started),new Set(['fmovies','frenchstream','dessinanime']));assert.ok(updates.some(r=>r.length===1&&r.pending>0));release();assert.equal((await pending).items.length,3);
+ const aborted=new AbortController();aborted.abort();const calls=started.length;await api.search('cancelled',{signal:aborted.signal});assert.equal(started.length,calls);
+});

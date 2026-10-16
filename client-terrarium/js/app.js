@@ -238,6 +238,7 @@
   /* ---------- Home ---------- */
   function renderSources(view) {
     const groups = [
+      ["French films, TV & cartoons", [["French Stream","https://fs27.lol","Integrated catalogue and source-confirmed VF/VOSTFR players"],["DessinAnime","https://dessinanime.cc","Catalogue and search integrated; playback pages currently require browser verification"],["TV5MONDEplus","https://www.tv5mondeplus.com/fr/series","Official free Francophone service; external catalogue"],["ARTE","https://www.arte.tv/fr/","Official films, series and entertainment; external catalogue"]]],
       ["Arabic, Egyptian & Tunisian", [["CimaTN","https://www.cimatn.com","Integrated Tunisian films and actual episode/server lists"],["Tuniflix","https://tuniflix.site","Tunisian catalogue; cached entries remain available when upstream access is blocked"],["Kirmalk","https://kirmalk.com","Integrated Egyptian series and theatre"],["AhwakTV","https://yam.ahwaktv.net","Integrated Arabic films and Egyptian series"],["EgyDead","https://tv10.egydead.live","Integrated Arabic films, series and player choices"],["StreamTunisie","https://streamtunisie.net","Integrated Tunisian episodes"],["Cinetimes","https://cinetimes.org","Free Tunisian archive films; availability varies"]]],
       ["K-drama & Asian drama", [["MyAsianTV","https://myasiantv.com.bz","Integrated catalogue and episode players"],["Rakuten Viki","https://www.viki.com","Official service; subtitles, account and region restrictions vary"],["AsianCrush","https://www.asiancrush.com","Listed in FMHY; regional availability varies"],["FMHY drama directory","https://fmhy.net/video#drama-streaming","More specialist providers; directory only"]]],
       ["Indian movies & TV", [["MultiMovies","https://multimovies.garden","Integrated movies, series, episodes and server choices"],["Einthusan","https://einthusan.tv","FMHY-listed South Asian movie catalogue; external website"],["IndianCine","https://indiancine.ma","Indian film archive; external website"],["FMHY Indian-language directory","https://fmhy.net/non-english#indian-languages","Movies, television and regional languages"]]],
@@ -634,26 +635,28 @@
     const q = $("#q", view), out = $("#search-out", view);
     const recentHtml = () => state.recent.length ? `<div class="section__head" style="margin-top:14px"><h2 class="section__title">Recent</h2><button class="section__link" data-clear-recent>Clear</button></div><div class="recent">${state.recent.map(r => `<button class="chip" data-q="${esc(r)}">${esc(r)}</button>`).join("")}</div>` : emptyState("Find anything", "Search by title. Results include movies and series.");
     const showRecent = () => { out.innerHTML = recentHtml(); $$("[data-q]", out).forEach(b => b.addEventListener("click", () => { q.value = b.dataset.q; run(b.dataset.q, true); })); $("[data-clear-recent]", out)?.addEventListener("click", () => { state.recent = []; store.set("recent", []); showRecent(); }); };
-    let timer, seq = 0;
+    let timer, seq = 0,searchRequest;
     async function run(text, commit) {
       const t = text.trim(); const my = ++seq;
+      searchRequest?.abort();searchRequest=new AbortController();
       if (!t) return showRecent();
       out.innerHTML = `<div class="list">${Array(5).fill('<div class="list-item"><div class="list-item__art skel"></div><div><div class="skel skel-line" style="width:60%"></div><div class="skel skel-line" style="width:35%"></div></div></div>').join("")}</div>`;
       const paint = r => {
         if (my !== seq || !out.isConnected) return;
+        if (!r.items.length && r.pending) { out.innerHTML = emptyState("Searching sources", "Results will appear as sources respond."); return; }
         if (!r.items.length) { out.innerHTML = emptyState("No matches for “" + t + "”", "Check the spelling or try a shorter title."); return; }
         out.innerHTML = `<div class="list fade-in">${r.items.map(i => `<a class="list-item" href="#/${i.type}/${esc(i.id)}">
           <div class="list-item__art">${i.poster ? `<img src="${esc(i.poster)}" alt="" loading="lazy" data-art="${esc(i.id)}">` : ""}</div>
           <div><p class="list-item__title">${esc(i.title)}</p><div class="meta list-item__meta">${i.type === "tv" ? "Series" : "Film"} · ${esc(i.year || "—")}${i.type === "tv" && i.episodeCount > 1 ? ` · ${i.episodeCount} ep` : ""}</div></div></a>`).join("")}</div>`;
       };
       try {
-        const r = await api.search(t, {onLocal: local => {if(local.items.length) paint(local);}});
+        const r = await api.search(t, {signal:searchRequest.signal,onLocal: local => paint(local)});
         if (my !== seq || !out.isConnected) return;
         if (commit) { state.recent = [t, ...state.recent.filter(x => x !== t)].slice(0, 8); store.set("recent", state.recent); }
         paint(r);
       } catch (e) { if (my === seq) out.innerHTML = emptyState("Search failed", e.message); }
     }
-    q.addEventListener("input", () => { seq++; clearTimeout(timer); timer = setTimeout(() => run(q.value, false), 250); });
+    q.addEventListener("input", () => { seq++;searchRequest?.abort(); clearTimeout(timer); timer = setTimeout(() => run(q.value, false), 300); });
     q.addEventListener("keydown", e => { if (e.key === "Enter") { clearTimeout(timer); run(q.value, true); q.blur(); } });
     showRecent();
     setTimeout(() => q.focus(), 50);
@@ -707,7 +710,7 @@
     el.dataset.titleId=d.id;
 
     const saved = inList(d);
-    const entry = entryEpisode(d);
+    const entry = d.access==='catalogue-only'?null:entryEpisode(d);
     const entryPct = entry ? pctOf(entry.id) : 0;
     const playLabel = entry && entryPct && !(state.progress[entry.id] || {}).finished
       ? (type === "tv" ? `Resume ${epLabel(type, entry)}` : "Resume")
@@ -735,6 +738,7 @@
           ${entry ? `<a class="btn btn--primary" href="#/watch/${esc(d.id)}/${esc(entry.id)}">${ICON.play} ${esc(playLabel)}</a>` : ""}
           <button class="btn ${saved ? "btn--ghost is-on" : "btn--ghost"}" data-save>${ICON.bookmark} <span>${saved ? "Saved" : "My list"}</span></button>
         </div>
+        ${d.access==='catalogue-only'?'<p class="overview">Catalogue entry: this source currently requires browser verification for playback. Open its source page below.</p>':''}
         <div class="tags">${d.genres.map(g => `<a class="tag" href="#/${type === "tv" ? "shows" : "movies"}" data-genre="${esc(g.id)}">${esc(g.name)}</a>`).join("")}</div>
         ${d.versions?.length ? `<section class="sub-section"><h3>Other versions with this title</h3><p>These may be different editions. Choose a version to open.</p>${d.versions.map(v=>`<a class="btn btn--ghost" href="#/${type}/${esc(v.id)}">${esc(v.title)} ${esc(v.year || '')} · ${esc(v.offerings?.[0]?.provider || 'Source')}</a>`).join('')}</section>` : ''}
         <p class="overview ${d.overview.length > 220 ? "is-clamped" : ""}" id="ov">${esc(d.overview || "No synopsis available.")}</p>

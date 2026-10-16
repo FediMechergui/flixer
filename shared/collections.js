@@ -2,6 +2,11 @@ export function matchesCollection(show,id){
   if(!id)return true;
   const collections=show.collections||[],tags=show.tags||[],lang=String(show.originalLanguage||show.contentLang||show.lang||show.tvm?.l||'').toLowerCase(),countries=[...(show.countries||[]),show.tvm?.c].filter(Boolean).map(c=>String(c).toUpperCase());
   const animation=tags.some(t=>/^(97|animation|anime)$/i.test(String(t))),japanese=countries.includes('JP')||['ja','japanese'].includes(lang),anime=animation&&(japanese||collections.includes('anime')||tags.includes('anime'));
+  const french=collections.includes('french')||lang==='fr'||(show.audioLanguages||[]).includes('fr');
+  if(id==='french')return french;
+  if(id==='french-originals')return lang==='fr';
+  if(id==='french-cartoons')return french&&animation;
+  if(id==='french-entertainment')return french&&tags.some(tag=>['reality','talk','theatre','music'].includes(tag));
   if(id==='arabic')return collections.includes(id)||lang==='ar'||countries.some(c=>['TN','EG','MA','DZ','LB','SY','SA','JO','IQ','KW','AE','QA','BH','OM','YE','PS','SD','LY'].includes(c));
   if(id==='egyptian')return collections.includes(id)||countries.includes('EG');
   if(id==='tunisian')return collections.includes(id)||countries.includes('TN');

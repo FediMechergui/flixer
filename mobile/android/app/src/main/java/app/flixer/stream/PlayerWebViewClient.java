@@ -72,7 +72,7 @@ public class PlayerWebViewClient extends BridgeWebViewClient {
                     || "streamtunisie.net".equals(host) || "kirmalk.com".equals(host)
                     || "yam.ahwaktv.net".equals(host) || "tv10.egydead.live".equals(host)
                     || "tuniflix.site".equals(host) || "www.cimatn.com".equals(host)
-                    || "cinetimes.org".equals(host);
+                    || "cinetimes.org".equals(host) || "fs27.lol".equals(host) || "dessinanime.cc".equals(host);
                 if (!(request.hasGesture() && "https".equals(scheme) && source)) return true;
             }
         }

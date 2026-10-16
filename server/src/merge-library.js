@@ -3,7 +3,7 @@ export const titleKey = value => String(value || '').normalize('NFKD').replace(/
 const unique = values => [...new Map(values.map(v => [`${v.provider}:${v.id}`,v])).values()];
 const hasArtwork=poster=>poster&&Object.values(poster).some(value=>artworkUrl(typeof value==='string'?value:value?.url));
 const posterKey = show => { try { return new URL(show.portrait || show.poster?.custom || '').pathname.split('/').pop(); } catch { return null; } };
-const episodesOf = show => show.episodes?.length ? show.episodes : show.kind === 'film' ? [{id:show.id,title:show.title,season:1,number:1,sourceUrl:show.sourceUrl,offerings:showOfferings(show)}] : [];
+const episodesOf = show => show.access==='catalogue-only'?[]:show.episodes?.length ? show.episodes : show.kind === 'film' ? [{id:show.id,title:show.title,season:1,number:1,sourceUrl:show.sourceUrl,offerings:showOfferings(show)}] : [];
 export function episodeOfferings(episode) {
   const inferred = /^mf:[me]:/.test(episode.id) ? [{provider:'myflixer',id:episode.id}] : /^fm:/.test(episode.id) ? [{provider:'fmovies',id:episode.id}] : /^hd:/.test(episode.id) ? [{provider:'hdtoday',id:episode.id}] : /^[\w-]{11}$/.test(episode.id) ? [{provider:'youtube',id:episode.id}] : [];
   return unique([...inferred, ...(episode.offerings || [])]);
@@ -27,6 +27,7 @@ export function mergeShow(existing, incoming) {
       if(!hasArtwork(current.poster)&&hasArtwork(candidate.poster))current.poster=candidate.poster;
       current.offerings = unique([...episodeOfferings(current),...episodeOfferings(candidate)]);
       current.audioModes=[...new Set([...(current.audioModes||[]),...(candidate.audioModes||[])])];
+      for(const key of ['audioLanguages','subtitleLanguages'])current[key]=[...new Set([...(current[key]||[]),...(candidate[key]||[])])];
       if (!current.synopsis && candidate.synopsis) current.synopsis = candidate.synopsis;
       if (/^Episode \d+$/i.test(current.title || '') && candidate.title) current.title = candidate.title;
       if (!current.durationSec && candidate.durationSec) current.durationSec = candidate.durationSec;
@@ -38,6 +39,7 @@ export function mergeShow(existing, incoming) {
   }
   if (existing.kind === 'series') episodes.sort((a,b) => (a.season ?? Infinity)-(b.season ?? Infinity) || (a.number ?? Infinity)-(b.number ?? Infinity));
   return { ...incoming, ...existing, id:existing.id,
+    access:incoming.access==='catalogue-only'&&showOfferings(existing).some(o=>o.provider!=='dessinanime'&&o.availability!=='catalogue-only')?existing.access==='catalogue-only'?'public':existing.access:existing.access==='catalogue-only'&&incoming.access!=='catalogue-only'&&incoming.episodes?.length?incoming.access||'public':incoming.id===existing.id?incoming.access??existing.access:existing.access,
     kind:incoming.id===existing.id && /^sp:myasiantv:/.test(existing.id) && incoming.kindVerified?incoming.kind:existing.kind,
     title:existing.title || incoming.title,
     year:existing.year || incoming.year || null,
@@ -47,6 +49,10 @@ export function mergeShow(existing, incoming) {
     originalLanguage:existing.originalLanguage || incoming.originalLanguage,
     countries:[...new Set([...(existing.countries||[]),...(incoming.countries||[])])],
     audioModes:[...new Set([...(existing.audioModes||[]),...(incoming.audioModes||[])])],
+    audioLanguages:[...new Set([...(existing.audioLanguages||[]),...(incoming.audioLanguages||[])])],
+    subtitleLanguages:[...new Set([...(existing.subtitleLanguages||[]),...(incoming.subtitleLanguages||[])])],
+    latestAt:[existing.latestAt,incoming.latestAt].filter(Boolean).sort().pop()||null,
+    providerUpdatedAt:[existing.providerUpdatedAt,incoming.providerUpdatedAt].filter(Boolean).sort().pop()||null,
     collections:[...new Set([...(existing.collections||[]),...(incoming.collections||[])])],
     synopsis:existing.synopsis && !existing.synopsisGenerated ? existing.synopsis : incoming.synopsis || existing.synopsis,
     synopsisGenerated:existing.synopsis && !existing.synopsisGenerated ? false : !incoming.synopsis && existing.synopsisGenerated,
@@ -62,9 +68,7 @@ export function mergeShow(existing, incoming) {
       metadataVersion:Math.max(incoming.metadataVersion||0,existing.metadataVersion||0),
     }:{}),
     seasons:[...new Set(episodes.map(e => e.season).filter(Number.isInteger))].sort((a,b) => a-b),
-    providerUpdatedAt:incoming.providerUpdatedAt || existing.providerUpdatedAt,
     latestEpisode:incoming.latestEpisode || existing.latestEpisode,
-    latestAt:[existing.latestAt,incoming.latestAt].filter(Boolean).sort().pop() || null,
   };
 }
 
@@ -91,7 +95,7 @@ export function mergeLibrary(base, incoming, { product = 'flixer', aliases = {} 
     let match = byId.get(source.id) || byId.get(report.aliases[source.id]) || byId.get(offerings.get(source.id))
       || byId.get(source.tmdbId && external.get(`${source.kind}:tmdb:${source.tmdbId}`))
       || byId.get(source.imdbId && external.get(`${source.kind}:imdb:${source.imdbId}`));
-    const candidates = [...(index.get(`${source.kind}:${titleKey(source.title)}`) || [])].map(id => byId.get(id));
+    const candidates = [...new Set([source.title,...(source.altTitles||[])].flatMap(title=>[...(index.get(`${source.kind}:${titleKey(title)}`)||[])]))].map(id => byId.get(id));
     if (!match) {
       const exact = candidates.filter(s => s.year && source.year && Number(s.year) === Number(source.year));
       if (exact.length === 1) match = exact[0];

@@ -2,7 +2,7 @@
 
 Flixer covers movies and TV shows across all genres, with its own interface, universes, streaming services, and filters.
 
-- Website: [Flixer](https://flixer-mu.vercel.app)
+- Android app backed by [hosted catalogue and API](https://flixer-mu.vercel.app)
 - Repository: [FediMechergui/flixer](https://github.com/FediMechergui/flixer)
 - Android downloads: [Releases](https://github.com/FediMechergui/flixer/releases)
 - Dahsha is maintained in its [own repository](https://github.com/FediMechergui/dahsha).
@@ -87,3 +87,13 @@ metadata feeds and PC refresh tasks are disabled; see
 [Arabic provider contracts](docs/arabic-sources.md) records catalogue, episode,
 player and metadata handling, together with sources that did not pass validation.
 Collection counts show saved titles; they are not upstream library totals.
+
+## French sources and update behaviour
+
+French Stream supplies its public movie catalogue and season-specific episode/server data. VF and VOSTFR remain distinct player choices. Only episodes with actual source links are imported; announced episodes without links are excluded. French originals require original-language evidence; dubbed international titles remain in the broader French catalogue.
+
+DessinAnime supplies its anonymous catalogue and search API, including cursor pagination. Its episode pages currently return browser verification errors, so standalone entries are marked catalogue-only and do not claim playable French episodes. Aliases are accepted only after matching media type, release year and an independently confirmed external identity. Existing verified providers remain available on merged titles.
+
+Search starts requests to all registered providers concurrently and displays completed results while slower sources respond. Known alternate titles widen those requests; cancelled searches cannot overwrite a newer query. Arabic diacritics and spelling variants, accents and ampersands are normalized for search without weakening identity checks for merging.
+
+The GitHub refresh workflow is scheduled every two hours. It scans latest listings, resumes historical catalogue cursors and rotates a bounded episode-detail queue across providers. This is eventual coverage, not a promise that every series is rechecked every two hours. A title opened in the app refreshes its series details after a short cache interval. Failures retain existing episodes and catalogue records. Hosted HDToday failures retain cached data until ordinary access is permitted.

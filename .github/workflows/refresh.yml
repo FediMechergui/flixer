@@ -4,7 +4,7 @@ name: Refresh catalogue & deploy
 
 on:
   schedule:
-    - cron: '17 */6 * * *'   # every 6 hours
+    - cron: '17 */2 * * *'   # every 2 hours; episode checks rotate independently of historical paging
   workflow_dispatch:
     inputs:
       full:

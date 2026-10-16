@@ -1,4 +1,4 @@
-import { libraryHome, discoverLibrary, validPlaybackId, unifiedTitle, unifiedSearch, unifiedStream, readLibrary, libraryPage, setLiveLibrary } from './library-service.js';
+import { SEARCH_PROVIDERS, libraryHome, discoverLibrary, validPlaybackId, unifiedTitle, unifiedSearch, unifiedStream, readLibrary, libraryPage, setLiveLibrary } from './library-service.js';
 import { refreshProviders } from './provider-sync.js';
 // Movies & TV Shows Streaming API Server
 import express from 'express';
@@ -63,11 +63,11 @@ if (catalogue) {
     return res.send(payload.json);
   });
   app.get('/api/shows/:id', async (req, res) => {
-    const show = await unifiedTitle(req.params.id, { source: req.query.source });
+    const show = await unifiedTitle(req.params.id, { source: req.query.source, fresh: req.query.fresh === '1' });
     return show ? res.json(show) : res.status(404).json({ error: 'Show not found' });
   });
-  app.get('/api/search', async (req, res) => res.json({ items: await unifiedSearch(req.query.q || '') }));
-  app.get('/api/title', async (req, res) => { const show = await unifiedTitle(req.query.id, { source: req.query.source }); return show ? res.json(show) : res.status(404).json({error:'Title not found'}); });
+  app.get('/api/search', async (req, res) => res.json({ items: await unifiedSearch(typeof req.query.q === 'string' ? req.query.q : '', {provider:req.query.provider}) }));
+  app.get('/api/title', async (req, res) => { const show = await unifiedTitle(req.query.id, { source: req.query.source, fresh: req.query.fresh === '1' }); return show ? res.json(show) : res.status(404).json({error:'Title not found'}); });
   app.get('/api/status', (_req, res) => res.json({ ...catalogue.getStatus(), product: PRODUCT }));
   app.get('/api/events', (req, res) => {
     res.set({ 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
@@ -147,9 +147,11 @@ app.get('/api/series', async (req, res) => {
 
 app.get('/api/search', async (req, res) => {
   try {
-    const q = req.query.q || '';
+    if(req.query.providers==='1')return res.json({providers:SEARCH_PROVIDERS});
+    if(req.query.provider&&!SEARCH_PROVIDERS.includes(req.query.provider))return res.status(400).json({error:'Invalid search provider'});
+    const q = typeof req.query.q==='string'?req.query.q:'';
     if (!q.trim()) return res.json({ items: [] });
-    const items = await unifiedSearch(q);
+    const items = await unifiedSearch(q,{provider:req.query.provider});
     res.json({ items });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -158,7 +160,7 @@ app.get('/api/search', async (req, res) => {
 
 app.get(['/api/title', '/api/title/:id'], async (req, res) => {
   try {
-    const details = await unifiedTitle(req.params.id || req.query.id, { source: req.query.source });
+    const details = await unifiedTitle(req.params.id || req.query.id, { source: req.query.source, fresh: req.query.fresh === '1' });
     if (!details) return res.status(404).json({ error: 'Title not found' });
     res.json(details);
   } catch (err) {
@@ -169,7 +171,7 @@ app.get(['/api/title', '/api/title/:id'], async (req, res) => {
 // Backwards-compatible /api/shows/:id route
 app.get('/api/shows/:id', async (req, res) => {
   try {
-    const details = await unifiedTitle(req.params.id || req.query.id, { source: req.query.source });
+    const details = await unifiedTitle(req.params.id || req.query.id, { source: req.query.source, fresh: req.query.fresh === '1' });
     if (!details) return res.status(404).json({ error: 'Title not found' });
     res.json(details);
   } catch (err) {
