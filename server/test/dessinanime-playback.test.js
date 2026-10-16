@@ -28,5 +28,5 @@ test('Android resolves verified source player IDs directly, validates relay orig
 import {unifiedStream} from '../src/library-service.js';
 test('merged playback retains each deferred DessinAnime player rather than deduplicating absent video URLs',async()=>{
  const row={id,kind:'series',episodes:[{id:eid,season:1,number:3,offerings:[{provider:'dessinanime',id:eid}]}]};
- const result=await unifiedStream(eid,{catalog:{shows:[row]},product:'flixer',resolveTitle:async()=>row,resolveSpecialist:async()=>[1106663,144016].map(playerId=>({provider:'dessinanime',type:'dessinanime',playerId,id:'dessinanime:'+playerId}))});assert.equal(result.servers.length,2);
+ const result=await unifiedStream(eid,{catalog:{shows:[row]},product:'flixer',quick:true,resolveTitle:async()=>row,resolveSpecialist:async()=>[1106663,144016].map(playerId=>({provider:'dessinanime',type:'dessinanime',playerId,id:'dessinanime:'+playerId}))});assert.equal(result.servers.length,2);
 });

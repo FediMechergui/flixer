@@ -282,7 +282,7 @@ export async function unifiedStream(id,{showId,source,prefix='/api/stream',catal
   if(product==='dahsha'&&(!base || title.providerMetadata || /^(fm|hd):/.test(title.id))&&title.documentary!==true)return null;
   const offers=episodeOfferings(episode);
   const results=await Promise.allSettled(offers.map(async o=>{
-    if(quick&&(o.provider==='myflixer'||specialistUrl(o.id)))return [];
+    if(quick&&o.provider!=='dessinanime'&&(o.provider==='myflixer'||specialistUrl(o.id)))return [];
     if(quick&&o.provider==='hdtoday'&&!title.tmdbId&&!title.offerings?.some(o=>o.provider==='fmovies'&&o.tmdbId))return [];
     if(product==='flixer' && specialistUrl(o.id))return resolveSpecialist(o.id,{fresh});
     if(o.provider==='fmovies')return fmoviesServers(o.id);
