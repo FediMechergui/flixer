@@ -267,7 +267,7 @@
       switchTo: load,
       updateServers(additional){
         if(st.destroyed)return;
-        const key=s=>s.streamUrl||s.embedUrl||s.videoId||(s.type==='dessinanime'?'dessinanime:'+s.playerId:s.id),seen=new Set(servers.map(key)),first=servers.length;
+        const key=s=>s.provider==='dessinanime'&&s.playerId?'dessinanime:'+s.playerId:s.streamUrl||s.embedUrl||s.videoId||s.id,seen=new Set(servers.map(key)),first=servers.length;
         for(const server of additional||[])if(!seen.has(key(server))){seen.add(key(server));servers.push(server);}
         if(servers.length===first)return;
         if($('.player__error',stage))load(first,true);else renderBar();
