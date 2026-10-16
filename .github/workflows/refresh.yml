@@ -51,6 +51,8 @@ jobs:
           if-no-files-found: ignore
       - name: Fill missing metadata from provider pages
         run: node scripts/fill-provider-metadata.js --limit 200
+      - name: Resolve cached HDToday identities through verified alternate metadata
+        run: node scripts/fill-provider-metadata.js --provider hdtoday --limit 120
       - name: Refresh Flixer providers
         id: refresh
         run: node scripts/refresh-providers.js --product flixer --pages 180 --matches 100 ${{ inputs.full && '--full' || '' }}
