@@ -485,7 +485,8 @@ export async function handleStreamProxy(targetUrl, req, res, proxyPrefix = '/api
       res.status(status);
       if (cType) res.setHeader('Content-Type', cType);
       await upstream.body?.cancel();
-      return res.type('text/plain').send('Upstream stream error');
+      res.setHeader('Content-Type','text/plain; charset=utf-8');
+      return res.send('Upstream stream error');
     }
 
     if (cType.includes('mpegurl') || targetUrl.includes('.m3u8') || targetUrl.includes('file.m3u8')) {
@@ -528,7 +529,8 @@ export async function handleStreamProxy(targetUrl, req, res, proxyPrefix = '/api
     return res.end();
   } catch (err) {
     if (res.headersSent) return res.destroy(err);
-    return res.status(502).type('text/plain').send('Stream proxy error');
+    res.setHeader('Content-Type','text/plain; charset=utf-8');
+    return res.status(502).send('Stream proxy error');
   }
 }
 

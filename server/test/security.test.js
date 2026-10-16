@@ -42,3 +42,10 @@ test('unsigned proxy calls and executable embed identifiers fail before fetching
   assert.ok(!scriptJson(['</script>']).includes('<'));
   assert.equal(escapeHtml('<script>'), '&lt;script&gt;');
 });
+
+test('hosted proxy failures use the Vercel response contract without Express-only methods',async()=>{
+  const url='http://127.0.0.1/private',query=Object.fromEntries(new URL(proxyUrl('https://example.com/api/stream',url)).searchParams);
+  const res={headers:{},setHeader(k,v){this.headers[k]=v;},status(code){this.code=code;return this;},send(body){this.body=body;return this;}};
+  await handleStreamProxy(url,{query,headers:{}},res);
+  assert.equal(res.code,502);assert.equal(res.body,'Stream proxy error');assert.match(res.headers['Content-Type'],/text\/plain/);
+});

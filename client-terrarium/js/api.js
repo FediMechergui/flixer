@@ -23,6 +23,8 @@
   const SYNC_EVERY = 3 * 60 * 1000;
   const DELTA_CAP = 2500;
   const UNI = window.FlixerUniverses;
+  const unrestrictedPlayers=new Set(['vidsrc.mov','vidsrc.fyi','embed.vidsrc.si','vidfast.pro','vidup.to','vidrock.net','vidnest.fun','vidlink.pro','111movies.net','multiembed.mov','mappletv.uk','moviesapi.to','embos.top','vidcore.net','vidcore.io','vidapi.xyz','embedmaster.link']);
+  const embedSandbox=server=>{try{const u=new URL(server.embedUrl||server.rawEmbedUrl);if(u.protocol==='https:'&&!u.username&&!u.password&&(unrestrictedPlayers.has(u.hostname)||/^(?:balance|[1-9])\.medmedia03\.wiki$/.test(u.hostname)))return null;}catch{}return server.sandbox;};
   const GENRES = [
     [39, "Action", "action"], [42, "Adventure", "adventure"], [97, "Animation", "animation"], [2343589, "Biography", "biography"],
     [46, "Comedy", "comedy"], [160, "Crime", "crime"], [212, "Documentary", "documentary"], [56, "Drama", "drama"],
@@ -67,6 +69,7 @@
   const plain = html => decodeEntities(String(html || "").replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
   const posterFor = wpId => wpId ? `${SOURCE}/wp-content/uploads/posters/${wpId}_medium.jpg` : null;
   const backdropFor = wpId => wpId ? `${SOURCE}/wp-content/uploads/posters/${wpId}.jpg` : null;
+  const artwork=value=>typeof value==='string'&&/^https:\/\//.test(value)&&!/(?:^|\/)(?:undefined|null|none)(?:\.[a-z]+)?$/i.test(value)?value:null;
   const byAdded = (a, b) => (b.date || "").localeCompare(a.date || "") || a.title.localeCompare(b.title);
   const byUpdated = (a,b) => (b.updatedAt || "").localeCompare(a.updatedAt || "") || byAdded(a,b);
   const byYearDesc = (a, b) => (+b.year || 0) - (+a.year || 0) || byAdded(a, b);
@@ -104,8 +107,8 @@
       date: String(s.publishedAt || s.firstSeenAt || "").slice(0,10),
       updatedAt: [s.latestEpisode?s.providerUpdatedAt:null,s.latestAt,s.publishedAt].filter(Boolean).sort().pop() || "",
       year: s.year ? String(s.year) : "",
-      poster: s.portrait || poster.custom || poster.default || posterFor(s.wpId),
-      backdrop: poster.backdrop || poster.hq || backdropFor(s.wpId) || poster.custom || null,
+      poster: artwork(s.portrait) || artwork(poster.custom) || artwork(poster.default) || artwork(tvm?.img) || posterFor(s.wpId),
+      backdrop: artwork(poster.backdrop) || artwork(poster.hq) || artwork(poster.custom) || artwork(s.portrait) || backdropFor(s.wpId),
       rating: tvm ? tvm.r || 0 : 0,
       votes: 0,
       weight: tvm ? tvm.w || 0 : 0,
@@ -168,9 +171,10 @@
     checking: null,
     years: null,
     async serverOk() {
+      if(API_BASE)return true;
       if (this.hasServer != null) return this.hasServer;
       if (!this.checking) this.checking = getJson(`${API_BASE}/api/genres`, 5000)
-        .then(() => (this.hasServer = true), () => (this.hasServer = false));
+        .then(() => (this.hasServer = true), () => {this.checking=null;return false;});
       return this.checking;
     },
     async yearTerms() {
@@ -293,14 +297,16 @@
       if (this._catalog) return Promise.resolve(this._catalog);
       if (!this._loading) {
         this._loading = (async () => {
-          const { body: c } = await getJson(`${CFG.mobile ? "" : DATA_BASE}/data/bootstrap.json`).catch(() => getJson(`${DATA_BASE}/data/catalog.json`, 60000));
+          let { body: c } = await getJson(`${CFG.mobile ? "" : DATA_BASE}/data/bootstrap.json`).catch(() => getJson(`${DATA_BASE}/data/catalog.json`, 60000));
+          const bundledAt=c.generatedAt||null,cachedHome=store.get('homeSnapshot',null);
+          if(cachedHome?.product==='flixer'&&Array.isArray(cachedHome.shows)&&Date.parse(cachedHome.generatedAt)>Date.parse(c.generatedAt||0))c=cachedHome;
           if (c.product !== 'flixer') throw new Error('Flixer requires its own exported catalogue');
           const shows = Array.isArray(c.shows) ? c.shows : [];
           this._catalog = { shows, items: [], genres: { movie: [], tv: [] }, years: [1900, new Date().getFullYear()], generatedAt: c.generatedAt || null, tvmazeAt: c.tvmazeAt || null, lite: !!c.lite, tagLabels: new Map((c.tags || []).map(t => [t.id, t.labelEn || t.label || titleCase(t.id)])) };
           this._byId = new Map();
-          this._bundleAt=c.generatedAt||null;
+          this._bundleAt=bundledAt;this._fullIndexAt=bundledAt;
           this._rowRevisions=new Map();
-          shows.forEach(s => {this._byId.set(s.id, s);this._rowRevisions.set(s.id,Date.parse(c.generatedAt)||0);});
+          shows.forEach(s => {this._byId.set(s.id, s);for(const id of s.aliasIds||[])this._byId.set(id,s);this._rowRevisions.set(s.id,Date.parse(c.generatedAt)||0);});
           const delta = store.get("delta", []);
           if (Array.isArray(delta)) this._merge(delta,{snapshotAt:'1970-01-01',persist:false});
           this._recentIds=new Set(store.get('recentIds',[]).filter(id=>this._byId.has(id)));
@@ -308,7 +314,7 @@
           const notify=()=>{this._reindex();window.dispatchEvent(new CustomEvent("flixer:catalog",{detail:{updated:true}}));};
           this._indexReady = new Promise(resolve=>setTimeout(resolve,100)).then(()=>getJson(`${CFG.mobile ? "" : DATA_BASE}/data/index.json`,60000)).then(({body})=>{
             if(body.product!=='flixer')throw new Error('Wrong product index');
-            this._merge(body.shows || [],{snapshotAt:body.generatedAt||this._bundleAt||'1970-01-01',persist:false});notify();
+            this._merge(body.shows || [],{snapshotAt:body.generatedAt||this._bundleAt||'1970-01-01',persist:false});if(Date.parse(body.generatedAt)>Date.parse(this._fullIndexAt||0))this._fullIndexAt=body.generatedAt;notify();
           }).catch(error=>console.warn('[flixer] full index unavailable:',error.message));
           this._metadataReady=Promise.allSettled([
             getJson(`${CFG.mobile ? "" : DATA_BASE}/data/universes.json`).then(({body})=>{
@@ -376,7 +382,8 @@
       const data = this._universeData || new Map();
       // Name-derived patterns for universes that only exist in the Wikidata data.
       const auto = [...data.values()].filter(u => !UNI.byId(u.id)).map(u => ({ id: u.id, patterns: UNI.autoPatterns(u.name, u.short) })).filter(u => u.patterns.length);
-      if (auto.length) c.items.forEach(i => { const extra = [...new Set([...UNI.detect(i.title, auto), ...(i.alt ? UNI.detect(i.alt, auto) : [])])]; if (extra.length > i.universes.length) i.universes = [...new Set([...i.universes, ...extra])]; });
+      const version=[...data.values()].map(u=>`${u.id}:${u.name}:${u.short}`).join('|');this._autoUniverseCache ||=new Map();
+      if (auto.length) c.items.forEach(i => {let cached=this._autoUniverseCache.get(i.id);if(!cached||cached.title!==i.title||cached.alt!==i.alt||cached.version!==version){cached={title:i.title,alt:i.alt,version,ids:[...new Set([...UNI.detect(i.title,auto),...(i.alt?UNI.detect(i.alt,auto):[])])]};this._autoUniverseCache.set(i.id,cached);}if(cached.ids.some(id=>!i.universes.includes(id)))i.universes=[...new Set([...i.universes,...cached.ids])];});
       // Wikidata members matched onto the live index.
       const itemById = new Map(c.items.map(i => [i.id, i]));
       data.forEach(u => {
@@ -508,12 +515,14 @@
     _merge(rows,{snapshotAt,persist=true}={}) {
       const c = this._catalog;
       let added = 0;
-      const identities=new Map();
       const identity=r=>r.tmdbId?`${r.kind}:tmdb:${r.tmdbId}`:r.year?`${r.kind}:${this._key(r.title)}:${r.year}`:null;
-      c.shows.forEach(show=>{ for(const key of new Set([identity(show),show.year?`${show.kind}:${this._key(show.title)}:${show.year}`:null])) if(key) identities.set(key,identities.has(key)?null:show); });
+      const keys=show=>new Set([identity(show),show.year?`${show.kind}:${this._key(show.title)}:${show.year}`:null].filter(Boolean));
+      const addIdentity=show=>{for(const key of keys(show)){let set=this._identities.get(key);if(!set)this._identities.set(key,set=new Set());set.add(show);}};
+      if(!this._identities){this._identities=new Map();c.shows.forEach(addIdentity);}
+      const uniqueIdentity=key=>{const set=this._identities.get(key);return set?.size===1?[...set][0]:null;};
       rows.forEach(r => {
         if (!r || !r.id) return;
-        const candidate=identities.get(identity(r)) || (r.year && identities.get(`${r.kind}:${this._key(r.title)}:${r.year}`));
+        const candidate=uniqueIdentity(identity(r)) || (r.year && uniqueIdentity(`${r.kind}:${this._key(r.title)}:${r.year}`));
         const cur = this._byId.get(r.id) || (candidate && !(candidate.tmdbId && r.tmdbId && +candidate.tmdbId!==+r.tmdbId) && candidate);
         if(cur) this._byId.set(r.id,cur);
         this._dirtyItems ||= new Set(); this._dirtyItems.add(cur ? cur.id : r.id);
@@ -521,9 +530,10 @@
           this._rowRevisions ||= new Map();
           const revision=Number(r._catalogRevision)||Date.parse(snapshotAt)||(snapshotAt?0:Date.now());
           const fresh=revision>=(this._rowRevisions.get(cur.id)||0),sameTitle=cur.id===r.id;
+          const oldKeys=keys(cur);
           if(fresh)this._rowRevisions.set(cur.id,revision);
           if(r.kindVerified && /^sp:myasiantv:/.test(cur.id))cur.kind=r.kind;
-          if(r.title && r.title!==cur.title || r.year && +r.year!==+cur.year)this._universeDirty=true;
+          if(fresh&&sameTitle&&(r.title && r.title!==cur.title || r.year && +r.year!==+cur.year))this._universeDirty=true;
           if (r.title && (!cur.title||fresh&&sameTitle)) cur.title = r.title;
           if (r.synopsis && (!cur.synopsis || r.synopsis.length > cur.synopsis.length)) cur.synopsis = r.synopsis;
           if (r.tags && r.tags.length) cur.tags = [...new Set([...(cur.tags || []),...r.tags])];
@@ -540,11 +550,13 @@
           if (r.poster&&Object.values(r.poster).some(Boolean)&&(!cur.poster||!Object.values(cur.poster).some(Boolean)||fresh&&sameTitle)) cur.poster = r.poster;
           if (r.portrait&&(!cur.portrait||fresh&&sameTitle))cur.portrait=r.portrait;
           if (Array.isArray(r.episodes)&&r.episodes.length) { const ordered=fresh&&sameTitle?[...r.episodes,...(cur.episodes||[])]:[...(cur.episodes||[]),...r.episodes];cur.episodes=[...new Map(ordered.reverse().map(e=>[e.id,e])).values()].reverse();cur.episodeCount=cur.episodes.length; }
+          for(const key of oldKeys)if(!keys(cur).has(key)){this._identities.get(key)?.delete(cur);if(!this._identities.get(key)?.size)this._identities.delete(key);}addIdentity(cur);
         } else {
           this._universeDirty=true;
           this._rowRevisions ||= new Map();this._rowRevisions.set(r.id,Number(r._catalogRevision)||Date.parse(snapshotAt)||(snapshotAt?0:Date.now()));
-          c.shows.push(r); this._byId.set(r.id, r); if(identity(r)) identities.set(identity(r),r); added += 1;
+          c.shows.push(r); this._byId.set(r.id, r);addIdentity(r); added += 1;
         }
+        for(const id of [...(r.aliasIds||[]),...(r.offerings||[]).map(o=>o.id)])this._byId.set(id,cur||r);
       });
       if (persist && rows.length && rows.length < 500) this._persistDelta(rows.filter(r => r && r.id).map(r=>this._byId.get(r.id) || r));
       return added;
@@ -596,13 +608,20 @@
       if(!DATA_BASE||this._snapshotRequest||Date.now()-(this._lastSnapshotCheck||0)<SYNC_EVERY)return;
       this._lastSnapshotCheck=Date.now();
       this._snapshotRequest=(async()=>{
-        const {body:status}=await getJson(`${DATA_BASE}/data/status.json`,8000);
-        if(status.product!=='flixer'||!status.generatedAt||Date.parse(status.generatedAt)<=Date.parse(this._catalog.generatedAt||0))return;
+        const {body:status}=await getJson(`${DATA_BASE}/data/status.json`,12000);
+        if(status.product!=='flixer'||!status.generatedAt)return;
+        if(Date.parse(status.generatedAt)>Date.parse(this._catalog.generatedAt||0)){
+          const {body:home}=await getJson(`${DATA_BASE}/data/bootstrap.json?v=${encodeURIComponent(status.generatedAt)}`,12000);
+          if(home.product!=='flixer'||!Array.isArray(home.shows))throw new Error('Wrong product home feed');
+          this._merge(home.shows,{snapshotAt:home.generatedAt||status.generatedAt,persist:false});this._catalog.generatedAt=home.generatedAt||status.generatedAt;
+          store.set('homeSnapshot',home);this._reindex();window.dispatchEvent(new CustomEvent('flixer:catalog',{detail:{updated:true}}));
+        }
+        if(Date.parse(status.generatedAt)<=Date.parse(this._fullIndexAt||0))return;
         const {body}=await getJson(`${DATA_BASE}/data/index.json?v=${encodeURIComponent(status.generatedAt)}`,60000);
         if(body.product!=='flixer'||!Array.isArray(body.shows))throw new Error('Wrong product index');
-        this._merge(body.shows,{snapshotAt:body.generatedAt||status.generatedAt,persist:false});this._catalog.generatedAt=body.generatedAt||status.generatedAt;this._reindex();
+        this._merge(body.shows,{snapshotAt:body.generatedAt||status.generatedAt,persist:false});this._fullIndexAt=body.generatedAt||status.generatedAt;this._reindex();
         window.dispatchEvent(new CustomEvent('flixer:catalog',{detail:{updated:true}}));
-      })().finally(()=>{this._snapshotRequest=null;});
+      })().catch(error=>{this._lastSnapshotCheck=0;throw error;}).finally(()=>{this._snapshotRequest=null;});
       return this._snapshotRequest;
     }
 
@@ -629,8 +648,7 @@
     /* ----- Home rails ----- */
     async trending() {
       const items=await this.all();
-      const live=this._recentIds ? [...this._recentIds].map(id=>this._byId.get(id)).filter(Boolean).map(normalize) : [];
-      return [...live, ...items.slice().sort(byUpdated).filter(i=>!this._recentIds?.has(i.id))].slice(0,24);
+      return items.slice().sort(byUpdated).slice(0,24);
     }
     async nowPlaying() { return (await this.all("movie")).slice().sort(byAdded).slice(0, 14); }
     async onTheAir() { return (await this.all("tv")).slice().sort(byAdded).slice(0, 14); }
@@ -752,37 +770,36 @@
       if (this._byId.has(id)) return this._byId.get(id);
       try {
         const { body } = await getJson(`${DATA_BASE}/data/shows/${encodeURIComponent(encodeURIComponent(id))}.json`, 8000);
+        if(body.id!==id)throw new Error('Title identity mismatch');
         this._merge([body],{snapshotAt:this._catalog.generatedAt||this._bundleAt||'1970-01-01'}); this._reindex();
         return body;
       } catch { /* not in the bundle */ }
       const r = await live.details(id);
       this._merge([r]); this._reindex();
-      return r;
+      return this._byId.get(id)||this._byId.get(r.id)||r;
     }
     async details(_type, id) {
       const raw = await this.show(id);
-      // Episode lists live in bundled per-series files (data/shows/<id>.json); pull them in once.
-      if (raw.kind === "series" && !(raw.episodes || []).length && !raw._episodesTried) {
-        raw._episodesTried = true;
-        try { const { body } = await getJson(`${DATA_BASE}/data/shows/${encodeURIComponent(encodeURIComponent(id))}.json`, 8000); if (body && Array.isArray(body.episodes) && body.episodes.length) { raw.episodes = body.episodes; raw.episodeCount = body.episodes.length; } }
-        catch { /* not bundled: the live tier fills it below */ }
-      }
-      if (this.liveEnabled && !this._details.has(id)) {
-        const cached = store.get("title:" + id, null);
-        if (cached && Date.now() - cached.t < 6 * 3600e3) {
-          this._merge([cached.show],{snapshotAt:new Date(cached.t).toISOString()}); this._details.set(id, true);
-        } else {
-          this._titleRequests ||= new Map();
-          if (!this._titleRequests.has(id)) {
-            const refresh = live.details(id, [raw.sourceUrl, ...(raw.offerings || []).map(o => o.sourceUrl)])
-              .then(fresh => { if(fresh) { this._merge([fresh]); this._reindex(); store.set("title:" + id, {t:Date.now(),show:fresh}); this._details.set(id,true); } })
-              .catch(e => console.warn("[flixer] live details unavailable:",e.message))
-              .finally(() => this._titleRequests.delete(id));
-            this._titleRequests.set(id,refresh);
-          }
-          // Only an unresolved series needs a blocking refresh to obtain real episode IDs.
-          if (raw.kind === "series" && !(raw.episodes || []).length) await this._titleRequests.get(id);
+      const canonical=raw.id,cached=store.get('title:'+canonical,null);
+      if(!this._details.has(canonical)&&cached&&Date.now()-cached.t<6*3600e3){this._merge([cached.show],{snapshotAt:new Date(cached.t).toISOString()});this._reindex();this._details.set(canonical,true);}
+      if(!this._details.has(canonical)){
+        this._titleRequests ||= new Map();
+        if(!this._titleRequests.has(canonical)){
+          const refresh=(async()=>{
+            try{const {body}=await getJson(`${DATA_BASE}/data/shows/${encodeURIComponent(encodeURIComponent(canonical))}.json`,6000);if(body.id!==canonical)throw new Error('Title identity mismatch');this._merge([body],{snapshotAt:this._catalog.generatedAt||this._bundleAt||'1970-01-01'});this._reindex();window.dispatchEvent(new CustomEvent('flixer:title',{detail:{id:canonical}}));}catch{}
+            const current=this._byId.get(canonical)||raw;
+            if(this.liveEnabled&&(!(current.synopsis||current.blurb)||!normalize(current).poster||current.kind==='series'&&!current.episodes?.length||Date.now()-Date.parse(this._catalog.generatedAt||0)>6*3600e3)){
+              const fresh=await live.details(canonical,[current.sourceUrl,...(current.offerings||[]).map(o=>o.sourceUrl)]);
+              if(fresh)this._merge([fresh]);
+            }
+            this._reindex();store.set('title:'+canonical,{t:Date.now(),show:this._byId.get(canonical)||raw});this._details.set(canonical,true);
+            window.dispatchEvent(new CustomEvent('flixer:title',{detail:{id:canonical}}));
+          })().catch(e=>console.warn('[flixer] title metadata unavailable:',e.message)).finally(()=>this._titleRequests.delete(canonical));
+          this._titleRequests.set(canonical,refresh);
         }
+        const pending=this._titleRequests.get(canonical);
+        if(raw.kind==='series'&&!raw.episodes?.length)await pending;
+        else await Promise.race([pending,new Promise(resolve=>setTimeout(resolve,180))]);
       }
       return this._build(this._byId.get(id) || raw);
     }
@@ -792,7 +809,7 @@
       const labels = new Map(c.genres[item.type].map(g => [g.id, g.name]));
       // A series whose episode list is unavailable still gets one entry so it can be played from the
       // source page (the player resolves the servers from there).
-      const list = raw.kind === "series" && (raw.episodes || []).length ? raw.episodes : [Object.assign(movieEpisode(raw), raw.kind === "series" ? { title: "Whole series", sourceUrl: raw.sourceUrl || `${SOURCE}/series/${raw.slug}/` } : {})];
+      const list = raw.kind === 'series' ? raw.episodes||[] : [movieEpisode(raw)];
       const episodes = list.map((e, i) => normalizeEpisode(e, i, raw));
       // TVmaze episode guide: titles, stills, air dates and summaries for the source's episodes.
       if (guide && raw.kind === "series" && item.tvmazeId && episodes.length) {
@@ -831,6 +848,8 @@
     async episode(showId, epId) {
       // A known playable episode does not depend on synopsis or an optional TVmaze guide.
       const raw = await this.show(showId);
+      if(raw.kind!=='series'&&(raw.aliasIds?.includes(epId)||raw.offerings?.some(o=>o.id===epId)))epId=raw.id;
+      const aliasEpisode=raw.episodes?.find(e=>e.offerings?.some(o=>o.id===epId));if(aliasEpisode)epId=aliasEpisode.id;
       const known = raw.kind !== "series" ? raw.id === epId : (raw.episodes || []).some(e => e.id === epId);
       const show = known ? await this._build(raw, { guide: false }) : await this.details(null, showId);
       const index = show.episodes.findIndex(e => e.id === epId);
@@ -879,30 +898,40 @@
     }
 
     /* ----- Playback sources (unchanged contract) ----- */
-    async stream(id, sourceUrl, show = {}, { signal } = {}) {
+    async stream(id, sourceUrl, show = {}, { signal,onSources } = {}) {
       const toAbsolute = url => !url ? null : (/^https?:\/\//.test(url) ? url : API_BASE + url);
       try {
         const params = new URLSearchParams({id});
         if (show.id) params.set('showId',show.id);
         [show.sourceUrl, ...(show.offerings || []).map(o => o.sourceUrl)].filter(Boolean).forEach(source => params.append('source',source));
-        const { body: data } = await getJson(`${API_BASE}/api/stream?${params}`, 45000, signal);
+        const normalizeServers=data=>{
         const servers = [];
         (Array.isArray(data.servers) ? data.servers : []).forEach((s, idx) => {
           if(s.requiresBrowserVerification || /^https:\/\/hdtoday\.sx\//i.test(s.embedUrl || ''))return;
           const streamUrl = toAbsolute(s.streamUrl || s.rawStreamUrl);
           const youtubeId = s.type === 'youtube' && /^[A-Za-z0-9_-]{11}$/.test(s.videoId || '') ? s.videoId : null;
           const embedUrl = youtubeId ? `https://www.youtube.com/embed/${youtubeId}?autoplay=1&playsinline=1&rel=0` : toAbsolute(s.embedUrl || s.rawEmbedUrl);
-          if (streamUrl || embedUrl) servers.push({ ...s, id: s.id != null ? s.id : idx, name: s.name || "Player " + (idx + 1), type: s.type || (streamUrl ? "hls" : "embed"), streamUrl, embedUrl });
+          if (streamUrl || embedUrl) servers.push({ ...s, sandbox:youtubeId?null:embedSandbox(s), id: s.id != null ? s.id : idx, name: s.name || "Player " + (idx + 1), type: s.type || (streamUrl ? "hls" : "embed"), streamUrl, embedUrl });
         });
         if (!servers.length && Array.isArray(data.streams)) data.streams.forEach((s, idx) => { const u = toAbsolute(s.proxyUri || s.uri); if (u) servers.push({ id: idx, name: s.quality || s.name || "Server " + (idx + 1), type: "hls", streamUrl: u }); });
         if (!servers.length && data.streamUrl) servers.push({ id: 0, name: "Player 1 (HLS)", type: "hls", streamUrl: toAbsolute(data.streamUrl) });
         if (!servers.length && data.embedUrl) servers.push({ id: 0, name: "Player 1", type: "embed", embedUrl: toAbsolute(data.embedUrl) });
+        return servers;
+        };
+        const full=getJson(`${API_BASE}/api/stream?${params}`,20000,signal).then(({body})=>normalizeServers(body));
+        let servers;
+        if(onSources&&(show.tmdbId||show.offerings?.some(o=>o.provider==='fmovies')||/^fm:/.test(id))){
+          const quickParams=new URLSearchParams(params);quickParams.set('mode','quick');
+          const quick=getJson(`${API_BASE}/api/stream?${quickParams}`,5000,signal).then(({body})=>normalizeServers(body));
+          full.then(choices=>{if(choices.length&&!(signal?.aborted))onSources(choices);}).catch(()=>{});
+          servers=await Promise.race([full.catch(()=>quick),quick.then(choices=>choices.length?choices:full).catch(()=>full)]);
+        }else servers=await full;
         if (servers.length) return { servers, via: "api" };
       } catch (e) {
         if (signal && signal.aborted) throw e;
         console.warn("[flixer] stream endpoint unavailable:", e.message);
       }
-      if(/^(hd:|sp:)/.test(id) || /^https:\/\/hdtoday\.sx\//i.test(sourceUrl || ''))return {servers:[],via:'unavailable'};
+      if(API_BASE||!/^(mf:)/.test(id)||/^https:\/\/hdtoday\.sx\//i.test(sourceUrl || ''))return {servers:[],via:'unavailable'};
       const page = sourceUrl || `${SOURCE}/${String(id).replace(/^mf:[mse]:/, "")}/`;
       try {
         const ctrl = new AbortController();

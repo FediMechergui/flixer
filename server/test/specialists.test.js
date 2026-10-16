@@ -13,7 +13,9 @@ const anime=`<div class="media-body"><h1>Dragon Ball Z</h1></div>
 const animePlayers=`<ul id="videos"><li><a data-id="44073" data-version="subbed"></a></li><li><a data-id="44074" data-version="dubbed"></a></li><li><a data-id="https://evil.test" data-version="dubbed"></a></li></ul><iframe src="https://ads.test"></iframe>`;
 
 test('specialist IDs authorize fixed origins and preserve real episode coordinates',()=>{
-  assert.equal(specialistUrl('sp:multimovies:e:indian-game-show-172976:2:41'),'https://multimovies.garden/series/indian-game-show-172976/season/2/episode/41');
+  assert.equal(specialistUrl('sp:multimovies:e:indian-game-show-172976:2:41'),'https://m1.multimovies.courses/series/indian-game-show-172976/season/2/episode/41');
+  assert.equal(specialistIdFromUrl('https://multimovies.garden/movie/example-77'),'sp:multimovies:m:example-77');
+  assert.equal(specialistIdFromUrl('https://m1.multimovies.courses/movie/example-77'),'sp:multimovies:m:example-77');
   assert.equal(specialistIdFromUrl('https://www.animegg.org/series/dragonball-z'),'sp:animegg:s:dragonball-z');
   assert.ok(validPlaybackId('sp:toontales:m:two-gun-mickey'));
   for(const id of ['sp:animegg:m:dragonball-z','sp:toontales:e:x','sp:animegg:e:../admin','sp:multimovies:e:show','sp:animegg:e:x:1:2','sp:multimovies:e:show:1:0','sp:animegg:e:x?url=http://localhost'])assert.equal(parseSpecialistId(id),null,id);

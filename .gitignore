@@ -17,7 +17,7 @@ server/data/seen.json
 server/data/catalog.json
 server/data/artwork.json
 server/data/*.tmp
-data-snapshot.tar.gz
+data-snapshot*.tar.gz
 build.log
 .vercel/
 .DS_Store

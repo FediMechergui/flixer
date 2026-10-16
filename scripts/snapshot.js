@@ -27,7 +27,23 @@ if (mode === 'save') {
   if (sh('tar', ['-czf', path.relative(dataDir, archive), ...present], { cwd: dataDir }).status !== 0) process.exit(1);
   const exists = spawnSync(exe('gh'), ['release', 'view', TAG,'--repo',repo], { stdio: 'ignore' }).status === 0;
   if (!exists && sh('gh', ['release', 'create', TAG, '--title', 'Data snapshot (auto)', '--notes', 'Cached Flixer catalogue metadata used by this repository. Updated automatically.', '--latest=false']).status !== 0) process.exit(1);
-  if (sh('gh', ['release', 'upload', TAG, ARCHIVE, '--clobber'], { cwd: root }).status !== 0) process.exit(1);
+  // Upload completely before replacing the published cache. --clobber deletes
+  // the old asset before a potentially slow upload, breaking concurrent builds.
+  const pendingName=`data-snapshot.pending-${Date.now()}.tar.gz`,pending=path.join(root,pendingName);
+  fs.copyFileSync(archive,pending);
+  if(sh('gh',['release','upload',TAG,pendingName],{cwd:root}).status!==0)process.exit(1);
+  const listed=spawnSync(exe('gh'),['api',`repos/${repo}/releases/tags/${TAG}`],{encoding:'utf8'});
+  if(listed.status!==0)throw new Error('Could not verify uploaded snapshot');
+  const assets=JSON.parse(listed.stdout).assets,newAsset=assets.find(a=>a.name===pendingName),old=assets.find(a=>a.name===ARCHIVE),backup=assets.find(a=>a.name==='data-snapshot.previous.tar.gz');
+  if(!newAsset||newAsset.state!=='uploaded'||newAsset.size!==fs.statSync(pending).size)throw new Error('Snapshot upload incomplete');
+  const assetApi=(id,args)=>spawnSync(exe('gh'),['api',`repos/${repo}/releases/assets/${id}`,...args],{stdio:'ignore'}).status===0;
+  if(backup&&!assetApi(backup.id,['--method','DELETE']))throw new Error('Could not retire previous snapshot backup');
+  if(old&&!assetApi(old.id,['--method','PATCH','-f','name=data-snapshot.previous.tar.gz']))throw new Error('Could not preserve previous snapshot');
+  if(!assetApi(newAsset.id,['--method','PATCH','-f',`name=${ARCHIVE}`])){
+    if(old)assetApi(old.id,['--method','PATCH','-f',`name=${ARCHIVE}`]);
+    throw new Error('Could not publish uploaded snapshot');
+  }
+  fs.rmSync(pending,{force:true});
   fs.rmSync(archive, { force: true });
   console.log(`snapshot saved (${present.join(', ')})`);
 } else if (mode === 'restore') {

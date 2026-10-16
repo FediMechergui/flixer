@@ -54,7 +54,7 @@ async function scan({product,full,pageBudget,log}) {
   cache.queue=cache.queue.filter(job=>!(job.provider==='egydead'&&job.collection==='plays'));
   const errors={};let requests=0;
   const deferred=new Set();
-  const unavailable=provider=>errors[provider]&&!/inconsistent empty pagination/.test(errors[provider]);
+  const unavailable=provider=>/HTTP (?:401|403|429)|verification required|origin changed/i.test(errors[provider]||'');
   // Cached HDToday data is the default until ordinary hosted access returns.
   // Independent feeds require explicit configuration, never just a file's presence.
   const feed=process.env.HDTODAY_EXTERNAL_FEED==='1'?validateHdtodayFeed(readJson('hdtoday-feed.json',null)):null;

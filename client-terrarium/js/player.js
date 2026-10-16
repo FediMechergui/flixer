@@ -15,13 +15,13 @@
   function initialIndex(servers) {
     try{
       const preference=JSON.parse(localStorage.getItem('flixer:player-preference')||'null');
-      if(preference){
+      if(preference?.confirmed){
         let index=servers.findIndex(s=>s.provider===preference.provider && s.name===preference.name);
         if(index<0 && preference.audioMode)index=servers.findIndex(s=>s.audioMode===preference.audioMode);
         if(index>=0)return index;
       }
     }catch{}
-    const i = servers.findIndex(s => (s.name || "").toLowerCase().includes("player 2"));
+    const i = servers.findIndex(s => s.type==='youtube'||s.videoId||s.type==='file');
     return i !== -1 ? i : 0;
   }
 
@@ -60,8 +60,7 @@
       bar.innerHTML = `<span class="player__bar-title"><i class="dot"></i>Server</span>` +
         servers.map((s, i) => `<button type="button" class="player__srv ${i === st.idx ? "is-active" : ""}" data-i="${i}" title="Switch to ${esc(s.name)}">${esc(s.name)}</button>`).join("");
       $$("[data-i]", bar).forEach(b => b.addEventListener("click", () => {
-        const index=+b.dataset.i,server=servers[index];
-        try{localStorage.setItem('flixer:player-preference',JSON.stringify({provider:server.provider,name:server.name,audioMode:server.audioMode}));}catch{}
+        const index=+b.dataset.i;
         load(index);
       }));
       const active = $(".is-active", bar);
@@ -109,7 +108,7 @@
       showNotice("Loading video...");
       st.startupTimer = setTimeout(failed, 25000);
       v.addEventListener("loadeddata", ready, { once: true });
-      v.addEventListener("playing", ready);
+      v.addEventListener("playing", () => {ready();try{localStorage.setItem('flixer:player-preference',JSON.stringify({provider:s.provider,name:s.name,audioMode:s.audioMode,confirmed:true}));}catch{}});
       v.addEventListener("waiting", () => { if (current()) showNotice("Buffering... You can switch servers above"); });
       v.addEventListener("error", failed);
       v.addEventListener("timeupdate", () => { if (v.duration > 0 && opts.onProgress) opts.onProgress(v.currentTime, v.duration); });
@@ -143,7 +142,15 @@
         if (!st.destroyed) showNotice("Taking a while? Try another server above");
       }, 12000);
       stage.innerHTML = `<iframe src="${esc(s.embedUrl)}" title="${esc(opts.title || "Player")}" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" allowfullscreen ${s.sandbox === null ? "" : 'sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"'} frameborder="0" referrerpolicy="no-referrer-when-downgrade"></iframe>`;
+      const frame=$('iframe',stage),generation=st.generation;
+      frame.addEventListener('error',()=>{if(generation===st.generation)failover();});
     }
+
+    const onPlayerFailure=event=>{
+      const frame=$('iframe',stage);if(!frame||!event.detail?.url)return;
+      try{const failed=new URL(event.detail.url),current=new URL(frame.src);if(failed.href===current.href||event.detail.document&&failed.origin===current.origin)failover();}catch{}
+    };
+    window.addEventListener('flixer:player-error',onPlayerFailure);
 
     function failover() {
       if (st.destroyed) return;
@@ -217,10 +224,18 @@
 
     return {
       switchTo: load,
+      updateServers(additional){
+        if(st.destroyed)return;
+        const key=s=>s.streamUrl||s.embedUrl||s.videoId,seen=new Set(servers.map(key)),first=servers.length;
+        for(const server of additional||[])if(!seen.has(key(server))){seen.add(key(server));servers.push(server);}
+        if(servers.length===first)return;
+        if($('.player__error',stage))load(first,true);else renderBar();
+      },
       destroy() {
         st.destroyed = true;
         clearTimeout(st.noticeTimer);
         clearTimeout(uiTimer);
+        window.removeEventListener('flixer:player-error',onPlayerFailure);
         document.removeEventListener("fullscreenchange", onFsChange);
         document.removeEventListener("webkitfullscreenchange", onFsChange);
         teardownMedia();

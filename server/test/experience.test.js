@@ -9,14 +9,50 @@ function fixture(shows, streams = {}, respond, options = {}) {
   const requests=[];
   const catalog={product:'flixer',shows,generatedAt:options.generatedAt};
   const storage=options.storage||new Map();
-  const context=vm.createContext({window:{FLIXER_CONFIG:{live:false},dispatchEvent:()=>{}},console,URLSearchParams,CustomEvent:class {},localStorage:{getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,value)},AbortController,setTimeout,clearTimeout,fetch:async input=>{
+  const events=[];
+  const context=vm.createContext({window:{FLIXER_CONFIG:{live:false,...options.config},dispatchEvent:e=>events.push(e)},console,URL,URLSearchParams,CustomEvent:class {constructor(type,opts){this.type=type;this.detail=opts?.detail;}},localStorage:{getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,value)},AbortController,setTimeout,clearTimeout,fetch:async input=>{
     const url=String(input);requests.push(url);
-    const body=url.includes('/data/index.json')&&options.index?await options.index:url.includes('/api/discover?')&&respond?await respond(url):url.includes('/api/stream?')?streams:/\/(bootstrap|index)\.json/.test(url)?catalog:{};
+    const custom=options.fetchBody?await options.fetchBody(url):undefined;
+    const body=custom!==undefined?custom:url.includes('/data/index.json')&&options.index?await options.index:url.includes('/api/discover?')&&respond?await respond(url):url.includes('/api/stream?')?streams:/\/(bootstrap|index)\.json/.test(url)?catalog:{};
     return {ok:true,status:200,headers:{get:()=>null},text:async()=>JSON.stringify(body)};
   }});
   for(const name of ['universes.js','tvmaze.js','api.js'])vm.runInContext(fs.readFileSync(new URL(`../../client-terrarium/js/${name}`,import.meta.url),'utf8'),context);
-  return {api:new context.window.Api.FlixerApi(),requests};
+  return {api:new context.window.Api.FlixerApi(),requests,events};
 }
+
+test('an explicit app backend never falls back to Myflixer after a health-check failure',async()=>{
+  const row={id:'sp:tuniflix:m:example',title:'A specialist film',kind:'film'};
+  const {api,requests}=fixture([],{},null,{config:{apiBase:'https://backend.test'},fetchBody:url=>{if(url.includes('/api/genres')||url.includes('/data/shows/'))throw new Error('Unavailable');if(url.includes('/api/title?'))return row;}});
+  assert.equal((await api.show(row.id)).id,row.id);assert.equal(requests.some(url=>url.includes('wp-json')),false);assert.equal(requests.some(url=>url.includes('/api/genres')),false);
+  await api._indexReady;await api._metadataReady;
+});
+
+test('recent provider responses cannot pin older films ahead of newer releases',async()=>{
+  const {api}=fixture([{id:'old',kind:'film',title:'Old film',latestAt:'2026-01-01'},{id:'new',kind:'series',title:'New release',latestAt:'2026-10-16'}]);
+  await api.catalog();api._recentIds=new Set(['old']);assert.equal((await api.trending())[0].id,'new');await api._indexReady;await api._metadataReady;
+});
+
+test('film detail descriptions load from published source metadata and notify the open screen',async()=>{
+  const row={id:'film',kind:'film',title:'A film'};
+  const {api,events}=fixture([row],{},null,{fetchBody:url=>url.includes('/data/shows/')?{...row,synopsis:'Actual source description',poster:{custom:'https://source.test/poster.jpg'}}:undefined});
+  const detail=await api.details(null,row.id);assert.equal(detail.overview,'Actual source description');assert.equal(detail.poster,'https://source.test/poster.jpg');assert.ok(events.some(e=>e.type==='flixer:title'&&e.detail.id===row.id));await api._indexReady;await api._metadataReady;
+});
+
+test('saved fresh home feed and canonical provider aliases survive an older bundled index',async()=>{
+  const storage=new Map([['flixer:homeSnapshot',JSON.stringify({product:'flixer',generatedAt:'2026-10-16',shows:[{id:'canonical',kind:'film',title:'Fresh title',aliasIds:['fm:m:77'],latestAt:'2026-10-16'}]})]]);
+  const {api}=fixture([{id:'canonical',kind:'film',title:'Old title',latestAt:'2026-01-01'}],{},null,{storage,generatedAt:'2026-01-01'});
+  await api.catalog();await api._indexReady;assert.equal((await api.show('fm:m:77')).title,'Fresh title');await api._metadataReady;
+});
+
+test('all known compatible Myflixer embeds receive the same player policy',async()=>{
+  const {api}=fixture([],{servers:[{type:'embed',embedUrl:'https://multiembed.mov/?video_id=tt123'},{type:'embed',embedUrl:'https://balance.medmedia03.wiki/embed/movie/77'},{type:'embed',embedUrl:'https://unknown.test/player'}]});
+  const {servers}=await api.stream('mf:m:example');assert.equal(servers[0].sandbox,null);assert.equal(servers[1].sandbox,null);assert.equal(servers[2].sandbox,undefined);
+});
+
+test('a verified provider alias opens the canonical movie without duplicate title requests',async()=>{
+  const {api,requests}=fixture([{id:'mf:m:film',kind:'film',title:'Film',aliasIds:['fm:m:77'],offerings:[{provider:'fmovies',id:'fm:m:77'}]}]);
+  const result=await api.episode('fm:m:77','fm:m:77');assert.equal(result.show.id,'mf:m:film');assert.equal(result.episode.id,'mf:m:film');assert.equal(requests.some(url=>url.includes('/api/title')),false);await api._indexReady;await api._metadataReady;
+});
 
 test('scrolling saved catalogue pages never waits for a slow provider',async()=>{
   let complete;const remote=new Promise(resolve=>{complete=resolve;});

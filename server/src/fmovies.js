@@ -1,4 +1,5 @@
 import { safeRemoteFetch } from './stream-security.js';
+import {artworkUrl} from '../../shared/artwork.js';
 
 export const FMOVIES_BASE = 'https://www.f-movies.org';
 export const FMOVIES_GENRES = {
@@ -20,6 +21,7 @@ function offering(item) {
   return { provider:'fmovies', id:item.id, tmdbId:item.tmdbId, kind:item.kind, sourceUrl:item.sourceUrl, documentary:item.documentary === true };
 }
 function baseItem({ id, kind, title, year, poster, tags = [], sourceUrl, synopsis = '', lang = null }) {
+  poster=artworkUrl(poster,FMOVIES_BASE);
   const item = { id:`fm:${kind === 'film' ? 'm' : 's'}:${id}`, tmdbId:Number(id), kind, title, year:year || null, lang, contentLang:lang, synopsis,
     tags:[...new Set(tags)], documentary:tags.includes('documentary'), sourceUrl, channelId:'fmovies', poster:poster ? {custom:poster} : null, portrait:poster || null,
     publishedAt:null, latestAt:null, totalDurationSec:null, totalViews:null, episodes:[], episodeCount:0, seasons:[], altTitles:[], providerMetadata:true };

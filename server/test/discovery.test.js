@@ -23,6 +23,19 @@ test('imported Flixer episodes resolve their existing servers without title netw
 });
 
 const row=(id,title='Shared',extra={})=>({id,title,kind:'film',year:2024,tags:['animation'],...extra});
+
+test('quick playback returns verified servers without waiting on other source resolvers',async()=>{
+  const id='fm:e:123:2:3',catalog={product:'flixer',shows:[{id:'show',kind:'series',tmdbId:123,episodes:[{id,season:2,number:3,offerings:[{provider:'fmovies',id},{provider:'myflixer',id:'mf:e:example'}]}]}]};
+  const result=await unifiedStream(id,{showId:'show',catalog,product:'flixer',quick:true,resolveTitle:()=>{throw new Error('Must not enrich known episode');},resolveMyflixer:()=>{throw new Error('Must not wait for slow source');}});
+  assert.ok(result.servers.length>=3);assert.equal(result.servers.some(s=>s.provider==='myflixer'),false);
+  const unknown=await unifiedStream('fm:e:123:2:99',{showId:'show',catalog,product:'flixer',quick:true});assert.deepEqual(unknown.servers,[]);
+});
+
+test('provider failure cache retains matching regional titles without leaking other collections',async()=>{
+  const shows=[{id:'mf:s:korean',kind:'series',title:'Korean series',countries:['KR']},{id:'mf:s:american',kind:'series',title:'American series',countries:['US']}];
+  const result=await discoverLibrary({kind:'series',collection:'kdrama',product:'flixer',catalog:{shows},fetchers:[async()=>({items:[],totalPages:1}),async()=>({items:[],totalPages:1}),async()=>{throw new Error('Upstream timeout');}]});
+  assert.deepEqual(result.items.map(s=>s.id),['mf:s:korean']);assert.equal(result.providers[2].cached,true);
+});
 test('regional pages retry inconsistent empty query variants instead of truncating the catalogue',async()=>{
   const calls=[],filter='<select name="country"><option value="KR" selected>Korea</option></select>';
   const result=await fetchFmoviesPage({country:'KR',kind:'series',page:6,fetchHtml:async path=>{

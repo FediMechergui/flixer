@@ -2,6 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { thumbnailCandidates } from '../../client/src/lib/thumbnails.js';
 import { playerPolicy } from '../../client/src/lib/player-policy.js';
+import {artworkUrl} from '../../shared/artwork.js';
+
+test('source artwork placeholders are not treated as usable image URLs',()=>{
+  for(const value of [undefined,null,'undefined','None','https://source.test/undefined','https://image.tmdb.org/t/p/w200/None'])assert.equal(artworkUrl(value,'https://source.test'),null);
+  assert.equal(artworkUrl('/real.jpg','https://source.test'),'https://source.test/real.jpg');
+});
 
 test('Dahsha skips missing image sizes and retains YouTube and show artwork fallbacks',()=>{
   assert.deepEqual(thumbnailCandidates({hq:'https://example.com/hq.jpg'},null,'sd'),['https://example.com/hq.jpg']);

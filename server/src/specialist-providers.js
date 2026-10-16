@@ -1,4 +1,5 @@
 import { load } from 'cheerio';
+import {artworkUrl} from '../../shared/artwork.js';
 import { safeRemoteFetch } from './stream-security.js';
 import { ARABIC_PROVIDERS,parseArabicId,arabicUrl,arabicIdFromUrl,getArabicDetails,fetchArabicPage,resolveArabicServers } from './arabic-providers.js';
 
@@ -10,7 +11,7 @@ export const SPECIALISTS = {
   megacartoons:{name:'MegaCartoons',origin:'https://www.megacartoons.net',kind:'series',collections:['cartoons','classic-cartoons']},
   toontales:{name:'ToonTales',origin:'https://www.toontales.net',kind:'film',collections:['cartoons','classic-cartoons']},
   myasiantv:{name:'MyAsianTV',origin:'https://myasiantv.com.bz',kind:null,collections:['kdrama']},
-  multimovies:{name:'MultiMovies',origin:'https://multimovies.garden',kind:null,collections:['indian','kdrama','anime']},
+  multimovies:{name:'MultiMovies',origin:'https://m1.multimovies.courses',aliases:['https://multimovies.garden'],kind:null,collections:['indian','kdrama','anime']},
   yoturkish:{name:'YoTurkish',origin:'https://www1.yoturkish.com',kind:'series',collections:['turkish']},
 };
 const slugPattern='[a-z0-9][a-z0-9_-]{0,259}';
@@ -34,7 +35,7 @@ export function specialistIdFromUrl(value){
   const arabic=arabicIdFromUrl(value);if(arabic)return arabic;
   try{const u=new URL(value);for(const [provider,cfg] of Object.entries(SPECIALISTS)){
     if(ARABIC_PROVIDERS[provider])continue;
-    if(u.origin!==cfg.origin || u.search || u.hash || u.username || u.password)continue;
+    if(u.origin!==cfg.origin&&!cfg.aliases?.includes(u.origin) || u.search || u.hash || u.username || u.password)continue;
     if(provider==='multimovies'){const m=new RegExp(`^/(movie|series)/(${slugPattern})$`).exec(u.pathname);if(m)return `sp:${provider}:${m[1]==='movie'?'m':'s'}:${m[2]}`;continue;}
     const pattern=provider==='animegg'?'/series/':provider==='megacartoons'?'/video-serie/':provider==='toontales'?'/short/':provider==='yoturkish'?'/':'/series/';
     const m=new RegExp(`^${pattern}(${slugPattern})/?$`).exec(u.pathname);
@@ -44,7 +45,7 @@ export function specialistIdFromUrl(value){
 const clean=value=>String(value||'').replace(/\s+/g,' ').trim();
 const unique=rows=>{const map=new Map();for(const row of rows){const old=map.get(row.id);map.set(row.id,old?{...old,...row,poster:row.poster||old.poster,portrait:row.portrait||old.portrait,thumbs:row.thumbs||old.thumbs,audioModes:[...new Set([...(old.audioModes||[]),...(row.audioModes||[])])]}:row);}return [...map.values()];};
 function localUrl(value,origin){try{const u=new URL(value,origin);return u.origin===origin && !u.username && !u.password ? u : null;}catch{return null;}}
-function image(value,origin){try{const u=new URL(value,origin);return u.protocol==='https:' && !u.username && !u.password?u.href:null;}catch{return null;}}
+function image(value,origin){return artworkUrl(value,origin);}
 const cache=new Map();
 async function page(url,{ttl=120000,method='GET'}={}){
   const key=`${method}:${url}`,entry=cache.get(key);if(entry && Date.now()-entry.at<ttl)return entry.promise;

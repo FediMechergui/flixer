@@ -218,7 +218,7 @@
 
   function renderTab(tab) {
     $$(".tab").forEach(t => t.classList.toggle("is-active", t.dataset.tab === tab));
-    if (state.renderedTab === tab) { return; }
+    if (state.renderedTab === tab && !(tab==='home'&&state.homeRevision!==(state.catalogRevision||0))) { return; }
     if (state.renderedTab) state.scroll[state.renderedTab] = window.scrollY;
     clearInterval(state.heroTimer);
     if (state.browse && state.browse.observer) state.browse.observer.disconnect();
@@ -227,6 +227,7 @@
     const view = $("#view");
     view.innerHTML = "";
     TAB_RENDERERS[tab](view);
+    if(tab==='home'&&api.liveEnabled&&Date.now()-(api._lastSync||0)>60000)api.catalog().then(()=>api.sync()).catch(()=>{});
     window.scrollTo(0, state.scroll[tab] || 0);
   }
 
@@ -330,6 +331,7 @@
       section("Top rated series", "TVmaze rating", ratedTv, { rating: true }) +
       section("Recent releases", "Films by release year", topM, { genre: true }) +
       section("Longest series", "Most episodes available", topT, { genre: true });
+    state.homeRevision=state.catalogRevision||0;
 
     $$("[data-collection]", view).forEach(b => b.addEventListener("click", () => {
       state.filters.all = Object.assign(defaultFilters(), { collection:b.dataset.collection }); saveFilters(); state.renderedTab = null;
@@ -702,6 +704,7 @@
     catch (e) { el.innerHTML = `<button class="detail__back" data-back aria-label="Back">${ICON.back}</button><div style="height:80px"></div>${emptyState("Could not open this title", e.message)}`; $("[data-back]", el).addEventListener("click", goBack); return; }
     if (!el.isConnected) return;
     type = d.type;
+    el.dataset.titleId=d.id;
 
     const saved = inList(d);
     const entry = entryEpisode(d);
@@ -842,13 +845,13 @@
     };
     paintInfo();
 
-    let sources;
-    try { sources = await api.stream(episode.id, episode.sourceUrl, show, {signal:request.signal}); }
+    let sources,lateServers,mountedPlayer;
+    try { sources = await api.stream(episode.id, episode.sourceUrl, show, {signal:request.signal,onSources:servers=>{lateServers=servers;if(el.isConnected)mountedPlayer?.updateServers(servers);}}); }
     catch (e) { sources = { servers: [] }; }
     if (!el.isConnected) return;
 
     let lastSave = 0;
-    state.player = FlixerPlayer.mount($(".watch__player", el), {
+    state.player = mountedPlayer = FlixerPlayer.mount($(".watch__player", el), {
       servers: sources.servers,
       poster: episode.still || show.backdrop || show.poster,
       title: `${show.title}${type === "tv" ? " · " + episode.title : ""}`,
@@ -860,6 +863,7 @@
         if (next && state.settings.autoplay) startCountdown(el, show, next);
       }
     });
+    if(lateServers)mountedPlayer.updateServers(lateServers);
     el.scrollTop = 0;
   }
 
@@ -910,7 +914,17 @@
     if (!n && !e.detail?.updated) return;
     if(n) toast(`${n} new title${n === 1 ? "" : "s"} added`);
     state.meta.genres = {};
-    if (state.renderedTab === "home" && !$("#sheet-root > .detail") && !$$("#home-rows .row").some(row=>row.scrollLeft>0)) { state.renderedTab = null; renderTab("home"); }
+    state.catalogRevision=(state.catalogRevision||0)+1;
+    if (state.renderedTab === "home" && /^(?:#\/home)?$/.test(location.hash) && !$("#sheet-root > .detail,#sheet-root > .watch") && !$$("#home-rows .row").some(row=>row.scrollLeft>0)) { renderTab("home"); }
+  });
+
+  window.addEventListener('flixer:title',async event=>{
+    const item=await api.item(event.detail.id);if(!item)return;
+    const detail=$('#sheet-root > .detail');
+    if(detail?.dataset.titleId===item.id){
+      const overview=$('#ov',detail);if(overview&&item.overview){overview.textContent=item.overview;overview.classList.remove('is-clamped');$('[data-more]',detail)?.remove();}
+      const poster=$('.detail__poster',detail);if(poster&&item.poster&&!$('img',poster)){const img=document.createElement('img');img.src=item.poster;img.alt='';img.dataset.art=item.id;poster.appendChild(img);}
+    }
   });
 
   /* ---------- Boot ---------- */

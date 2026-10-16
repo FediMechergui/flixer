@@ -68,11 +68,12 @@ export function writeCatalog(outDir, catalog, product) {
       fs.writeFileSync(path.join(stage, `catalog${lang}.json`), JSON.stringify(section));
     }
     if(product==='flixer') {
-      const index={...lean,lite:true,shows:lean.shows.map(({episodes,seasons,versions,offerings,blurb,...show})=>({...show,firstEpisodeId:episodes?.[0]?.id}))};
+      const index={...lean,lite:true,shows:lean.shows.map(({episodes,seasons,versions,offerings,blurb,...show})=>({...show,aliasIds:(offerings||[]).map(o=>o.id).filter(id=>id!==show.id),firstEpisodeId:episodes?.[0]?.id}))};
       fs.writeFileSync(path.join(stage,'index.json'),JSON.stringify(index));
       const updated=show=>[show.latestEpisode?show.providerUpdatedAt:null,show.latestAt,show.publishedAt].filter(Boolean).sort().pop() || '';
       const recent=[...index.shows].sort((a,b)=>updated(b).localeCompare(updated(a)));
-      fs.writeFileSync(path.join(stage,'bootstrap.json'),JSON.stringify({...index,shows:recent.slice(0,600)}));
+      const summaries=new Map(lean.shows.map(s=>[s.id,s.blurb]));
+      fs.writeFileSync(path.join(stage,'bootstrap.json'),JSON.stringify({...index,shows:recent.slice(0,600).map(s=>({...s,blurb:summaries.get(s.id)||''}))}));
     }
     for (const show of payload.shows) {
       writeTitle(show);
