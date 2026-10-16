@@ -52,6 +52,10 @@ public class PlayerWebViewClient extends BridgeWebViewClient {
         }
         if (!request.isForMainFrame()) return !("https".equals(scheme) || "http".equals(scheme) || "about".equals(scheme) || "blob".equals(scheme));
         String current = view.getUrl();
+        // WebView may already expose the destination URL during this callback,
+        // so protecting app-root document loads cannot depend on its old hash.
+        if (!request.hasGesture() && "localhost".equals(target.getHost())
+                && (target.getFragment()==null || target.getFragment().isEmpty()) && current!=null) return true;
         if (current != null && current.contains("/watch/")) {
             Uri origin = Uri.parse(current);
             // A player/ad can target the app's origin and strip its route. That

@@ -930,6 +930,18 @@
 
   /* ---------- Boot ---------- */
   $("#btn-settings").addEventListener("click", openSettings);
-  window.addEventListener("hashchange", () => { state.hasHistory = true; route(); });
+  window.navigation?.addEventListener('navigate',event=>{
+    const destination=new URL(event.destination.url);
+    if(location.hash.startsWith('#/watch/')&&event.navigationType!=='traverse'&&event.cancelable
+      &&destination.origin===location.origin&&!destination.hash)event.preventDefault();
+  });
+  window.addEventListener("hashchange", event => {
+    // Players can clear the parent's hash without a document navigation, which
+    // never reaches Android's navigation callback. Keep the active player.
+    const previous=new URL(event.oldURL).hash;
+    if(!location.hash&&previous.startsWith('#/watch/')){history.replaceState(null,'',previous);return;}
+    state.hasHistory = true; route();
+  });
+  if(!location.hash)history.replaceState(null,'','#/home');
   route();
 })();
