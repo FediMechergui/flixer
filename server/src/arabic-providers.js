@@ -286,9 +286,9 @@ export async function resolveArabicServers(id,{fresh=false}={}){
   }
   const p=parseArabicId(id);if(!p||p.type==='s')return [];let html=await arabicPage(arabicUrl(id),{view:p.provider==='egydead',fresh});
   if(p.provider==='streamtunisie'&&p.type==='m'){
-    const $=load(html),link=$('article a[href*="/watch-movie-"]').first().attr('href'),u=fixed(link,ARABIC_PROVIDERS[p.provider].origin);if(u&&/^\/watch-movie-[^/?]+\/$/.test(u.pathname))html=await arabicPage(u.href);
+    const $=load(html),link=$('article a[href*="/watch-movie-"]').first().attr('href'),u=fixed(link,ARABIC_PROVIDERS[p.provider].origin);if(u&&/^\/watch-movie-[^/?]+\/$/.test(u.pathname))html=await arabicPage(u.href,{fresh});
   }
-  if(p.provider==='ahwaktv')html=await arabicPage(`${ARABIC_PROVIDERS.ahwaktv.origin}/see.php?vid=${p.slug}`);
+  if(p.provider==='ahwaktv')html=await arabicPage(`${ARABIC_PROVIDERS.ahwaktv.origin}/see.php?vid=${p.slug}`,{fresh});
   if(p.provider==='tuniflix'){
     const $=load(html),choices=$('iframe[src]').toArray().map(a=>fixed($(a).attr('src'),ARABIC_PROVIDERS.tuniflix.origin)).filter(u=>u&&u.pathname==='/'&&/^\d+$/.test(u.searchParams.get('trembed')||'')&&/^\d+$/.test(u.searchParams.get('trid')||'')&&/^[12]$/.test(u.searchParams.get('trtype')||''));
     const firstId=choices[0]?.searchParams.get('trid');

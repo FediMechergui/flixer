@@ -339,7 +339,7 @@ export function parseSpecialistServers(id,html){
 export async function resolveSpecialistServers(id,options={}){
   if(parseArabicId(id))return resolveArabicServers(id,options);
   const p=parseSpecialistId(id);if(!p || p.type==='s')return [];
-  return parseSpecialistServers(id,await page(specialistUrl(id),{ttl:30000}));
+  return parseSpecialistServers(id,await page(specialistUrl(id),{ttl:options.fresh?0:30000}));
 }
 
 function inlineJson(html,name){
