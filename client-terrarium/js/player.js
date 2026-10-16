@@ -151,6 +151,11 @@
       try{const failed=new URL(event.detail.url),current=new URL(frame.src);if(failed.href===current.href||event.detail.document&&failed.origin===current.origin)failover();}catch{}
     };
     window.addEventListener('flixer:player-error',onPlayerFailure);
+    const onProviderMessage=event=>{
+      const frame=$('iframe',stage);
+      if(frame&&event.origin==='https://embos.top'&&event.source===frame.contentWindow&&event.data?.type==='flixer:provider-missing')failover();
+    };
+    window.addEventListener('message',onProviderMessage);
 
     function failover() {
       if (st.destroyed) return;
@@ -236,6 +241,7 @@
         clearTimeout(st.noticeTimer);
         clearTimeout(uiTimer);
         window.removeEventListener('flixer:player-error',onPlayerFailure);
+        window.removeEventListener('message',onProviderMessage);
         document.removeEventListener("fullscreenchange", onFsChange);
         document.removeEventListener("webkitfullscreenchange", onFsChange);
         teardownMedia();

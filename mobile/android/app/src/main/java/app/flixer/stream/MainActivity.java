@@ -14,6 +14,11 @@ public class MainActivity extends BridgeActivity {
         android.webkit.WebView webView = getBridge().getWebView();
         webView.setWebChromeClient(chromeClient);
         getBridge().setWebViewClient(new PlayerWebViewClient(getBridge()));
+        if (androidx.webkit.WebViewFeature.isFeatureSupported(androidx.webkit.WebViewFeature.DOCUMENT_START_SCRIPT)) {
+            androidx.webkit.WebViewCompat.addDocumentStartJavaScript(webView,
+                "if(location.pathname==='/404'||location.pathname==='/404/')parent.postMessage({type:'flixer:provider-missing'},'https://localhost');",
+                java.util.Collections.singleton("https://embos.top"));
+        }
 
         android.webkit.WebSettings settings = webView.getSettings();
         settings.setMixedContentMode(android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW);
