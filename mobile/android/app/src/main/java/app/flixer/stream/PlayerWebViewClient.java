@@ -11,8 +11,20 @@ public class PlayerWebViewClient extends BridgeWebViewClient {
     public PlayerWebViewClient(Bridge bridge) { super(bridge); }
 
     private void reportPlayerFailure(WebView view, WebResourceRequest request, int status, boolean document) {
-        String url=org.json.JSONObject.quote(request.getUrl().toString());
+        reportPlayerFailure(view,request.getUrl().toString(),status,document);
+    }
+
+    private void reportPlayerFailure(WebView view, String resourceUrl, int status, boolean document) {
+        String url=org.json.JSONObject.quote(resourceUrl);
         view.post(() -> view.evaluateJavascript("window.dispatchEvent(new CustomEvent('flixer:player-error',{detail:{url:"+url+",status:"+status+",document:"+document+"}}))",null));
+    }
+
+    @Override
+    public void onLoadResource(WebView view, String url) {
+        super.onLoadResource(view,url);
+        Uri resource=Uri.parse(url);
+        if("embos.top".equals(resource.getHost()) && ("/404".equals(resource.getPath()) || "/404/".equals(resource.getPath())))
+            reportPlayerFailure(view,url,404,true);
     }
 
     @Override
