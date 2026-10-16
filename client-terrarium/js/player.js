@@ -21,7 +21,7 @@
         if(index>=0)return index;
       }
     }catch{}
-    const i = servers.findIndex(s => s.type==='youtube'||s.videoId||s.type==='file');
+    const i = servers.findIndex(s => s.type==='youtube'||s.videoId||s.type==='file'||s.type==='dessinanime');
     return i !== -1 ? i : 0;
   }
 
