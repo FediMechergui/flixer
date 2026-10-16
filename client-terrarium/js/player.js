@@ -153,7 +153,7 @@
     window.addEventListener('flixer:player-error',onPlayerFailure);
     const onProviderMessage=event=>{
       const frame=$('iframe',stage);
-      const trusted=['https://embos.top','https://mxdrop.click','https://mixdrop.top','https://hgcloud.to','https://vkvideo.ru','https://www.ok.ru','https://ok.ru','https://s1.hdup400.com','https://player.mediadelivery.net','https://playmogo.com','https://watch.easyvidplayer.com'];
+      const trusted=['https://embos.top','https://mxdrop.click','https://mixdrop.top','https://hgcloud.to','https://vkvideo.ru','https://www.ok.ru','https://ok.ru','https://s1.hdup400.com','https://player.mediadelivery.net','https://playmogo.com','https://watch.easyvidplayer.com','https://vidcore.io','https://vidcore.net'];
       if(frame&&trusted.includes(event.origin)&&event.source===frame.contentWindow&&event.data?.type==='flixer:provider-missing')failover();
     };
     window.addEventListener('message',onProviderMessage);

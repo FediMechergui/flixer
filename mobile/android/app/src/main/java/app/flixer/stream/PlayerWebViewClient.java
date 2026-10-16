@@ -54,6 +54,10 @@ public class PlayerWebViewClient extends BridgeWebViewClient {
         String current = view.getUrl();
         if (current != null && current.contains("/watch/")) {
             Uri origin = Uri.parse(current);
+            // A player/ad can target the app's origin and strip its route. That
+            // reloads the entire catalogue, even though no external host opens.
+            if (!request.hasGesture() && java.util.Objects.equals(origin.getHost(),target.getHost())
+                    && (target.getFragment()==null || target.getFragment().isEmpty())) return true;
             if (!java.util.Objects.equals(origin.getHost(), target.getHost())) {
                 // The app's explicit Source link remains usable; player ad destinations do not.
                 String host = target.getHost();
