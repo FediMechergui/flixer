@@ -9,8 +9,8 @@ function fixture(shows, streams = {}, respond, options = {}) {
   const requests=[];
   const catalog={product:'flixer',shows,generatedAt:options.generatedAt};
   const storage=options.storage||new Map();
-  const events=[];
-  const context=vm.createContext({window:{FLIXER_CONFIG:{live:false,...options.config},dispatchEvent:e=>events.push(e)},console,URL,URLSearchParams,CustomEvent:class {constructor(type,opts){this.type=type;this.detail=opts?.detail;}},localStorage:{getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,value)},AbortController,setTimeout,clearTimeout,fetch:async input=>{
+  const events=[],listeners=new Map();
+  const context=vm.createContext({window:{FLIXER_CONFIG:{live:false,...options.config},dispatchEvent:e=>{events.push(e);for(const listener of listeners.get(e.type)||[])listener(e);},addEventListener:(type,listener)=>{if(!listeners.has(type))listeners.set(type,new Set());listeners.get(type).add(listener);},removeEventListener:(type,listener)=>listeners.get(type)?.delete(listener)},console,URL,URLSearchParams,CustomEvent:class {constructor(type,opts){this.type=type;this.detail=opts?.detail;}},localStorage:{getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,value)},AbortController,setTimeout,clearTimeout,fetch:async input=>{
     const url=String(input);requests.push(url);
     const custom=options.fetchBody?await options.fetchBody(url):undefined;
     const body=custom!==undefined?custom:url.includes('/data/index.json')&&options.index?await options.index:url.includes('/api/discover?')&&respond?await respond(url):url.includes('/api/stream?')?streams:/\/(bootstrap|index)\.json/.test(url)?catalog:{};
@@ -206,4 +206,9 @@ test('film artwork recovery tries alternate source posters instead of stopping a
  const {api}=fixture([row]);await api.catalog();await api._indexReady;
  assert.equal(await api.posterFallback('movie',['https://example.com/broken.jpg']),'https://example.com/good.jpg');
  assert.equal(await api.posterFallback('movie',['https://example.com/broken.jpg','https://example.com/good.jpg']),null);
+});
+test('first-open playback waits for a delayed saved episode instead of reporting it missing',async()=>{
+ const row={id:'mf:s:cold-series',kind:'series',title:'Cold series'},ep={id:'mf:e:cold-series-s01e01',title:'First',season:1,number:1,offerings:[{provider:'dessinanime',id:'sp:dessinanime:e:456-les-simpson:1:1'}]};
+ const {api}=fixture([row],{},null,{fetchBody:async url=>{if(url.includes('/data/shows/')){await new Promise(resolve=>setTimeout(resolve,350));return {...row,episodes:[ep],synopsis:'Source synopsis'};}}});
+ const start=Date.now(),result=await api.episode(row.id,ep.id);assert.equal(result.episode.id,ep.id);assert.ok(Date.now()-start<1500);await api._indexReady;await api._metadataReady;
 });

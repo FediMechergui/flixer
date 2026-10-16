@@ -866,8 +866,17 @@
       if(raw.kind!=='series'&&(raw.aliasIds?.includes(epId)||raw.offerings?.some(o=>o.id===epId)))epId=raw.id;
       const aliasEpisode=raw.episodes?.find(e=>e.offerings?.some(o=>o.id===epId));if(aliasEpisode)epId=aliasEpisode.id;
       const known = raw.kind !== "series" ? raw.id === epId : (raw.episodes || []).some(e => e.id === epId);
-      const show = known ? await this._build(raw, { guide: false }) : await this.details(null, showId);
-      const index = show.episodes.findIndex(e => e.id === epId);
+      let show = known ? await this._build(raw, { guide: false }) : await this.details(null, showId);
+      let index = show.episodes.findIndex(e => e.id === epId);
+      if(index<0&&this._titleRequests?.has(raw.id)){
+        await new Promise(resolve=>{
+          let timer;const finish=()=>{clearTimeout(timer);window.removeEventListener?.('flixer:title',updated);resolve();};
+          const updated=event=>{if(event.detail?.id!==raw.id)return;const current=this._byId.get(raw.id);if(current?.episodes?.some(e=>e.id===epId||e.offerings?.some(o=>o.id===epId)))finish();};
+          timer=setTimeout(finish,6500);window.addEventListener?.('flixer:title',updated);this._titleRequests.get(raw.id)?.then(finish,finish);updated({detail:{id:raw.id}});
+        });
+        const current=this._byId.get(raw.id)||raw,alias=current.episodes?.find(e=>e.offerings?.some(o=>o.id===epId));if(alias)epId=alias.id;
+        show=await this._build(current,{guide:false});index=show.episodes.findIndex(e=>e.id===epId);
+      }
       if (index < 0) throw new Error("Episode not found.");
       const episode=show.episodes[index];
       const sequence=show.episodes.filter(e=>episode.season<=0?e.season===episode.season:e.season>0);
