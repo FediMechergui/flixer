@@ -535,7 +535,7 @@
           if(r.kindVerified && /^sp:myasiantv:/.test(cur.id))cur.kind=r.kind;
           if(fresh&&sameTitle&&(r.title && r.title!==cur.title || r.year && +r.year!==+cur.year))this._universeDirty=true;
           if (r.title && (!cur.title||fresh&&sameTitle)) cur.title = r.title;
-          if (r.synopsis && (!cur.synopsis || r.synopsis.length > cur.synopsis.length)) cur.synopsis = r.synopsis;
+          const synopsis=r.synopsis||r.blurb;if(synopsis&&(!cur.synopsis||synopsis.length>cur.synopsis.length))cur.synopsis=synopsis;
           if (r.tags && r.tags.length) cur.tags = [...new Set([...(cur.tags || []),...r.tags])];
           if (r.year && (!cur.year||fresh&&sameTitle)) cur.year = r.year;
           for (const key of ["publishedAt","latestAt","providerUpdatedAt"]) if(r[key]&&(!cur[key]||r[key]>cur[key]))cur[key]=r[key];
@@ -781,7 +781,7 @@
     async details(_type, id) {
       const raw = await this.show(id);
       const canonical=raw.id,cached=store.get('title:'+canonical,null);
-      if(!this._details.has(canonical)&&cached&&Date.now()-cached.t<6*3600e3){this._merge([cached.show],{snapshotAt:new Date(cached.t).toISOString()});this._reindex();this._details.set(canonical,true);}
+      if(!this._details.has(canonical)&&cached&&Date.now()-cached.t<6*3600e3){this._merge([cached.show],{snapshotAt:new Date(cached.t).toISOString()});this._reindex();if((cached.show.synopsis||cached.show.blurb)&&normalize(cached.show).poster&&(cached.show.kind!=='series'||cached.show.episodes?.length))this._details.set(canonical,true);}
       if(!this._details.has(canonical)){
         this._titleRequests ||= new Map();
         if(!this._titleRequests.has(canonical)){

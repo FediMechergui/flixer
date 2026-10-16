@@ -34,7 +34,7 @@ test('recent provider responses cannot pin older films ahead of newer releases',
 
 test('film detail descriptions load from published source metadata and notify the open screen',async()=>{
   const row={id:'film',kind:'film',title:'A film'};
-  const {api,events}=fixture([row],{},null,{fetchBody:url=>url.includes('/data/shows/')?{...row,synopsis:'Actual source description',poster:{custom:'https://source.test/poster.jpg'}}:undefined});
+  const {api,events}=fixture([row],{},null,{fetchBody:url=>url.includes('/data/shows/')?{...row,blurb:'Actual source description',poster:{custom:'https://source.test/poster.jpg'}}:undefined});
   const detail=await api.details(null,row.id);assert.equal(detail.overview,'Actual source description');assert.equal(detail.poster,'https://source.test/poster.jpg');assert.ok(events.some(e=>e.type==='flixer:title'&&e.detail.id===row.id));await api._indexReady;await api._metadataReady;
 });
 

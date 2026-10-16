@@ -140,7 +140,7 @@ export async function unifiedTitle(id,{source, catalog, product=PRODUCT}={}) {
     }
     // A blocked HDToday TV detail page must not prevent a verified catalogue
     // identity from supplying its real episode guide and public player IDs.
-    if(showOfferings(result).some(o=>['fmovies','hdtoday','myflixer'].includes(o.provider)) && (!result.tmdbId || result.kind==='series' && !result.episodes?.length)){
+    if(showOfferings(result).some(o=>['fmovies','hdtoday','myflixer'].includes(o.provider)) && (!result.tmdbId || !result.synopsis?.trim() || !result.portrait&&!result.poster?.custom || result.kind==='series' && !result.episodes?.length)){
       try{
         const candidates=await searchFmovies(result.title,{documentary:product==='dahsha'});
         for(const candidate of candidates.filter(s=>s.kind===result.kind)){
