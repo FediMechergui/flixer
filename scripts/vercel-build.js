@@ -38,6 +38,7 @@ if (!exported) {
 fs.copyFileSync(dataOut,path.join(root,'server',`deployment-${product}.json`));
 if(product==='flixer'){
   const providers=JSON.parse(fs.readFileSync(path.join(serverData,'providers-flixer.json'),'utf8'));
+  fs.writeFileSync(path.join(root,'server/deployment-dessinanime.json'),JSON.stringify((providers.items||[]).filter(row=>/^sp:dessinanime:/.test(row.id))));
   fs.writeFileSync(path.join(root,'server/deployment-arabic.json'),JSON.stringify((providers.items||[]).filter(row=>/^sp:(?:cimatn|tuniflix|streamtunisie|kirmalk|ahwaktv|egydead|cinetimes):/.test(row.id))));
 }
 run('node', product==='flixer'

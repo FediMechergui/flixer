@@ -200,3 +200,10 @@ test('series details render cached episodes while live checks add new seasons in
  assert.equal(detail.episodes.length,1);const refresh=api._titleRequests.get(row.id);assert.ok(refresh);finish();await refresh;
  assert.equal((await api._build(await api.show(row.id))).seasons.length,2);assert.ok(events.some(e=>e.type==='flixer:title'&&e.detail.id===row.id));
 });
+
+test('film artwork recovery tries alternate source posters instead of stopping at a broken primary',async()=>{
+ const row={id:'movie',title:'A film',kind:'film',portrait:'https://example.com/broken.jpg',poster:{custom:'https://example.com/good.jpg'}};
+ const {api}=fixture([row]);await api.catalog();await api._indexReady;
+ assert.equal(await api.posterFallback('movie',['https://example.com/broken.jpg']),'https://example.com/good.jpg');
+ assert.equal(await api.posterFallback('movie',['https://example.com/broken.jpg','https://example.com/good.jpg']),null);
+});

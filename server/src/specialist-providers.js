@@ -44,7 +44,7 @@ export function specialistIdFromUrl(value){
   const arabic=arabicIdFromUrl(value);if(arabic)return arabic;
   try{const u=new URL(value);for(const [provider,cfg] of Object.entries(SPECIALISTS)){
     if(ARABIC_PROVIDERS[provider]||provider==='frenchstream')continue;
-    if(provider==='dessinanime'){if(u.origin===cfg.origin&&!u.search&&!u.hash&&!u.username&&!u.password){const m=/^\/(movie|tv)\/([^/]+)\/?$/.exec(u.pathname);const id=m&&`sp:dessinanime:${m[1]==='movie'?'m':'s'}:${m[2]}`;if(parseDessinId(id))return id;}continue;}
+    if(provider==='dessinanime'){if(u.origin===cfg.origin&&!u.search&&!u.hash&&!u.username&&!u.password){const m=/^\/(movie|tv)\/([^/]+)\/?$/.exec(u.pathname);const id=m&&`sp:dessinanime:${m[1]==='movie'?'m':'s'}:${decodeURIComponent(m[2])}`;if(parseDessinId(id))return id;}continue;}
     if(u.origin!==cfg.origin&&!cfg.aliases?.includes(u.origin) || u.search || u.hash || u.username || u.password)continue;
     if(provider==='multimovies'){const m=new RegExp(`^/(movie|series)/(${slugPattern})$`).exec(u.pathname);if(m)return `sp:${provider}:${m[1]==='movie'?'m':'s'}:${m[2]}`;continue;}
     const pattern=provider==='animegg'?'/series/':provider==='megacartoons'?'/video-serie/':provider==='toontales'?'/short/':provider==='yoturkish'?'/':'/series/';
@@ -199,7 +199,7 @@ export function parseSpecialistDetails(id,html){
   return {...result,...pagination($,url,result.episodeCount)};
 }
 export async function getSpecialistDetails(id,{fresh=false}={}){
-  if(parseDessinId(id))return getDessinDetails(id);
+  if(parseDessinId(id))return getDessinDetails(id,{fresh});
   if(parseFrenchId(id))return getFrenchDetails(id,{fresh});
   if(parseArabicId(id))return getArabicDetails(id,{fresh});
   const url=specialistUrl(id);if(!url)throw new Error('Invalid specialist ID');

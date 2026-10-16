@@ -15,7 +15,7 @@ let enriched=0,failed=0;
 for(let offset=0;offset<rows.length;offset+=4){
   const results=await Promise.allSettled(rows.slice(offset,offset+4).map(async row=>{
     let fresh=row;
-    try{fresh=parseSpecialistId(row.id)?await getSpecialistDetails(row.id):/^fm:/.test(row.id)?await getFmoviesDetails(row,{allSeasons:false}):row;}catch{}
+    try{fresh=parseSpecialistId(row.id)?await getSpecialistDetails(row.id,{fresh:true}):/^fm:/.test(row.id)?await getFmoviesDetails(row,{allSeasons:false}):row;}catch{}
     let result=mergeShow(row,fresh);
     if((!result.synopsis?.trim()||/^hd:/.test(row.id)&&!result.tmdbId||!artworkUrl(result.portrait)&&!artworkUrl(result.poster?.custom))&&/^(fm|hd):/.test(row.id)){
       try{const candidates=await searchFmovies(row.title);for(const candidate of candidates.filter(c=>c.kind===row.kind)){

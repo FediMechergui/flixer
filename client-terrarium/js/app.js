@@ -7,6 +7,7 @@
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
   const esc = s => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const artPlaceholder=item=>`<span class="art-placeholder" data-missing-art="${esc(item.id)}" aria-label="${esc(item.title)}">${esc(String(item.title||'').split(/\s+/).slice(0,2).map(word=>Array.from(word)[0]||'').join(''))}</span>`;
   const store = {
     get(k, d) { try { const v = localStorage.getItem("flixer:" + k); return v ? JSON.parse(v) : d; } catch { return d; } },
     set(k, v) { try { localStorage.setItem("flixer:" + k, JSON.stringify(v)); } catch { /* storage unavailable */ } }
@@ -105,7 +106,7 @@
   /* ---------- Components ---------- */
   function card(item, opts = {}) {
     const fresh = isFresh(item);
-    const artHtml = item.poster ? `<img src="${esc(item.poster)}" alt="" decoding="async" referrerpolicy="no-referrer" loading="lazy" data-art="${esc(item.id)}">` : "";
+    const artHtml = item.poster ? `<img src="${esc(item.poster)}" alt="" decoding="async" referrerpolicy="no-referrer" loading="lazy" data-art="${esc(item.id)}">` : artPlaceholder(item);
     const r = opts.rating ? api.ratingOf(item.id) : null;
     return `<a class="card" href="#/${item.type}/${esc(item.id)}" aria-label="${esc(item.title)}">
       <div class="card__art">${artHtml}${fresh ? '<span class="card__fresh" title="New"></span>' : ""}
@@ -118,7 +119,7 @@
   }
   function resumeCard(item, ep, pct) {
     return `<a class="card" href="#/watch/${esc(item.id)}/${esc(ep)}" aria-label="Resume ${esc(item.title)}">
-      <div class="card__art">${item.poster ? `<img src="${esc(item.poster)}" alt="" loading="lazy" data-art="${esc(item.id)}">` : ""}
+      <div class="card__art">${item.poster ? `<img src="${esc(item.poster)}" alt="" loading="lazy" data-art="${esc(item.id)}">` : artPlaceholder(item)}
         <span class="card__resume">RESUME</span>
         <span class="card__bar"><i style="width:${pct}%"></i></span>
       </div>
@@ -646,7 +647,7 @@
         if (!r.items.length && r.pending) { out.innerHTML = emptyState("Searching sources", "Results will appear as sources respond."); return; }
         if (!r.items.length) { out.innerHTML = emptyState("No matches for “" + t + "”", "Check the spelling or try a shorter title."); return; }
         out.innerHTML = `<div class="list fade-in">${r.items.map(i => `<a class="list-item" href="#/${i.type}/${esc(i.id)}">
-          <div class="list-item__art">${i.poster ? `<img src="${esc(i.poster)}" alt="" loading="lazy" data-art="${esc(i.id)}">` : ""}</div>
+          <div class="list-item__art">${i.poster ? `<img src="${esc(i.poster)}" alt="" loading="lazy" data-art="${esc(i.id)}">` : artPlaceholder(i)}</div>
           <div><p class="list-item__title">${esc(i.title)}</p><div class="meta list-item__meta">${i.type === "tv" ? "Series" : "Film"} · ${esc(i.year || "—")}${i.type === "tv" && i.episodeCount > 1 ? ` · ${i.episodeCount} ep` : ""}</div></div></a>`).join("")}</div>`;
       };
       try {
@@ -689,7 +690,7 @@
     const pct = pctOf(e.id);
     const status = p && p.finished ? `<span class="episode__watched">Watched</span>` : pct ? `${pct}% watched` : "";
     return `<a class="episode ${e.id === activeId ? "is-active" : ""}" href="#/watch/${esc(d.id)}/${esc(e.id)}">
-      <div class="episode__still">${e.still ? `<img src="${esc(e.still)}" alt="" loading="lazy" data-art="${esc(d.id)}">` : ""}<span class="episode__play">${ICON.play}</span></div>
+      <div class="episode__still">${e.still ? `<img src="${esc(e.still)}" alt="" loading="lazy" data-art="${esc(d.id)}">` : artPlaceholder(d)}<span class="episode__play">${ICON.play}</span></div>
       <div><div class="episode__num">${epLabel(d.type, e)}${status ? " · " + status : ""}</div><p class="episode__title">${esc(e.title)}</p>${e.overview ? `<div class="episode__ov">${esc(e.overview)}</div>` : ""}</div>
     </a>`;
   }
@@ -726,7 +727,7 @@
       <button class="detail__back detail__save ${saved ? "is-on" : ""}" data-save aria-label="${saved ? "Remove from my list" : "Save to my list"}">${ICON.bookmark}</button>
       <div class="detail__backdrop">${d.backdrop || d.poster ? `<img src="${esc(d.backdrop || d.poster)}" alt="" ${d.poster && d.backdrop !== d.poster ? `onerror="this.onerror=null;this.src='${esc(d.poster)}';this.onerror=()=>this.remove()"` : ""}>` : ""}</div>
       <div class="detail__head">
-        <div class="detail__poster">${d.posterLarge || d.poster ? `<img src="${esc(d.posterLarge || d.poster)}" alt="" data-art="${esc(d.id)}">` : ""}</div>
+        <div class="detail__poster">${d.posterLarge || d.poster ? `<img src="${esc(d.posterLarge || d.poster)}" alt="" data-art="${esc(d.id)}">` : artPlaceholder(d)}</div>
         <div>
           <div class="eyebrow" style="margin-bottom:6px">${type === "tv" ? "Series" : "Film"}${isFresh(d) ? ' · <span style="color:var(--fern)">New</span>' : ""}</div>
           <h1 class="h-display detail__title">${esc(d.title)}</h1>
@@ -738,7 +739,7 @@
           ${entry ? `<a class="btn btn--primary" href="#/watch/${esc(d.id)}/${esc(entry.id)}">${ICON.play} ${esc(playLabel)}</a>` : ""}
           <button class="btn ${saved ? "btn--ghost is-on" : "btn--ghost"}" data-save>${ICON.bookmark} <span>${saved ? "Saved" : "My list"}</span></button>
         </div>
-        ${d.access==='catalogue-only'?'<p class="overview">Catalogue entry: this source currently requires browser verification for playback. Open its source page below.</p>':''}
+        ${d.access==='catalogue-only'?'<p class="overview">Playback resources are not available yet. Checking the connected sources.</p>':''}
         <div class="tags">${d.genres.map(g => `<a class="tag" href="#/${type === "tv" ? "shows" : "movies"}" data-genre="${esc(g.id)}">${esc(g.name)}</a>`).join("")}</div>
         ${d.versions?.length ? `<section class="sub-section"><h3>Other versions with this title</h3><p>These may be different editions. Choose a version to open.</p>${d.versions.map(v=>`<a class="btn btn--ghost" href="#/${type}/${esc(v.id)}">${esc(v.title)} ${esc(v.year || '')} · ${esc(v.offerings?.[0]?.provider || 'Source')}</a>`).join('')}</section>` : ''}
         <p class="overview ${d.overview.length > 220 ? "is-clamped" : ""}" id="ov">${esc(d.overview || "No synopsis available.")}</p>
@@ -753,7 +754,7 @@
         <div id="extras">${type === "tv" ? `<div class="loader">Loading rating, network and cast…</div>` : ""}</div>
         <div id="related"><div class="loader">Finding related titles…</div></div>
 
-        ${d.sourceUrl ? `<p class="attrib">Source: <a href="${esc(d.sourceUrl)}" target="_blank" rel="noopener" style="color:var(--amber)">open page ${ICON.ext}</a></p>` : ""}
+        ${d.sourceUrl ? `<p class="attrib">Source: <a href="${esc(d.sourceUrl)}" target="_blank" rel="noopener" data-open-source style="color:var(--amber)">open page ${ICON.ext}</a></p>` : ""}
         <div style="height:40px"></div>
       </div>`;
 
@@ -870,6 +871,7 @@
       title: `${show.title}${type === "tv" ? " · " + episode.title : ""}`,
       startAt: resumeAt(episode.id),
       sourceUrl: episode.sourceUrl,
+      onDiscover:async()=>{await api.search(show.title,{signal:request.signal});const freshShow=await api._build(await api.show(show.id),{guide:false});return api.stream(episode.id,episode.sourceUrl,freshShow,{signal:request.signal,fresh:true});},
       onRetry:()=>api.stream(episode.id,episode.sourceUrl,show,{signal:request.signal,fresh:true}),
       onProgress: (pos, dur) => { const now = Date.now(); if (now - lastSave > 5000) { lastSave = now; setProgress(episode.id, show.id, pos, dur); } },
       onEnded: () => {
@@ -914,13 +916,21 @@
     });
   }
 
+  document.addEventListener('click',event=>{const link=event.target.closest?.('[data-open-source]');if(!link)return;event.preventDefault();window.FlixerBrowser.open(link.href).catch(error=>toast(error.message));});
+
   /* ---------- Image fallback: a missing series poster is replaced from TVmaze ---------- */
   document.addEventListener("error", e => {
     const img = e.target;
-    if (!(img instanceof HTMLImageElement) || !img.dataset.art || img.dataset.tried) return;
-    img.dataset.tried = "1";
-    api.posterFallback(img.dataset.art).then(src => { if (src && src !== img.src) img.src = src; else img.remove(); }).catch(() => img.remove());
+    if (!(img instanceof HTMLImageElement) || !img.dataset.art) return;
+    const removeBroken=()=>{const parent=img.parentElement,id=img.dataset.art;img.remove();if(parent&&!parent.querySelector('img,.art-placeholder'))api.item(id).then(item=>{if(item&&parent.isConnected)parent.insertAdjacentHTML('afterbegin',artPlaceholder(item).replace('data-missing-art','data-unavailable-art'));}).catch(()=>{});};
+    const failed=JSON.parse(img.dataset.failedArt||'[]');if(failed.includes(img.src)){removeBroken();return;}failed.push(img.src);img.dataset.failedArt=JSON.stringify(failed);
+    if(failed.length>=5){removeBroken();return;}
+    api.posterFallback(img.dataset.art,failed).then(src=>{if(src&&!failed.includes(src))img.src=src;else removeBroken();}).catch(removeBroken);
   }, true);
+
+  const missingArt=new IntersectionObserver(entries=>{for(const entry of entries)if(entry.isIntersecting){const node=entry.target;missingArt.unobserve(node);api.posterFallback(node.dataset.missingArt).then(src=>{if(!src||!node.isConnected)return;const img=document.createElement('img');img.src=src;img.alt='';img.dataset.art=node.dataset.missingArt;img.addEventListener('load',()=>node.replaceWith(img),{once:true});node.parentElement?.appendChild(img);}).catch(()=>{});}},{rootMargin:'200px'});
+  const observeMissing=node=>{if(node.nodeType!==1)return;for(const art of [...(node.matches?.('[data-missing-art]')?[node]:[]),...node.querySelectorAll('[data-missing-art]')])if(!art.dataset.artRequested){art.dataset.artRequested='1';missingArt.observe(art);}};
+  new MutationObserver(records=>records.forEach(record=>record.addedNodes.forEach(observeMissing))).observe(document.body,{childList:true,subtree:true});
 
   /* ---------- Live catalogue updates ---------- */
   window.addEventListener("flixer:catalog", e => {

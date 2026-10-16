@@ -24,6 +24,8 @@ for(const name of fs.readdirSync(functions).filter(name=>name.endsWith('.func'))
   for(const file of fs.readdirSync(path.join(root,'server/src')).filter(file=>file.endsWith('.js')))
     fs.copyFileSync(path.join(root,'server/src',file),path.join(target,'server/src',file));
   fs.copyFileSync(snapshot,path.join(target,'server',`deployment-${product}.json`));
+  const dessin=path.join(root,'server/deployment-dessinanime.json');
+  if(product==='flixer'&&fs.existsSync(dessin))fs.copyFileSync(dessin,path.join(target,'server/deployment-dessinanime.json'));
   const arabic=path.join(root,'server/deployment-arabic.json');
   if(product==='flixer'&&fs.existsSync(arabic))fs.copyFileSync(arabic,path.join(target,'server/deployment-arabic.json'));
   count++;

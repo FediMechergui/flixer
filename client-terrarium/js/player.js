@@ -42,6 +42,7 @@
     container.innerHTML = `<div class="player" tabindex="-1">
       <div class="player__bar">
         <div class="player__servers" id="pl-servers"></div>
+        <button type="button" class="btn btn--ghost btn--sm" data-browser-player>Open player</button>
         <button type="button" class="player__fs" data-fs aria-label="Fullscreen">${ICON.fs}</button>
       </div>
       <div class="player__hot" data-hot aria-hidden="true"></div>
@@ -84,16 +85,20 @@
       stage.innerHTML = "";
     }
 
+    $('[data-browser-player]',root).addEventListener('click',()=>{const server=servers[st.idx],url=server?.embedUrl||opts.sourceUrl;window.FlixerBrowser?.open(url).catch(()=>{});});
+
     function load(i, automatic = false) {
       if (st.destroyed) return;
       if (!automatic) st.attempted.clear();
       st.attempted.add(i);
       st.idx = i;
+      $('[data-browser-player]',root).hidden=servers[i]?.provider==='dessinanime'||!['embed','browser'].includes(servers[i]?.type);
       renderBar();
       teardownMedia();
       const s = servers[i];
       if (!s) return showError();
       if (["hls","mp4","file"].includes(s.type) && s.streamUrl) return loadHls(s);
+      if(s.type==='browser'&&s.embedUrl){stage.innerHTML='<div class="player__error"><p>Open the source player in the app browser.</p><button class="btn btn--primary" data-source-player>Open player</button></div>'; $('[data-source-player]',stage).addEventListener('click',()=>window.FlixerBrowser?.open(s.embedUrl).catch(()=>{}));return;}
       if (s.embedUrl) return loadEmbed(s);
       failover();
     }
@@ -184,8 +189,10 @@
         <p>Unable to play this title on any server right now.</p>
         <div class="player__error-actions">
           ${servers.length||opts.onRetry ? `<button type="button" class="btn btn--primary btn--sm" data-retry>Refresh servers</button>` : ""}
-          ${opts.sourceUrl ? `<a class="btn btn--outline btn--sm" href="${esc(opts.sourceUrl)}" target="_blank" rel="noopener">Open source page</a>` : ""}
+          ${opts.onDiscover?`<button class="btn btn--outline btn--sm" data-discover-players>Find other sources</button>`:""}
+          ${opts.sourceUrl&&!/^https:\/\/dessinanime\.cc(?:\/|$)/i.test(opts.sourceUrl) ? `<a class="btn btn--outline btn--sm" href="${esc(opts.sourceUrl)}" target="_blank" rel="noopener" data-open-source>Open source player</a>` : ""}
         </div></div>`;
+      const discover=$('[data-discover-players]',stage);if(discover)discover.addEventListener('click',async()=>{discover.disabled=true;discover.textContent='Searching sources...';try{const fresh=await opts.onDiscover();if(st.destroyed)return;if(fresh?.servers?.length){servers.splice(0,servers.length,...fresh.servers);load(initialIndex(servers));}else discover.textContent='No other players found';}catch{discover.textContent='Sources unavailable';}finally{discover.disabled=false;}});
       const r = $("[data-retry]", stage);
       if (r) r.addEventListener("click", async () => {
         r.disabled=true;r.textContent='Finding fresh servers…';

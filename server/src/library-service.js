@@ -274,7 +274,7 @@ export async function unifiedStream(id,{showId,source,prefix='/api/stream',catal
   const missingHdtodayIdentity=knownEpisode&&episodeOfferings(knownEpisode).some(o=>o.provider==='hdtoday')&&!base.tmdbId&&!base.offerings?.some(o=>o.provider==='fmovies'&&o.tmdbId);
   if(quick&&(!knownEpisode||!requestedSources.every(url=>knownSources.has(url))))return {id,showId:targetId,servers:[],pending:true};
   const title=(quick||product==='flixer' && resolveTitle===unifiedTitle && !missingHdtodayIdentity) && knownEpisode && requestedSources.every(url=>knownSources.has(url))
-    ? base : await resolveTitle(targetId,{source,catalog,product});
+    ? base : await resolveTitle(targetId,{source,catalog,product,fresh});
   let episode=title?.episodes?.find(e=>e.id===id||e.offerings?.some(o=>o.id===id));
   if(!episode && title?.kind==='film' && (id===title.id||title.offerings?.some(o=>o.id===id)))episode=title.episodes[0];
   // Never authorize arbitrary episode slots from caller-supplied offering descriptors.

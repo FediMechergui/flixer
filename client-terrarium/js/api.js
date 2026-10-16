@@ -883,12 +883,24 @@
       try { cast = await this.tvmaze.cast(s.id); } catch { /* optional */ }
       return Object.assign({ matched: true, cast }, s);
     }
-    async posterFallback(id) {
-      const item = await this.item(id);
-      if (!item || item.type !== "tv") return null;
-      if (item.tvImage) return item.tvImage;
-      const s = await this.tvmaze.show(item).catch(() => null);
-      return s && s.image ? s.image.medium : null;
+    async posterFallback(id, failed = []) {
+      const excluded=new Set(failed),raw=await this.show(id);
+      const candidates=()=>[raw.portrait,...Object.values(raw.poster||{}),raw.tvm?.img,posterFor(raw.wpId),backdropFor(raw.wpId),...(raw.episodes||[]).slice(0,3).flatMap(e=>[e.poster?.custom,e.thumbs?.custom])].map(artwork).filter(url=>url&&!excluded.has(url));
+      if(candidates().length)return candidates()[0];
+      this._posterRequests ||= new Map();
+      if(!this._posterRequests.has(raw.id)){
+        this._posterWork ||= {active:0,waiting:[]};const work=this._posterWork;
+        const request=(async()=>{if(work.active>=3)await new Promise(resolve=>work.waiting.push(resolve));else work.active++;
+          try{
+            const results=await Promise.allSettled([raw.kind==='series'?this.tvmaze.show(normalize(raw)):null,this.liveEnabled?live.details(raw.id,[raw.sourceUrl,...(raw.offerings||[]).map(o=>o.sourceUrl)]):null]);
+            const detail=results[1].status==='fulfilled'?results[1].value:null;if(detail){this._merge([detail]);this._reindex();}
+            const image=results[0].status==='fulfilled'?artwork(results[0].value?.image?.medium):null;
+            return image;
+          }finally{const next=work.waiting.shift();if(next)next();else work.active--;}
+        })().catch(()=>null);this._posterRequests.set(raw.id,request);
+      }
+      const tvImage=await this._posterRequests.get(raw.id);
+      return candidates()[0]||(tvImage&&!excluded.has(tvImage)?tvImage:null);
     }
 
     /* ----- Search: index first, widened by the source's own search ----- */

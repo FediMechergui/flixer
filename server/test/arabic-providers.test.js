@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {parseArabicId,arabicId,arabicUrl,parseArabicList,parseArabicDetails,parseArabicServers,dataLiteral,collectArabicPages,cimaEpisodeEntries} from '../src/arabic-providers.js';
+import {parseArabicId,arabicId,arabicUrl,parseArabicList,parseArabicDetails,parseArabicServers,dataLiteral,collectArabicPages,cimaEpisodeEntries,ahwakPlaybackLink} from '../src/arabic-providers.js';
 import {specialistUrl,specialistJobs} from '../src/specialist-providers.js';
 import {unifiedTitle,discoverLibrary} from '../src/library-service.js';
 import {mergeShow} from '../src/merge-library.js';
@@ -89,4 +89,14 @@ test('source artwork and actual synopsis fill gaps without replacing existing me
   assert.equal(fresh.portrait,'https://image.tmdb.org/t/p/original/real.jpg');assert.equal(fresh.synopsis,'A source synopsis with enough narrative detail to describe this film.');
   const filled=mergeShow({id,title:'Existing',kind:'film',poster:{},synopsis:'',episodes:[]},fresh);assert.equal(filled.poster.custom,fresh.portrait);assert.equal(filled.synopsis,fresh.synopsis);
   const preserved=mergeShow({...filled,synopsis:'Existing synopsis',poster:{custom:'https://existing.test/poster.jpg'}},fresh);assert.equal(preserved.synopsis,'Existing synopsis');assert.equal(preserved.poster.custom,'https://existing.test/poster.jpg');
+});
+
+test('CimaTN reads the actual production year and both Arabic and Latin source titles',()=>{
+ const id=arabicId('cimatn','m','https://www.cimatn.com/2026/06/film-needle.html');const row=parseArabicDetails(id,'<h1>ابرة The Needle</h1><div class="TaxContent"><li><span>سنة الانتاج:</span><a>2023</a></li></div>');
+ assert.equal(row.year,2023);assert.ok(row.altTitles.includes('The Needle'));assert.ok(row.altTitles.includes('ابرة'));
+});
+
+test('Ahwak follows only its public replacement play link when an older video ID moves',()=>{
+ assert.equal(ahwakPlaybackLink('<div id="video-wrapper"><a id="play-video" href="https://yam.ahwaktv.net/see.php?vid=new123">Play</a></div>'),'https://yam.ahwaktv.net/see.php?vid=new123');
+ for(const href of ['https://evil.example/see.php?vid=new123','https://yam.ahwaktv.net/admin?vid=x','https://yam.ahwaktv.net/see.php?vid=../private'])assert.equal(ahwakPlaybackLink(`<div id="video-wrapper"><a id="play-video" href="${href}">Play</a></div>`),null);
 });

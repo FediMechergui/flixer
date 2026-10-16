@@ -1,7 +1,7 @@
 ﻿import test from 'node:test';
 import assert from 'node:assert/strict';
 import {parseFrenchList,parseFrenchSearch,parseFrenchDetails,parseFrenchServers,parseFrenchId,parseFrenchSeasons} from '../src/french-providers.js';
-import {parseDessinCatalogue,verifiedDessinAlias,fetchDessinPage} from '../src/dessinanime.js';
+import {parseDessinCatalogue,verifiedDessinAlias,fetchDessinPage,mergeDessinPlayback} from '../src/dessinanime.js';
 import {refreshSeriesEpisodes} from '../src/episode-refresh.js';
 import {mergeLibrary,mergeShow} from '../src/merge-library.js';
 import {unifiedSearch,SEARCH_PROVIDERS} from '../src/library-service.js';
@@ -62,4 +62,12 @@ test('catalogue-only updates never create fake episodes or disable another verif
  assert.equal(playable.access,'public');assert.equal(playable.episodes.length,1);
  const again=mergeShow(playable,source);assert.equal(again.access,'public');assert.equal(again.episodes.length,1);
  assert.equal(parseDessinCatalogue([{id:10,slug:'super-sentai',mediaType:'TV',title:'Super Sentai'}]).length,1);
+});
+
+test('French catalogue entries gain real provider episodes only after identity, kind and year match',()=>{
+ const [row]=parseDessinCatalogue([{id:99,slug:'456-les-simpson',title:'Les Simpson',releaseYear:1989,mediaType:'TV'}]);
+ const candidate={id:'sp:frenchstream:s:123',tmdbId:456,kind:'series',year:1989,title:'The Simpsons',access:'public',episodes:[{id:'sp:frenchstream:e:123:35:1',season:35,number:1}],offerings:[{provider:'frenchstream',id:'sp:frenchstream:s:123'}]};
+ assert.equal(mergeDessinPlayback(row,candidate).access,'public');assert.equal(mergeDessinPlayback(row,candidate).episodes[0].season,35);
+ for(const other of [{...candidate,year:2026},{...candidate,tmdbId:999},{...candidate,kind:'film'},{...candidate,access:'account-required'}])assert.equal(mergeDessinPlayback(row,other),row);
+ const [unicode]=parseDessinCatalogue([{id:1,slug:'233547-\uB2E4\uC774',title:'Cartoon',releaseYear:2023,mediaType:'TV'}]);assert.ok(unicode);assert.match(unicode.sourceUrl,/%/);
 });

@@ -155,6 +155,10 @@ export function parseArabicDetails(id,html){
     const aliases=$('.Description > p:not([class])').toArray().slice(1).map(el=>clean($(el).text())).filter(value=>value.length>1&&value.length<80&&!/https?:|مشاهدة|تحميل/.test(value));
     item.altTitles=[...new Set([...item.altTitles,...aliases])];
   }
+  if(p.provider==='cimatn'){
+    const year=$('.TaxContent li').filter((_,el)=>/سنة|تاريخ.*اصدار/.test($(el).find('span').text())).find('a').first().text().trim();if(/^(?:19|20)\d{2}$/.test(year))item.year=Number(year);
+    const latin=/[A-Za-z][A-Za-z0-9 &'’.,:!-]*$/.exec(item.title)?.[0]?.trim();if(latin){const native=item.title.slice(0,item.title.lastIndexOf(latin)).trim();item.altTitles=[...new Set([...(item.altTitles||[]),latin,native].filter(value=>value&&value!==item.title))];}
+  }
   const plotSelectors={tuniflix:'.Description > p:not([class])',cimatn:'.StoryArea p',kirmalk:'.description-content,.description-text',egydead:'.singleStory',ahwaktv:'.pm-video-description > div:not([class])',streamtunisie:'article .entry-content p',cinetimes:'[itemprop="description"]'};
   const sourcePlot=clean($(plotSelectors[p.provider]).first().text());
   const metaPlot=clean($('meta[name="description"]').attr('content')||$('meta[property="og:description"]').attr('content'));
@@ -272,9 +276,10 @@ export function parseArabicServers(id,html){
     return [{id:`${p.provider}:${i}`,provider:p.provider,name:`${ARABIC_PROVIDERS[p.provider].name} - ${videoId?'YouTube':u.hostname}`,type:videoId?'youtube':'embed',...(videoId?{videoId}:{embedUrl:u.href,sandbox:null})}];
   }catch{return [];}})];
 }
+export function ahwakPlaybackLink(html){const $=load(html),href=$('#video-wrapper #play-video[href],#video-wrapper a.controls-play-pause-big[href]').first().attr('href'),url=fixed(href,ARABIC_PROVIDERS.ahwaktv.origin);return url&&url.pathname==='/see.php'&&/^[A-Za-z0-9_-]{1,100}$/.test(url.searchParams.get('vid')||'')?url.href:null;}
 export async function resolveArabicServers(id,{fresh=false}={}){
   const saved=arabicSnapshot(id),episode=saved?.episodes?.find(e=>e.id===id),stored=episode?.cachedPlayers;
-  if(!fresh&&stored?.length){
+  if(!fresh&&stored?.length&&parseArabicId(id)?.provider!=='cimatn'){
     const validated=approvedPlayers(id,stored.map(s=>({url:s.embedUrl||(s.type==='youtube'?`https://www.youtube.com/embed/${s.videoId}`:'')})));
     const files=stored.filter(s=>s.type==='file'&&pSafeCommons(s.streamUrl)||parseArabicId(id)?.provider==='streamtunisie'&&s.type==='hls'&&safeSourceHls(s.streamUrl));
     if(validated.length||files.length)return [...validated,...files];
@@ -282,13 +287,15 @@ export async function resolveArabicServers(id,{fresh=false}={}){
   if(parseArabicId(id)?.provider==='cimatn'){
     const data=await cimaWatchData(await arabicPage(arabicUrl(id),{fresh})),p=parseArabicId(id);
     const entries=p.type==='e'?data?.episodes?.[p.number]:data?.servers;
-    return approvedPlayers(id,entries||[]);
+    const players=approvedPlayers(id,entries||[]);
+    if(data?.sourceUrl&&/^https:\/\/cimatnwatchingg\.blogspot\.com\/p\/[a-z0-9-]+\.html$/.test(data.sourceUrl))players.push({id:'cimatn:original-page',provider:'cimatn',name:'CimaTN - original player page',type:'browser',embedUrl:data.sourceUrl,sandbox:null});
+    return players;
   }
   const p=parseArabicId(id);if(!p||p.type==='s')return [];let html=await arabicPage(arabicUrl(id),{view:p.provider==='egydead',fresh});
   if(p.provider==='streamtunisie'&&p.type==='m'){
     const $=load(html),link=$('article a[href*="/watch-movie-"]').first().attr('href'),u=fixed(link,ARABIC_PROVIDERS[p.provider].origin);if(u&&/^\/watch-movie-[^/?]+\/$/.test(u.pathname))html=await arabicPage(u.href,{fresh});
   }
-  if(p.provider==='ahwaktv')html=await arabicPage(`${ARABIC_PROVIDERS.ahwaktv.origin}/see.php?vid=${p.slug}`,{fresh});
+  if(p.provider==='ahwaktv'){let url=`${ARABIC_PROVIDERS.ahwaktv.origin}/see.php?vid=${p.slug}`;html=await arabicPage(url,{fresh});for(let step=0;step<2;step++){const next=ahwakPlaybackLink(html);if(!next||next===url)break;url=next;html=await arabicPage(url,{fresh});}}
   if(p.provider==='tuniflix'){
     const $=load(html),choices=$('iframe[src]').toArray().map(a=>fixed($(a).attr('src'),ARABIC_PROVIDERS.tuniflix.origin)).filter(u=>u&&u.pathname==='/'&&/^\d+$/.test(u.searchParams.get('trembed')||'')&&/^\d+$/.test(u.searchParams.get('trid')||'')&&/^[12]$/.test(u.searchParams.get('trtype')||''));
     const firstId=choices[0]?.searchParams.get('trid');
