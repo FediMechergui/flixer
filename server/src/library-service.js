@@ -298,7 +298,7 @@ export async function unifiedStream(id,{showId,source,prefix='/api/stream',catal
   for(const [index,result] of results.entries())if(result.status==='rejected')providerErrors.push({provider:offers[index]?.provider||'unknown',error:result.reason?.message||'Player resolution failed'});
   for(const r of results)if(r.status==='fulfilled')for(const server of r.value){
     if(server.requiresBrowserVerification || /^https?:\/\/hdtoday\.sx(?:[/:?#]|$)/i.test(server.embedUrl || ''))continue;
-    const identity=server.streamUrl||server.embedUrl||`youtube:${server.videoId}`;if(!seen.has(identity)){seen.add(identity);servers.push(server);}
+    const identity=server.streamUrl||server.embedUrl||(server.type==='dessinanime'?`dessinanime:${server.playerId}`:`youtube:${server.videoId}`);if(!seen.has(identity)){seen.add(identity);servers.push(server);}
   }
   if(title.kind==='series')for(const server of documentedTvServers({tmdbId:title.tmdbId || title.offerings?.find(o=>o.provider==='fmovies')?.tmdbId,season:episode.season,number:episode.number})){
     if(!seen.has(server.embedUrl)){seen.add(server.embedUrl);servers.push(server);}

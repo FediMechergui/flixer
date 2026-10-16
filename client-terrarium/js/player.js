@@ -35,6 +35,21 @@
     });
     return hlsReady;
   }
+  async function resolveDessinPlayer(server) {
+    if(server?.provider!=='dessinanime'||server.type!=='dessinanime'||!Number.isSafeInteger(server.playerId)||server.playerId<1)throw Error('Invalid source player');
+    const controller=new AbortController();let timer;
+    try{
+      const data=await Promise.race([fetch('https://dessinanime.cc/api/stream?playerId='+server.playerId,{signal:controller.signal}).then(response=>{if(!response.ok)throw Error('Source HTTP '+response.status);return response.json();}),new Promise((_,reject)=>{timer=setTimeout(()=>{controller.abort();reject(Error('Source player timed out'));},12000);})]);
+      if(!['mp4','hls'].includes(data.type))throw Error('Unsupported source video');
+      const seen=new Set(),choices=[];
+      for(const quality of [{url:data.url,label:'Auto'},...(Array.isArray(data.qualities)?data.qualities:[])])try{
+        const u=new URL(quality.url);if(u.origin!=='https://relay.dessinanime.cc'||!u.pathname.startsWith('/api/stream-relay/')||u.username||u.password||seen.has(u.href))continue;seen.add(u.href);
+        choices.push({...server,id:server.id+':'+choices.length,name:server.name+' - '+String(quality.label).slice(0,25),type:data.type,streamUrl:u.href});
+      }catch{}
+      if(!choices.length)throw Error('No verified source video');return choices;
+    }finally{clearTimeout(timer);}
+  }
+
   function mount(container, opts) {
     const servers = Array.isArray(opts.servers) ? opts.servers : [];
     const st = { idx: initialIndex(servers), hls: null, destroyed: false, noticeTimer: null, switchTimer: null, startupTimer: null, generation: 0, attempted: new Set() };
@@ -97,6 +112,10 @@
       teardownMedia();
       const s = servers[i];
       if (!s) return showError();
+      if(s.type==='dessinanime'){
+        const generation=st.generation;showNotice('Resolving source video...');
+        resolveDessinPlayer(s).then(choices=>{if(st.destroyed||st.generation!==generation)return;servers.splice(i,1,...choices);load(i);}).catch(()=>{if(!st.destroyed&&st.generation===generation)failover();});return;
+      }
       if (["hls","mp4","file"].includes(s.type) && s.streamUrl) return loadHls(s);
       if(s.type==='browser'&&s.embedUrl){stage.innerHTML='<div class="player__error"><p>Open the source player in the app browser.</p><button class="btn btn--primary" data-source-player>Open player</button></div>'; $('[data-source-player]',stage).addEventListener('click',()=>window.FlixerBrowser?.open(s.embedUrl).catch(()=>{}));return;}
       if (s.embedUrl) return loadEmbed(s);
@@ -267,5 +286,5 @@
     };
   }
 
-  window.FlixerPlayer = { mount };
+  window.FlixerPlayer = { mount, resolveDessinPlayer };
 })();

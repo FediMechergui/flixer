@@ -952,7 +952,7 @@
           const streamUrl = toAbsolute(s.streamUrl || s.rawStreamUrl);
           const youtubeId = s.type === 'youtube' && /^[A-Za-z0-9_-]{11}$/.test(s.videoId || '') ? s.videoId : null;
           const embedUrl = youtubeId ? `https://www.youtube.com/embed/${youtubeId}?autoplay=1&playsinline=1&rel=0` : toAbsolute(s.embedUrl || s.rawEmbedUrl);
-          if (streamUrl || embedUrl) servers.push({ ...s, sandbox:youtubeId?null:embedSandbox(s), id: s.id != null ? s.id : idx, name: s.name || "Player " + (idx + 1), type: s.type || (streamUrl ? "hls" : "embed"), streamUrl, embedUrl });
+          if (streamUrl || embedUrl || s.type==='dessinanime'&&s.provider==='dessinanime'&&Number.isSafeInteger(s.playerId)&&s.playerId>0) servers.push({ ...s, sandbox:youtubeId?null:embedSandbox(s), id: s.id != null ? s.id : idx, name: s.name || "Player " + (idx + 1), type: s.type || (streamUrl ? "hls" : "embed"), streamUrl, embedUrl });
         });
         if (!servers.length && Array.isArray(data.streams)) data.streams.forEach((s, idx) => { const u = toAbsolute(s.proxyUri || s.uri); if (u) servers.push({ id: idx, name: s.quality || s.name || "Server " + (idx + 1), type: "hls", streamUrl: u }); });
         if (!servers.length && data.streamUrl) servers.push({ id: 0, name: "Player 1 (HLS)", type: "hls", streamUrl: toAbsolute(data.streamUrl) });

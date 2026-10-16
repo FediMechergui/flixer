@@ -18,3 +18,15 @@ test('DessinAnime direct streams use the real anonymous API relay and explicit a
  assert.equal(dessinStreamServers({...player,language:'MULTI'},{type:'mp4',url})[0].audioLanguages,undefined);
  const app=fs.readFileSync(new URL('../../client-terrarium/js/app.js',import.meta.url),'utf8');assert.equal(app.includes('Play on source'),false);
 });
+import vm from 'node:vm';
+test('Android resolves verified source player IDs directly, validates relay origins and preserves quality choices',async()=>{
+ const calls=[],window={},source=fs.readFileSync(new URL('../../client-terrarium/js/player.js',import.meta.url),'utf8');let response={type:'mp4',url:'https://relay.dessinanime.cc/api/stream-relay/hydrax?m=1',qualities:[{label:'1080p',url:'https://relay.dessinanime.cc/api/stream-relay/hydrax?m=1&q=5'},{label:'bad',url:'https://evil.org/video'}]};
+ vm.runInNewContext(source,{window,URL,AbortController,setTimeout,clearTimeout,fetch:async url=>{calls.push(url);return {ok:true,json:async()=>response}}});
+ const s={provider:'dessinanime',type:'dessinanime',playerId:1106663,id:'dessinanime:1106663',name:'DessinAnime - VF - Panda'};const choices=await window.FlixerPlayer.resolveDessinPlayer(s);assert.equal(calls[0],'https://dessinanime.cc/api/stream?playerId=1106663');assert.equal(choices.length,2);assert.equal(choices[0].type,'mp4');assert.equal(choices[0].embedUrl,undefined);
+ await assert.rejects(window.FlixerPlayer.resolveDessinPlayer({...s,playerId:'../private'}),/Invalid/);response={type:'mp4',url:'https://127.0.0.1/private'};await assert.rejects(window.FlixerPlayer.resolveDessinPlayer(s),/No verified/);
+});
+import {unifiedStream} from '../src/library-service.js';
+test('merged playback retains each deferred DessinAnime player rather than deduplicating absent video URLs',async()=>{
+ const row={id,kind:'series',episodes:[{id:eid,season:1,number:3,offerings:[{provider:'dessinanime',id:eid}]}]};
+ const result=await unifiedStream(eid,{catalog:{shows:[row]},product:'flixer',resolveTitle:async()=>row,resolveSpecialist:async()=>[1106663,144016].map(playerId=>({provider:'dessinanime',type:'dessinanime',playerId,id:'dessinanime:'+playerId}))});assert.equal(result.servers.length,2);
+});

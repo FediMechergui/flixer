@@ -99,9 +99,5 @@ export async function resolveDessinServers(id){
  let row=dessinSnapshot(id),episode=row?.episodes?.find(e=>e.id===id);
  if(!episode?.cachedPlayers?.length){row=parseDessinPage(id,await request(dessinUrl(id)),row);episode=row.episodes.find(e=>e.id===id);}
  const players=dessinPlayers(episode?.cachedPlayers);if(!players.length)throw Error('No verified DessinAnime players for this episode');
- const results=await Promise.allSettled(players.map(async player=>{
-  if(!player.direct)return [{id:`dessinanime:${player.id}`,provider:'dessinanime',name:`DessinAnime - ${player.language} - ${player.name}`,type:'embed',embedUrl:player.url,sandbox:null}];
-  return dessinStreamServers(player,JSON.parse(await request(`/api/stream?playerId=${player.id}`)));
- }));const servers=results.flatMap(result=>result.status==='fulfilled'?result.value:[]);
- if(!servers.length)throw Error('DessinAnime players are temporarily unavailable');return servers;
+ return players.map(player=>player.direct?{id:`dessinanime:${player.id}`,provider:'dessinanime',name:`DessinAnime - ${player.language} - ${player.name}`,type:'dessinanime',playerId:player.id,language:player.language,...(player.language==='VF'?{audioLanguages:['fr']}:{})}:{id:`dessinanime:${player.id}`,provider:'dessinanime',name:`DessinAnime - ${player.language} - ${player.name}`,type:'embed',embedUrl:player.url,sandbox:null});
 }
