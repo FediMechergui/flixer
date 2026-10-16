@@ -792,7 +792,9 @@
               const fresh=await live.details(canonical,[current.sourceUrl,...(current.offerings||[]).map(o=>o.sourceUrl)]);
               if(fresh)this._merge([fresh]);
             }
-            this._reindex();store.set('title:'+canonical,{t:Date.now(),show:this._byId.get(canonical)||raw});this._details.set(canonical,true);
+            this._reindex();const completed=this._byId.get(canonical)||raw;
+            store.set('title:'+canonical,{t:Date.now(),show:completed});
+            if((completed.synopsis||completed.blurb)&&normalize(completed).poster&&(completed.kind!=='series'||completed.episodes?.length))this._details.set(canonical,true);
             window.dispatchEvent(new CustomEvent('flixer:title',{detail:{id:canonical}}));
           })().catch(e=>console.warn('[flixer] title metadata unavailable:',e.message)).finally(()=>this._titleRequests.delete(canonical));
           this._titleRequests.set(canonical,refresh);
