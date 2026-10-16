@@ -43,21 +43,22 @@
 
   async function getJson(url, ms = 12000, signal) {
     const ctrl = typeof AbortController === "function" ? new AbortController() : null;
-    const timer = ctrl ? setTimeout(() => ctrl.abort(), ms) : null;
-    const abort = () => ctrl && ctrl.abort();
-    if (signal) { if (signal.aborted) abort(); else signal.addEventListener("abort", abort, { once:true }); }
+    let rejectCancelled;
+    const cancelled = new Promise((_, reject) => { rejectCancelled=reject; });
+    const abort = () => {ctrl?.abort();const error=new Error("Request cancelled or timed out");error.name="AbortError";rejectCancelled(error);};
+    const timer=setTimeout(abort,ms);
+    if(signal){if(signal.aborted)abort();else signal.addEventListener("abort",abort,{once:true});}
     try {
-      const res = await fetch(url, { ...(ctrl ? { signal: ctrl.signal } : {}), cache: 'no-cache' });
-      const text = await res.text();
-      let body = null;
-      try { body = JSON.parse(text); } catch { body = null; }
-      if (!res.ok || body == null) {
-        const e = new Error((body && body.error) || (res.ok ? "Not found" : "Request failed (" + res.status + ")"));
-        e.status = res.ok ? 404 : res.status;
-        throw e;
-      }
-      return { body, headers: res.headers };
-    } finally { if (timer) clearTimeout(timer); if (signal) signal.removeEventListener("abort", abort); }
+      // Capacitor's native HTTP transport can ignore fetch's AbortSignal.
+      // Bound the caller independently, while still cancelling browsers' fetch.
+      return await Promise.race([cancelled,(async()=>{
+        const res=await fetch(url,{...(ctrl?{signal:ctrl.signal}:{}),cache:'no-cache'});
+        const text=await res.text();let body=null;
+        try{body=JSON.parse(text);}catch{}
+        if(!res.ok||body==null){const error=new Error((body&&body.error)||(res.ok?"Not found":"Request failed ("+res.status+")"));error.status=res.ok?404:res.status;throw error;}
+        return {body,headers:res.headers};
+      })()]);
+    } finally {clearTimeout(timer);if(signal)signal.removeEventListener("abort",abort);}
   }
 
   const titleCase = s => String(s || "").replace(/[-_]+/g, " ").replace(/\b\w/g, c => c.toUpperCase());
