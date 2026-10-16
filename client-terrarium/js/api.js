@@ -809,13 +809,12 @@
             this._reindex();const completed=this._byId.get(canonical)||raw;
             store.set('title:'+canonical,{t:Date.now(),show:completed});
             if((completed.synopsis||completed.blurb)&&normalize(completed).poster&&(completed.kind!=='series'||completed.episodes?.length))this._details.set(canonical,Date.now());
-            window.dispatchEvent(new CustomEvent('flixer:title',{detail:{id:canonical}}));
-          })().catch(e=>console.warn('[flixer] title metadata unavailable:',e.message)).finally(()=>this._titleRequests.delete(canonical));
+            
+          })().catch(e=>console.warn('[flixer] title metadata unavailable:',e.message)).finally(()=>{this._titleRequests.delete(canonical);window.dispatchEvent(new CustomEvent('flixer:title',{detail:{id:canonical}}));});
           this._titleRequests.set(canonical,refresh);
         }
         const pending=this._titleRequests.get(canonical);
-        if(raw.kind==='series'&&!raw.episodes?.length)await pending;
-        else await Promise.race([pending,new Promise(resolve=>setTimeout(resolve,180))]);
+        await Promise.race([pending,new Promise(resolve=>setTimeout(resolve,180))]);
       }
       return this._build(this._byId.get(id) || raw);
     }

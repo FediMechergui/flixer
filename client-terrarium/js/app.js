@@ -798,11 +798,20 @@
 
     const box = $("#episodes", el);
     if (box) {
-      const sel = $("#season", el);
+      let sel = $("#season", el);
       const paint = () => {
         const n = sel ? +sel.value : (d.seasons[0] ? d.seasons[0].season_number : 1);
         const eps = d.episodes.filter(e => e.season === n);
-        box.innerHTML = eps.map(e => episodeRow(d, e)).join("") || `<p class="empty__text">No episodes listed yet.</p>`;
+        box.innerHTML = eps.map(e => episodeRow(d, e)).join("") || `<p class="empty__text">${api._titleRequests?.has(d.id)?'Checking source episodes...':'No episodes listed yet.'}</p>`;
+      };
+      el.refreshEpisodes = fresh => {
+        const previous=sel?.value;d=fresh;
+        if(d.seasons.length>1&&!sel){sel=document.createElement('select');sel.id='season';sel.className='season-select';box.before(sel);sel.addEventListener('change',paint);}
+        if(sel){sel.innerHTML=d.seasons.map(s=>`<option value="${s.season_number}">${esc(s.name)} \u00b7 ${s.episode_count} episodes</option>`).join('');sel.value=d.seasons.some(s=>String(s.season_number)===previous)?previous:String(d.seasons[0]?.season_number??1);}
+        const fact=$('.facts .fact__v',el);if(fact)fact.innerHTML=`${d.seasonCount} <span class="meta">\u00b7 ${d.episodeCount} ep</span>`;
+        const first=d.access==='catalogue-only'?null:entryEpisode(d);
+        if(first&&!$('.detail__actions .btn--primary',el)){const link=document.createElement('a');link.className='btn btn--primary';link.href=`#/watch/${d.id}/${first.id}`;link.innerHTML=ICON.play+' Play';$('.detail__actions',el)?.prepend(link);}
+        paint();
       };
       if (sel) { const current = entry ? entry.season : d.seasons[d.seasons.length - 1].season_number; sel.value = String(current); sel.addEventListener("change", paint); }
       paint();
@@ -928,6 +937,7 @@
     const detail=$('#sheet-root > .detail');
     if(detail?.dataset.titleId===item.id){
       const overview=$('#ov',detail);if(overview&&item.overview){overview.textContent=item.overview;overview.classList.remove('is-clamped');$('[data-more]',detail)?.remove();}
+      if(detail.refreshEpisodes){const raw=await api.show(item.id),fresh=await api._build(raw,{guide:false});if(detail.isConnected&&detail.dataset.titleId===fresh.id)detail.refreshEpisodes(fresh);}
       const poster=$('.detail__poster',detail);if(poster&&item.poster&&!$('img',poster)){const img=document.createElement('img');img.src=item.poster;img.alt='';img.dataset.art=item.id;poster.appendChild(img);}
     }
   });

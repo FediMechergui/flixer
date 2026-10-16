@@ -188,3 +188,15 @@ test('French source titles start their actual language-specific players before g
  const result=await api.stream('sp:frenchstream:e:123:2:1',null,{id:'sp:frenchstream:s:123',tmdbId:77},{onSources:()=>{}});
  assert.equal(result.servers[0].provider,'frenchstream');assert.equal(requests.filter(url=>url.includes('/api/stream?')).length,1);assert.equal(requests.some(url=>url.includes('mode=quick')),false);
 });
+
+test('series details render cached episodes while live checks add new seasons in the background',async()=>{
+ let finish;const gate=new Promise(resolve=>finish=resolve);
+ const row={id:'sp:frenchstream:s:123',kind:'series',title:'A series',poster:{custom:'https://example.com/a.jpg'},synopsis:'Source synopsis',episodes:[]};
+ const prior={id:'sp:frenchstream:e:123:1:1',season:1,number:1,title:'First'};
+ const next={id:'sp:frenchstream:e:124:2:1',season:2,number:1,title:'New season'};
+ const {api,events}=fixture([row],{},null,{config:{apiBase:'https://backend.test'},fetchBody:async url=>{if(url.includes('/data/shows/'))return {...row,episodes:[prior]};if(url.includes('/api/title?')){await gate;return {...row,episodes:[prior,next]};}}});
+ await api.catalog();await api._indexReady;api.liveEnabled=true;
+ const detail=await Promise.race([api.details('tv',row.id),new Promise((_,reject)=>setTimeout(()=>reject(Error('Detail page waited for live refresh')),500))]);
+ assert.equal(detail.episodes.length,1);const refresh=api._titleRequests.get(row.id);assert.ok(refresh);finish();await refresh;
+ assert.equal((await api._build(await api.show(row.id))).seasons.length,2);assert.ok(events.some(e=>e.type==='flixer:title'&&e.detail.id===row.id));
+});
