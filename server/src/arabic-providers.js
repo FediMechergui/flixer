@@ -159,7 +159,7 @@ export function parseArabicDetails(id,html){
   const sourcePlot=clean($(plotSelectors[p.provider]).first().text());
   const metaPlot=clean($('meta[name="description"]').attr('content')||$('meta[property="og:description"]').attr('content'));
   item.synopsis=sourcePlot.length>25?sourcePlot:metaPlot.length>25&&!/^(?:Watch online|شاهد أحدث|مشاهدة وتحميل أحدث|موقع)/i.test(metaPlot)?metaPlot:'';
-  item.metadataVersion=3;
+  item.metadataVersion=p.provider==='tuniflix'?4:3;
   if(p.type==='s'&&p.provider==='tuniflix'){
     item.sourceSeasons=$('a[href*="/season/"]').toArray().map(a=>({url:fixed($(a).attr('href'),cfg.origin)?.href,number:Number(/(\d+)/.exec($(a).text())?.[1])||null})).filter(s=>s.url);item.episodesComplete=false;
   }else if(p.type==='s'){
@@ -190,7 +190,7 @@ export function parseArabicDetails(id,html){
 const detailRequests=new Map();
 export async function getArabicDetails(id,{fresh=false}={}){
   const saved=arabicSnapshot(id);
-  if(!fresh&&saved?.id===id&&saved.episodesComplete!==false&&(!parseArabicId(id).query||saved.poster?.custom)&&saved.metadataVersion>=3&&Date.now()-Date.parse(saved.detailsFetchedAt||0)<6*3600000)return saved;
+  if(!fresh&&saved?.id===id&&saved.episodesComplete!==false&&(!parseArabicId(id).query||saved.poster?.custom)&&saved.metadataVersion>=(parseArabicId(id).provider==='tuniflix'?4:3)&&Date.now()-Date.parse(saved.detailsFetchedAt||0)<6*3600000)return saved;
   if(detailRequests.has(id))return detailRequests.get(id);
   const request=getLiveArabicDetails(id).catch(error=>{if(!fresh&&saved?.id===id)return {...saved,providerErrors:[{provider:parseArabicId(id).provider,error:error.message,cached:true}]};throw error;}).finally(()=>detailRequests.delete(id));
   detailRequests.set(id,request);return request;
