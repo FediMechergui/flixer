@@ -182,3 +182,9 @@ test('quality and media badges are never imported as language codes',()=>{
   const result=parseFmoviesList(html);
   assert.equal(result.items[0].lang,null);assert.equal(result.items[0].contentLang,null);
 });
+
+test('French source titles start their actual language-specific players before generic TV alternatives',async()=>{
+ const {api,requests}=fixture([],{servers:[{id:'frenchstream:vidzy:vf',provider:'frenchstream',name:'French Stream VF',type:'embed',embedUrl:'https://vidzy.cc/embed-a.html',sandbox:null}]},null,{config:{apiBase:'https://backend.test'}});
+ const result=await api.stream('sp:frenchstream:e:123:2:1',null,{id:'sp:frenchstream:s:123',tmdbId:77},{onSources:()=>{}});
+ assert.equal(result.servers[0].provider,'frenchstream');assert.equal(requests.filter(url=>url.includes('/api/stream?')).length,1);assert.equal(requests.some(url=>url.includes('mode=quick')),false);
+});

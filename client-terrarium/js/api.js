@@ -950,7 +950,7 @@
         };
         const full=getJson(`${API_BASE}/api/stream?${params}`,20000,signal).then(({body})=>normalizeServers(body));
         let servers;
-        if(onSources&&(show.tmdbId||show.offerings?.some(o=>o.provider==='fmovies')||/^fm:/.test(id))){
+        if(onSources&&!/^sp:frenchstream:/.test(show.id||'')&&(show.tmdbId||show.offerings?.some(o=>o.provider==='fmovies')||/^fm:/.test(id))){
           const quickParams=new URLSearchParams(params);quickParams.set('mode','quick');
           const quick=getJson(`${API_BASE}/api/stream?${quickParams}`,5000,signal).then(({body})=>normalizeServers(body));
           full.then(choices=>{if(choices.length&&!(signal?.aborted))onSources(choices);}).catch(()=>{});
