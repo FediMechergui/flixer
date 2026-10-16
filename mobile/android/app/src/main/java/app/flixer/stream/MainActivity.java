@@ -16,8 +16,9 @@ public class MainActivity extends BridgeActivity {
         getBridge().setWebViewClient(new PlayerWebViewClient(getBridge()));
         if (androidx.webkit.WebViewFeature.isFeatureSupported(androidx.webkit.WebViewFeature.DOCUMENT_START_SCRIPT)) {
             androidx.webkit.WebViewCompat.addDocumentStartJavaScript(webView,
-                "(()=>{if(parent===window)return;let failed=false;const fail=()=>{if(!failed){failed=true;parent.postMessage({type:'flixer:provider-missing'},'https://localhost')}};"
+                "(()=>{if(parent===window)return;let failed=false,playing=false;const fail=()=>{if(!failed){failed=true;parent.postMessage({type:'flixer:provider-missing'},'https://localhost')}};"
                 + "if(location.hostname==='embos.top'&&/^\\/404\\/?$/.test(location.pathname))fail();"
+                + "document.addEventListener('timeupdate',e=>{const v=e.target;if(!playing&&v instanceof HTMLVideoElement&&v.currentTime>1&&!v.paused){playing=true;parent.postMessage({type:'flixer:provider-playing'},'https://localhost')}},true);"
                 + "document.addEventListener('error',e=>{if(e.target instanceof HTMLVideoElement)fail()},true);"
                 + "const check=()=>{const text=(document.body?.innerText||'').trim();if(text.length<1800&&/we can't find the video|video (?:has been|was) (?:removed|deleted)|file (?:not found|was deleted)|403 Forbidden|404\\s*Page Not Found|404\\)?\\s*OOPS! SOMETHING WENT WRONG/i.test(text))fail()};"
                 + "document.addEventListener('DOMContentLoaded',()=>{check();const observer=new MutationObserver(check);observer.observe(document.body,{childList:true,subtree:true});setTimeout(()=>observer.disconnect(),15000)},{once:true});})()",

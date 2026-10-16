@@ -154,7 +154,12 @@
     const onProviderMessage=event=>{
       const frame=$('iframe',stage);
       const trusted=['https://embos.top','https://mxdrop.click','https://mixdrop.top','https://hgcloud.to','https://vkvideo.ru','https://www.ok.ru','https://ok.ru','https://s1.hdup400.com','https://player.mediadelivery.net','https://playmogo.com','https://watch.easyvidplayer.com','https://vidcore.io','https://vidcore.net'];
-      if(frame&&trusted.includes(event.origin)&&event.source===frame.contentWindow&&event.data?.type==='flixer:provider-missing')failover();
+      if(!frame||!trusted.includes(event.origin)||event.source!==frame.contentWindow)return;
+      if(event.data?.type==='flixer:provider-missing')failover();
+      if(event.data?.type==='flixer:provider-playing'){
+        clearTimeout(st.startupTimer);notice.hidden=true;
+        const s=servers[st.idx];try{localStorage.setItem('flixer:player-preference',JSON.stringify({provider:s.provider,name:s.name,audioMode:s.audioMode,confirmed:true}));}catch{}
+      }
     };
     window.addEventListener('message',onProviderMessage);
 
