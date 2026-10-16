@@ -31,6 +31,13 @@ public class PlayerWebViewClient extends BridgeWebViewClient {
     public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
         Uri target = request.getUrl();
         String scheme = target.getScheme();
+        // This provider redirects missing titles to an HTML error page with HTTP 200.
+        // Restrict recognition to its documented error path, never ad resources.
+        if (!request.isForMainFrame() && "embos.top".equals(target.getHost())
+                && ("/404".equals(target.getPath()) || "/404/".equals(target.getPath()))) {
+            reportPlayerFailure(view, request, 404, true);
+            return true;
+        }
         if (!request.isForMainFrame()) return !("https".equals(scheme) || "http".equals(scheme) || "about".equals(scheme) || "blob".equals(scheme));
         String current = view.getUrl();
         if (current != null && current.contains("/watch/")) {
