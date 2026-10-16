@@ -191,7 +191,7 @@ app.get(['/api/stream', '/api/stream/:id'], async (req, res) => {
   const id = req.query.id || req.params.id;
   if (!validPlaybackId(id)) return res.status(400).json({error:'Invalid stream ID'});
   try {
-    const data = await unifiedStream(id, { showId:req.query.showId, source:req.query.source, prefix:streamPrefix,quick:PRODUCT==='flixer'&&req.query.mode==='quick' });
+    const data = await unifiedStream(id, { showId:req.query.showId, source:req.query.source, prefix:streamPrefix,quick:PRODUCT==='flixer'&&req.query.mode==='quick',fresh:req.query.fresh==='1' });
     if (!data) return res.status(404).json({error:'Episode not found in this catalogue'});
     res.setHeader('Cache-Control','no-store');
     return res.json(data);

@@ -336,8 +336,8 @@ export function parseSpecialistServers(id,html){
   }
   return [...new Map(servers.map(s=>[s.embedUrl||s.streamUrl,s])).values()];
 }
-export async function resolveSpecialistServers(id){
-  if(parseArabicId(id))return resolveArabicServers(id);
+export async function resolveSpecialistServers(id,options={}){
+  if(parseArabicId(id))return resolveArabicServers(id,options);
   const p=parseSpecialistId(id);if(!p || p.type==='s')return [];
   return parseSpecialistServers(id,await page(specialistUrl(id),{ttl:30000}));
 }

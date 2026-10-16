@@ -900,10 +900,11 @@
     }
 
     /* ----- Playback sources (unchanged contract) ----- */
-    async stream(id, sourceUrl, show = {}, { signal,onSources } = {}) {
+    async stream(id, sourceUrl, show = {}, { signal,onSources,fresh=false } = {}) {
       const toAbsolute = url => !url ? null : (/^https?:\/\//.test(url) ? url : API_BASE + url);
       try {
         const params = new URLSearchParams({id});
+        if(fresh)params.set('fresh','1');
         if (show.id) params.set('showId',show.id);
         [show.sourceUrl, ...(show.offerings || []).map(o => o.sourceUrl)].filter(Boolean).forEach(source => params.append('source',source));
         const normalizeServers=data=>{

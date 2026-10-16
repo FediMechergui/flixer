@@ -5,6 +5,11 @@ import {specialistUrl,specialistJobs} from '../src/specialist-providers.js';
 import {unifiedTitle,discoverLibrary} from '../src/library-service.js';
 import {mergeShow} from '../src/merge-library.js';
 
+test('Tuniflix preserves the source release year and short alternate titles',()=>{
+  const item=parseArabicDetails('sp:tuniflix:m:the-needle','<h1>الإبرة</h1><span class="Date">2023</span><div class="Description"><p>A long source synopsis about the film and its characters.</p><p>ibra</p><p>الابرة</p><p>https://unrelated.example/ad</p></div>');
+  assert.equal(item.year,2023);assert.deepEqual(item.altTitles,['ibra','الابرة']);assert.match(item.synopsis,/source synopsis/);
+});
+
 test('large source episode lists are fully traversed with bounded concurrency and visible failures',async()=>{
   let active=0,peak=0;const pages=Array.from({length:25},(_,i)=>i+1);
   const results=await collectArabicPages(pages,async n=>{active++;peak=Math.max(peak,active);await new Promise(r=>setTimeout(r,1));active--;if(n===17)throw new Error('Source unavailable');return n;});

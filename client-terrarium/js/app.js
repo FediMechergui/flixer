@@ -857,6 +857,7 @@
       title: `${show.title}${type === "tv" ? " · " + episode.title : ""}`,
       startAt: resumeAt(episode.id),
       sourceUrl: episode.sourceUrl,
+      onRetry:()=>api.stream(episode.id,episode.sourceUrl,show,{signal:request.signal,fresh:true}),
       onProgress: (pos, dur) => { const now = Date.now(); if (now - lastSave > 5000) { lastSave = now; setProgress(episode.id, show.id, pos, dur); } },
       onEnded: () => {
         markFinished(episode.id, show.id);

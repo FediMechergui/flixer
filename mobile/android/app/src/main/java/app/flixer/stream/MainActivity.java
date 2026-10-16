@@ -16,8 +16,12 @@ public class MainActivity extends BridgeActivity {
         getBridge().setWebViewClient(new PlayerWebViewClient(getBridge()));
         if (androidx.webkit.WebViewFeature.isFeatureSupported(androidx.webkit.WebViewFeature.DOCUMENT_START_SCRIPT)) {
             androidx.webkit.WebViewCompat.addDocumentStartJavaScript(webView,
-                "if(location.pathname==='/404'||location.pathname==='/404/')parent.postMessage({type:'flixer:provider-missing'},'https://localhost');",
-                java.util.Collections.singleton("https://embos.top"));
+                "(()=>{if(parent===window)return;let failed=false;const fail=()=>{if(!failed){failed=true;parent.postMessage({type:'flixer:provider-missing'},'https://localhost')}};"
+                + "if(location.hostname==='embos.top'&&/^\\/404\\/?$/.test(location.pathname))fail();"
+                + "document.addEventListener('error',e=>{if(e.target instanceof HTMLVideoElement)fail()},true);"
+                + "const check=()=>{const text=(document.body?.innerText||'').trim();if(text.length<1800&&/we can't find the video|video (?:has been|was) (?:removed|deleted)|file (?:not found|was deleted)|403 Forbidden|404\\s*Page Not Found/i.test(text))fail()};"
+                + "document.addEventListener('DOMContentLoaded',()=>{check();const observer=new MutationObserver(check);observer.observe(document.body,{childList:true,subtree:true});setTimeout(()=>observer.disconnect(),15000)},{once:true});})()",
+                new java.util.HashSet<>(java.util.Arrays.asList("https://embos.top","https://mxdrop.click","https://mixdrop.top","https://hgcloud.to","https://vkvideo.ru","https://www.ok.ru","https://ok.ru","https://s1.hdup400.com","https://player.mediadelivery.net","https://playmogo.com","https://watch.easyvidplayer.com")));
         }
 
         android.webkit.WebSettings settings = webView.getSettings();

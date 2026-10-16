@@ -71,8 +71,8 @@ export function arabicSnapshot(id){
   if(stamp!==savedStamp){const data=JSON.parse(fs.readFileSync(file,'utf8'));savedRows=new Map((Array.isArray(data)?data:data.items||[]).filter(r=>parseArabicId(r.id)).map(r=>[r.id,r]));savedEpisodes=new Map();for(const row of savedRows.values())for(const episode of row.episodes||[])savedEpisodes.set(episode.id,row);savedStamp=stamp;}
   return savedRows.get(id)||savedEpisodes.get(id)||null;
 }
-export async function arabicPage(url,{view=false}={}){
-  const key=`${view}:${url}`,old=cache.get(key);if(old&&Date.now()-old.at<120000)return old.promise;
+export async function arabicPage(url,{view=false,fresh=false}={}){
+  const key=`${view}:${url}`,old=cache.get(key);if(!fresh&&old&&Date.now()-old.at<120000)return old.promise;
   const promise=(async()=>{
     const r=await safeRemoteFetch(url,{timeoutMs:6500,method:view?'POST':'GET',body:view?'View=1':undefined,headers:{'User-Agent':'Flixer/1.6 (public catalogue metadata)',Accept:'text/html',...(view?{'Content-Type':'application/x-www-form-urlencoded'}:{})}});
     if(!r.ok){await r.body?.cancel();throw new Error(`Arabic source HTTP ${r.status}`);}
@@ -150,6 +150,11 @@ export function parseArabicDetails(id,html){
   const categories=$('.category-name,.video-info,.single-info').text();
   if(/مسلسلات مصرية|مصر/.test(categories))collection='egyptian';
   const item=row(id,title,poster,{collection,country:collection==='tunisian'?'TN':collection==='egyptian'?'EG':null});
+  if(p.provider==='tuniflix'){
+    const year=clean($('.Date').first().text());if(/^(?:19|20)\d{2}$/.test(year))item.year=Number(year);
+    const aliases=$('.Description > p:not([class])').toArray().slice(1).map(el=>clean($(el).text())).filter(value=>value.length>1&&value.length<80&&!/https?:|مشاهدة|تحميل/.test(value));
+    item.altTitles=[...new Set([...item.altTitles,...aliases])];
+  }
   const plotSelectors={tuniflix:'.Description > p:not([class])',cimatn:'.StoryArea p',kirmalk:'.description-content,.description-text',egydead:'.singleStory',ahwaktv:'.pm-video-description > div:not([class])',streamtunisie:'article .entry-content p',cinetimes:'[itemprop="description"]'};
   const sourcePlot=clean($(plotSelectors[p.provider]).first().text());
   const metaPlot=clean($('meta[name="description"]').attr('content')||$('meta[property="og:description"]').attr('content'));
@@ -275,11 +280,11 @@ export async function resolveArabicServers(id,{fresh=false}={}){
     if(validated.length||files.length)return [...validated,...files];
   }
   if(parseArabicId(id)?.provider==='cimatn'){
-    const data=await cimaWatchData(await arabicPage(arabicUrl(id))),p=parseArabicId(id);
+    const data=await cimaWatchData(await arabicPage(arabicUrl(id),{fresh})),p=parseArabicId(id);
     const entries=p.type==='e'?data?.episodes?.[p.number]:data?.servers;
     return approvedPlayers(id,entries||[]);
   }
-  const p=parseArabicId(id);if(!p||p.type==='s')return [];let html=await arabicPage(arabicUrl(id),{view:p.provider==='egydead'});
+  const p=parseArabicId(id);if(!p||p.type==='s')return [];let html=await arabicPage(arabicUrl(id),{view:p.provider==='egydead',fresh});
   if(p.provider==='streamtunisie'&&p.type==='m'){
     const $=load(html),link=$('article a[href*="/watch-movie-"]').first().attr('href'),u=fixed(link,ARABIC_PROVIDERS[p.provider].origin);if(u&&/^\/watch-movie-[^/?]+\/$/.test(u.pathname))html=await arabicPage(u.href);
   }
@@ -288,7 +293,7 @@ export async function resolveArabicServers(id,{fresh=false}={}){
     const $=load(html),choices=$('iframe[src]').toArray().map(a=>fixed($(a).attr('src'),ARABIC_PROVIDERS.tuniflix.origin)).filter(u=>u&&u.pathname==='/'&&/^\d+$/.test(u.searchParams.get('trembed')||'')&&/^\d+$/.test(u.searchParams.get('trid')||'')&&/^[12]$/.test(u.searchParams.get('trtype')||''));
     const firstId=choices[0]?.searchParams.get('trid');
     $('.OptionBx[data-key][data-id]').each((_,el)=>{const key=$(el).attr('data-key'),post=$(el).attr('data-id');if(post===firstId&&/^\d+$/.test(key||''))choices.push(new URL(`/?trembed=${key}&trid=${post}&trtype=${p.type==='m'?1:2}`,ARABIC_PROVIDERS.tuniflix.origin));});
-    const wrappers=await collectArabicPages([...new Map(choices.map(u=>[u.href,u])).values()],u=>arabicPage(u.href));return wrappers.flatMap(r=>r.status==='fulfilled'?parseArabicServers(id,r.value):[]);
+    const wrappers=await collectArabicPages([...new Map(choices.map(u=>[u.href,u])).values()],u=>arabicPage(u.href,{fresh}));return wrappers.flatMap(r=>r.status==='fulfilled'?parseArabicServers(id,r.value):[]);
   }
   return parseArabicServers(id,html);
 }

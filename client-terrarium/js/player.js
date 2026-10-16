@@ -148,12 +148,13 @@
 
     const onPlayerFailure=event=>{
       const frame=$('iframe',stage);if(!frame||!event.detail?.url)return;
-      try{const failed=new URL(event.detail.url),current=new URL(frame.src);if(failed.href===current.href||event.detail.document&&failed.origin===current.origin)failover();}catch{}
+      try{const failed=new URL(event.detail.url),current=new URL(frame.src);failed.hash='';current.hash='';if(failed.href===current.href||event.detail.document&&failed.origin===current.origin)failover();}catch{}
     };
     window.addEventListener('flixer:player-error',onPlayerFailure);
     const onProviderMessage=event=>{
       const frame=$('iframe',stage);
-      if(frame&&event.origin==='https://embos.top'&&event.source===frame.contentWindow&&event.data?.type==='flixer:provider-missing')failover();
+      const trusted=['https://embos.top','https://mxdrop.click','https://mixdrop.top','https://hgcloud.to','https://vkvideo.ru','https://www.ok.ru','https://ok.ru','https://s1.hdup400.com','https://player.mediadelivery.net','https://playmogo.com','https://watch.easyvidplayer.com'];
+      if(frame&&trusted.includes(event.origin)&&event.source===frame.contentWindow&&event.data?.type==='flixer:provider-missing')failover();
     };
     window.addEventListener('message',onProviderMessage);
 
@@ -177,11 +178,15 @@
       stage.innerHTML = `<div class="player__error">
         <p>Unable to play this title on any server right now.</p>
         <div class="player__error-actions">
-          ${servers.length ? `<button type="button" class="btn btn--primary btn--sm" data-retry>Retry servers</button>` : ""}
+          ${servers.length||opts.onRetry ? `<button type="button" class="btn btn--primary btn--sm" data-retry>Refresh servers</button>` : ""}
           ${opts.sourceUrl ? `<a class="btn btn--outline btn--sm" href="${esc(opts.sourceUrl)}" target="_blank" rel="noopener">Open source page</a>` : ""}
         </div></div>`;
       const r = $("[data-retry]", stage);
-      if (r) r.addEventListener("click", () => load(initialIndex(servers)));
+      if (r) r.addEventListener("click", async () => {
+        r.disabled=true;r.textContent='Finding fresh servers…';
+        if(opts.onRetry)try{const fresh=await opts.onRetry();if(st.destroyed)return;if(fresh?.servers?.length)servers.splice(0,servers.length,...fresh.servers);}catch{}
+        if(!st.destroyed)load(initialIndex(servers));
+      });
     }
 
     /* Fullscreen: the whole player box goes fullscreen so the server bar stays reachable.

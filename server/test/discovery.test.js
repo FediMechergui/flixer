@@ -24,6 +24,15 @@ test('imported Flixer episodes resolve their existing servers without title netw
 
 const row=(id,title='Shared',extra={})=>({id,title,kind:'film',year:2024,tags:['animation'],...extra});
 
+test('refresh bypasses saved specialist players and reports resolver failures alongside alternatives',async()=>{
+  const id='sp:tuniflix:m:example',show={id,kind:'film',title:'Example',episodes:[{id,offerings:[{provider:'tuniflix',id},{provider:'fmovies',id:'fm:m:123'}]}]};
+  let options;
+  const result=await unifiedStream(id,{showId:id,catalog:{product:'flixer',shows:[show]},product:'flixer',fresh:true,resolveSpecialist:async(_,opts)=>{options=opts;throw Error('Source unavailable');}});
+  assert.equal(options.fresh,true);
+  assert.ok(result.servers.some(s=>s.provider==='fmovies'));
+  assert.deepEqual(result.providerErrors,[{provider:'tuniflix',error:'Source unavailable'}]);
+});
+
 test('quick playback returns verified servers without waiting on other source resolvers',async()=>{
   const id='fm:e:123:2:3',catalog={product:'flixer',shows:[{id:'show',kind:'series',tmdbId:123,episodes:[{id,season:2,number:3,offerings:[{provider:'fmovies',id},{provider:'myflixer',id:'mf:e:example'}]}]}]};
   const result=await unifiedStream(id,{showId:'show',catalog,product:'flixer',quick:true,resolveTitle:()=>{throw new Error('Must not enrich known episode');},resolveMyflixer:()=>{throw new Error('Must not wait for slow source');}});
