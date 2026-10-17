@@ -52,7 +52,7 @@
 
   function mount(container, opts) {
     const servers = Array.isArray(opts.servers) ? opts.servers : [];
-    const st = { idx: initialIndex(servers), hls: null, destroyed: false, noticeTimer: null, switchTimer: null, startupTimer: null, generation: 0, recoveryTried:false, attempted: new Set() };
+    const st = { idx: initialIndex(servers), hls: null, destroyed: false, noticeTimer: null, switchTimer: null, startupTimer: null, generation: 0, recoveryTried:false, recovering:false, attempted: new Set() };
 
     container.innerHTML = `<div class="player" tabindex="-1">
       <div class="player__bar">
@@ -109,7 +109,7 @@
       if (st.destroyed) return;
       if (!automatic) st.attempted.clear();
       st.attempted.add(i);
-      st.idx = i;
+      st.idx = i;st.recovering=false;
       $('[data-browser-player]',root).hidden=!window.FlixerBrowser?.hasNativePlayer?.()||servers[i]?.provider==='dessinanime'||!['embed','browser'].includes(servers[i]?.type);
       renderBar();
       teardownMedia();
@@ -208,7 +208,7 @@
     function showError() {
       teardownMedia();
       if(opts.onDiscover&&!st.recoveryTried){
-        st.recoveryTried=true;const generation=st.generation;let timer;
+        st.recoveryTried=true;st.recovering=true;const generation=st.generation;let timer;
         stage.innerHTML='<div class="player__loading"><span class="spinner"></span><strong>Checking other sources</strong><span>Looking for another player for this episode.</span></div>';
         Promise.race([Promise.resolve().then(()=>opts.onDiscover()),new Promise(resolve=>{timer=setTimeout(()=>resolve(null),9000);})]).then(fresh=>{
           if(st.destroyed||generation!==st.generation)return;
@@ -221,7 +221,7 @@
         <div class="player__error-actions">
           ${servers.length||opts.onRetry ? `<button type="button" class="btn btn--primary btn--sm" data-retry>Refresh servers</button>` : ""}
           ${opts.onDiscover?`<button class="btn btn--outline btn--sm" data-discover-players>Find other sources</button>`:""}
-          ${opts.sourceUrl&&!/^https:\/\/dessinanime\.cc(?:\/|$)/i.test(opts.sourceUrl) ? `<a class="btn btn--outline btn--sm" href="${esc(opts.sourceUrl)}" target="_blank" rel="noopener" data-open-source>Open source player</a>` : ""}
+          ${opts.sourceUrl&&!/^https:\/\/dessinanime\.cc(?:\/|$)/i.test(opts.sourceUrl) ? `<a class="btn btn--outline btn--sm" href="${esc(opts.sourceUrl)}" target="_blank" rel="noopener" data-open-source>Source details</a>` : ""}
         </div></div>`;
       const discover=$('[data-discover-players]',stage);if(discover)discover.addEventListener('click',async()=>{discover.disabled=true;discover.textContent='Searching sources...';try{const fresh=await opts.onDiscover();if(st.destroyed)return;if(fresh?.servers?.length){servers.splice(0,servers.length,...fresh.servers);load(initialIndex(servers));}else discover.textContent='No other players found';}catch{discover.textContent='Sources unavailable';}finally{discover.disabled=false;}});
       const r = $("[data-retry]", stage);
@@ -287,7 +287,7 @@
         const key=s=>s.provider==='dessinanime'&&s.playerId?'dessinanime:'+s.playerId:s.streamUrl||s.embedUrl||s.videoId||s.id,seen=new Set(servers.map(key)),first=servers.length;
         for(const server of additional||[])if(!seen.has(key(server))){seen.add(key(server));servers.push(server);}
         if(servers.length===first)return;
-        if($('.player__error',stage))load(first,true);else renderBar();
+        if($('.player__error',stage)||st.recovering)load(first,true);else renderBar();
       },
       destroy() {
         st.destroyed = true;
