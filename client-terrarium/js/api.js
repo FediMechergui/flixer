@@ -319,7 +319,7 @@
           const notify=()=>{this._reindex();window.dispatchEvent(new CustomEvent("flixer:catalog",{detail:{updated:true}}));};
           this._indexReady = new Promise(resolve=>setTimeout(resolve,750)).then(()=>getJson(`${CFG.mobile ? "" : DATA_BASE}/data/index.json`,60000)).then(async({body})=>{
             if(body.product!=='flixer')throw new Error('Wrong product index');
-            const rows=body.shows||[];for(let offset=0;offset<rows.length;offset+=1000){this._merge(rows.slice(offset,offset+1000),{snapshotAt:body.generatedAt||this._bundleAt||'1970-01-01',persist:false});if(offset+1000<rows.length)await new Promise(resolve=>setTimeout(resolve,0));}if(Date.parse(body.generatedAt)>Date.parse(this._fullIndexAt||0))this._fullIndexAt=body.generatedAt;notify();
+            await this._mergeIndex(body.shows||[],body.generatedAt||this._bundleAt||'1970-01-01');if(Date.parse(body.generatedAt)>Date.parse(this._fullIndexAt||0))this._fullIndexAt=body.generatedAt;notify();
           }).catch(error=>console.warn('[flixer] full index unavailable:',error.message));
           this._metadataReady=Promise.allSettled([
             getJson(`${CFG.mobile ? "" : DATA_BASE}/data/universes.json`).then(({body})=>{
@@ -517,6 +517,12 @@
       c.items.forEach(i => { if (i.stem && i.stem.length > 2) { const arr = stems.get(i.stem); if (arr) arr.push(i); else stems.set(i.stem, [i]); } });
       c.stems = stems;
     }
+    async _mergeIndex(rows,snapshotAt){
+      for(let offset=0;offset<rows.length;offset+=1000){
+        this._merge(rows.slice(offset,offset+1000),{snapshotAt,persist:false});
+        if(offset+1000<rows.length)await new Promise(resolve=>setTimeout(resolve,0));
+      }
+    }
     _merge(rows,{snapshotAt,persist=true}={}) {
       const c = this._catalog;
       let added = 0;
@@ -628,7 +634,7 @@
         if(Date.parse(status.generatedAt)<=Date.parse(this._fullIndexAt||0))return;
         const {body}=await getJson(`${DATA_BASE}/data/index.json?v=${encodeURIComponent(status.generatedAt)}`,60000);
         if(body.product!=='flixer'||!Array.isArray(body.shows))throw new Error('Wrong product index');
-        this._merge(body.shows,{snapshotAt:body.generatedAt||status.generatedAt,persist:false});this._fullIndexAt=body.generatedAt||status.generatedAt;this._reindex();
+        await this._mergeIndex(body.shows,body.generatedAt||status.generatedAt);this._fullIndexAt=body.generatedAt||status.generatedAt;this._reindex();
         window.dispatchEvent(new CustomEvent('flixer:catalog',{detail:{updated:true}}));
       })().catch(error=>{this._lastSnapshotCheck=0;throw error;}).finally(()=>{this._snapshotRequest=null;});
       return this._snapshotRequest;
