@@ -9,6 +9,7 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        registerPlugin(PlayerViewPlugin.class);
         super.onCreate(savedInstanceState);
         chromeClient = new FullscreenChromeClient(getBridge());
         android.webkit.WebView webView = getBridge().getWebView();

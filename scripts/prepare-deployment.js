@@ -8,12 +8,18 @@ const product=process.argv[2] || process.env.APP_PRODUCT || 'flixer';
 if(!['dahsha','flixer'].includes(product))throw new Error('Invalid deployment product');
 const functions=path.join(root,'.vercel/output/functions/api');
 const backup=path.join(root,'.vercel/trace-backup',`${product}-${Date.now()}`);
-const snapshot=path.join(root,'client/public',product==='dahsha'?'data':'data-flixer','catalog.json');
+const snapshot=path.join(root,'server',`deployment-${product}.json`);
 if(JSON.parse(fs.readFileSync(snapshot,'utf8')).product!==product)throw new Error('Wrong deployment catalogue');
 let count=0;
 for(const name of fs.readdirSync(functions).filter(name=>name.endsWith('.func'))){
   const target=path.resolve(functions,name);
   if(!target.startsWith(functions+path.sep))throw new Error('Invalid function directory');
+  if(name==='saved-title.func'){
+    fs.mkdirSync(path.join(target,'server/src'),{recursive:true});
+    fs.copyFileSync(path.join(root,'server/src/title-packs.js'),path.join(target,'server/src/title-packs.js'));
+    fs.cpSync(path.join(root,'server/deployment-titles'),path.join(target,'server/deployment-titles'),{recursive:true});
+    count++;continue;
+  }
   for(const folder of ['server/data','client']){
     const source=path.resolve(target,folder),destination=path.join(backup,name,folder);
     if(!source.startsWith(target+path.sep)||!destination.startsWith(backup+path.sep))throw new Error('Invalid trace paths');
@@ -24,6 +30,7 @@ for(const name of fs.readdirSync(functions).filter(name=>name.endsWith('.func'))
   for(const file of fs.readdirSync(path.join(root,'server/src')).filter(file=>file.endsWith('.js')))
     fs.copyFileSync(path.join(root,'server/src',file),path.join(target,'server/src',file));
   fs.copyFileSync(snapshot,path.join(target,'server',`deployment-${product}.json`));
+  if(product==='flixer')fs.cpSync(path.join(root,'server/deployment-titles'),path.join(target,'server/deployment-titles'),{recursive:true});
   const dessin=path.join(root,'server/deployment-dessinanime.json');
   if(product==='flixer'&&fs.existsSync(dessin))fs.copyFileSync(dessin,path.join(target,'server/deployment-dessinanime.json'));
   const arabic=path.join(root,'server/deployment-arabic.json');

@@ -110,3 +110,12 @@ Official YouTube shows are curated from GLITCH, Noob & Olydri, Muse Asia, Ani-On
 The Vercel backend serves requests on demand. Its request functions cannot run an indefinite background scraper. The independent GitHub workflow refreshes snapshots while the app continues using the latest successfully published catalogue. Latest-only passes preserve historical cursors and skip expensive metadata audits. Provider errors preserve existing titles and episodes. New provider domains require a reviewed adapter; the server does not automatically trust or execute unknown sources.
 
 Further French/Canadian candidates are [TV5MONDEplus](https://www.tv5mondeplus.com/fr/series) and [TV5 Unis](https://www.tv5unis.ca/collections/un-film-par-jour). They are not advertised as integrated players: geographic availability and account requirements need validation before an adapter is enabled.
+
+
+## In-app players and faster publication
+
+Android's **Play in app** action opens approved third-party players in a separate WebView with a persistent close control. It uses ordinary HTTPS navigation and does not expose the Capacitor bridge, allow popups, ignore SSL errors or spoof source identities. YouTube keeps its existing embedded player; its top-level embed route can reject playback with error 153. Restricted One Pace files remain official-source links. Removed videos, account requirements and geographic restrictions still apply.
+
+The source selector sits below the picture with 44 px touch controls. After all advertised servers fail, one bounded alternate-source lookup runs automatically; manual server choices and closing the player cancel its UI changes. Fonts are bundled locally with their licenses.
+
+Vercel builds package full title records into 256 compressed hash buckets instead of uploading one file per title. `/data/shows/:id.json` keeps the existing APK URL contract through a cacheable saved-title endpoint, including uncertain editions and full source synopses. Known episode playback can load its verified parent record from the same packs without parsing the whole deployment catalogue. Bootstrap and catalogue indexes remain static. The deployment's legacy catalogue fallback contains index metadata; full details come from the saved-title endpoint. A refresh with a deployment hook skips the redundant local static build before triggering Vercel.

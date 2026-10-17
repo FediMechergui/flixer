@@ -31,6 +31,7 @@ fs.mkdirSync(out, { recursive: true });
 const stamp = Date.now().toString(36);
 fs.writeFileSync(path.join(out, 'index.html'), fs.readFileSync(path.join(src, 'index.html'), 'utf8').replace(/(src|href)="((?:js|css)\/[^"]+|config\.js)"/g, `$1="$2?v=${stamp}"`));
 fs.copyFileSync(path.join(src, 'manifest.webmanifest'), path.join(out, 'manifest.webmanifest'));
+if(fs.existsSync(path.join(src,'fonts')))fs.cpSync(path.join(src,'fonts'),path.join(out,'fonts'),{recursive:true});
 fs.cpSync(path.join(src, 'css'), path.join(out, 'css'), { recursive: true });
 fs.cpSync(path.join(src, 'js'), path.join(out, 'js'), { recursive: true });
 // Icons: the Flixer mark in client-terrarium/ (scripts/flixer-icons.js), else the shared ones.
@@ -48,9 +49,11 @@ if (!dataBase) {
   // APK (the rest load live when a series is opened). --shows N overrides the mobile default.
   const shows = opt('--shows', mobile ? '2500' : 'all');
   fs.mkdirSync(path.join(out, 'data'), { recursive: true });
-  for (const f of fs.readdirSync(dataDir)) { const p = path.join(dataDir, f); if (fs.statSync(p).isFile()) fs.copyFileSync(p, path.join(out, 'data', f)); }
+  const backendData=args.includes('--backend-data');
+  for (const f of fs.readdirSync(dataDir)) { const p = path.join(dataDir, f); if (fs.statSync(p).isFile()&&(!backendData||['bootstrap.json','index.json','status.json','universes.json','services.json'].includes(f))) fs.copyFileSync(p, path.join(out, 'data', f)); }
+  if(backendData)fs.copyFileSync(path.join(dataDir,'index.json'),path.join(out,'data/catalog.json'));
   const showsDir = path.join(dataDir, 'shows');
-  if (fs.existsSync(showsDir)) {
+  if (shows!=='0' && fs.existsSync(showsDir)) {
     const outShows = path.join(out, 'data', 'shows');
     fs.mkdirSync(outShows, { recursive: true });
     let wanted = null;

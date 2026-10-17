@@ -32,7 +32,7 @@ try {
   }
   const merged = mergeCachedProviders(catalog, PRODUCT);
   catalog = merged.catalog; saveMergeReport(PRODUCT, merged.report);
-  writeCatalog(out, catalog, PRODUCT);
+  writeCatalog(out, catalog, PRODUCT,{titleFiles:process.env.FLIXER_PACKED_EXPORT!=='1'||PRODUCT!=='flixer'});
   console.log(`[${PRODUCT}] exported ${catalog.shows.length} titles to ${out}`);
 } catch (error) {
   console.error(`[${PRODUCT}] export failed: ${error.message}`);

@@ -23,7 +23,7 @@ const exported = fs.existsSync(dataOut) && JSON.parse(fs.readFileSync(dataOut, '
 if (!exported) {
   console.log('[vercel-build] no exported data - restoring snapshot from', SNAPSHOT_URL);
   const archive = path.join(root, 'data-snapshot.tar.gz');
-  const res = await fetch(SNAPSHOT_URL, { redirect: 'follow' });
+  const res = await fetch(SNAPSHOT_URL, { signal:AbortSignal.timeout(60000), redirect: 'follow' });
   if (!res.ok) { console.error(`[vercel-build] snapshot download failed: HTTP ${res.status}. Run "npm run snapshot:save" once.`); process.exit(1); }
   fs.writeFileSync(archive, Buffer.from(await res.arrayBuffer()));
   fs.mkdirSync(serverData, { recursive: true });
@@ -32,15 +32,16 @@ if (!exported) {
   if (listing.status !== 0 || listing.stdout.trim().split(/\r?\n/).some(name => !allowed.has(name.replace(/^\.\//, '')))) throw new Error('Invalid snapshot archive entries');
   run('tar', ['-xzf', archive, '-C', serverData, '--no-same-owner', '--no-same-permissions']);
   fs.rmSync(archive, { force: true });
-  run('node', [path.join(root, 'server', 'src', 'export.js'),'--cached'], {env:{...process.env,DATA_DIR:serverData}});
+  run('node', [path.join(root, 'server', 'src', 'export.js'),'--cached'], {env:{...process.env,DATA_DIR:serverData,FLIXER_PACKED_EXPORT:product==='flixer'?'1':'0'}});
 }
 
 fs.copyFileSync(dataOut,path.join(root,'server',`deployment-${product}.json`));
 if(product==='flixer'){
+  run('node',[path.join(root,'scripts/pack-titles.js')],{env:{...process.env,DATA_DIR:serverData}});
   const providers=JSON.parse(fs.readFileSync(path.join(serverData,'providers-flixer.json'),'utf8'));
   fs.writeFileSync(path.join(root,'server/deployment-dessinanime.json'),JSON.stringify((providers.items||[]).filter(row=>/^sp:dessinanime:/.test(row.id))));
   fs.writeFileSync(path.join(root,'server/deployment-arabic.json'),JSON.stringify((providers.items||[]).filter(row=>/^sp:(?:cimatn|tuniflix|streamtunisie|kirmalk|ahwaktv|egydead|cinetimes):/.test(row.id))));
 }
 run('node', product==='flixer'
-  ? [path.join(root,'scripts/build-terrarium.js'),'--out','client/dist-flixer']
+  ? [path.join(root,'scripts/build-terrarium.js'),'--out','client/dist-flixer','--shows','0','--backend-data']
   : [path.join(root,'scripts/build-static.js')]);

@@ -130,3 +130,25 @@
 .player.is-fullscreen.show-ui .player__servers { opacity: 1; pointer-events: auto; transform: none; }
 .player.is-fullscreen .player__fs { opacity: .55; }
 .player.is-fullscreen.show-ui .player__fs, .player.is-fullscreen .player__fs:hover { opacity: 1; }
+
+/* Keep source choices away from the picture and give them comfortable touch targets. */
+.player { aspect-ratio: auto; display: flex; flex-direction: column; background: var(--bg-2); box-shadow: none; border: 1px solid var(--line-strong); }
+.player__stage { position: relative; inset: auto; width: 100%; aspect-ratio: 16 / 9; background: #080c0a; overflow: hidden; }
+.player__bar { position: relative; inset: auto; order: 2; padding: 8px; gap: 6px; background: var(--bg-2); border-top: 1px solid var(--line); }
+.player__servers { padding: 0; border: 0; border-radius: 0; background: none; backdrop-filter: none; gap: 6px; }
+.player__bar-title { display: none; }
+.player__srv { min-height: 44px; height: auto; max-width: 210px; padding: 8px 12px; font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
+.player__fs { width: 44px; height: 44px; margin-left: 0; backdrop-filter: none; font-size: 24px; }
+.player__srv:active, .player__fs:active { transform: scale(.97); }
+.player__notice { top: 10px; max-width: calc(100% - 24px); white-space: normal; border-radius: 10px; font-size: 12px; line-height: 1.4; }
+.player__error { gap: 10px; padding: 14px; }
+.player__error strong { font-size: 16px; letter-spacing: -.02em; }
+.player__error p { color: var(--muted); font-size: 13px; max-width: 38ch; }
+.player__error-actions .btn { min-height: 40px; }
+.player__loading { padding: 20px; text-align: center; font-family: var(--body); }
+.player__loading strong { color: var(--text); font-size: 16px; }
+.player.is-fullscreen .player__stage { flex: 1 1 auto; min-height: 0; aspect-ratio: auto; }
+.player.is-fullscreen .player__bar { position: relative; inset: auto; flex: none; }
+.player.is-fullscreen .player__servers, .player.is-fullscreen .player__fs { opacity: 1; pointer-events: auto; transform: none; }
+.player.is-fullscreen .player__hot { display: none; }
+@media (prefers-reduced-motion: reduce) { .player *, .player *::before { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }

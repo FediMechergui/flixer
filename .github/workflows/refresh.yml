@@ -77,8 +77,8 @@ jobs:
           node scripts/prepare-deployment.js flixer
           # --archive=tgz: one upload instead of ~13k files (the free plan caps file uploads at 5000/day)
           vercel deploy --prebuilt --prod --yes --archive=tgz --token "$VERCEL_TOKEN"
-      - name: Build site (no Vercel token configured)
-        if: env.VERCEL_TOKEN == ''
+      - name: Build static output when no deployment service is configured
+        if: env.VERCEL_TOKEN == '' && env.VERCEL_DEPLOY_HOOK == ''
         run: node scripts/product.js flixer build
       - name: Save data snapshot
         id: snapshot

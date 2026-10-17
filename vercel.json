@@ -28,7 +28,7 @@
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "public, max-age=600, stale-while-revalidate=3600"
+          "value": "public, max-age=60, stale-while-revalidate=120"
         }
       ]
     },
@@ -37,7 +37,7 @@
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "public, max-age=300"
+          "value": "public, max-age=60, stale-while-revalidate=120"
         }
       ]
     },
@@ -46,7 +46,7 @@
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "public, max-age=3600, stale-while-revalidate=86400"
+          "value": "public, max-age=60, stale-while-revalidate=120"
         }
       ]
     },
@@ -75,13 +75,27 @@
   ],
   "rewrites": [
     {
+      "source": "/data/shows/:id.json",
+      "destination": "/api/saved-title?id=:id"
+    },
+    {
       "source": "/((?!data/|assets/|api/).*)",
       "destination": "/index.html"
     }
   ],
   "functions": {
     "api/*.js": {
-      "includeFiles": "server/deployment-flixer.json",
+      "includeFiles": "{server/deployment-flixer.json,server/deployment-titles/**}",
+      "maxDuration": 60,
+      "excludeFiles": "{server/data/**,client/public/**,client/dist*/**,client-terrarium/dist*/**,mobile/**,docs/**}"
+    },
+    "api/saved-title.js": {
+      "includeFiles": "server/deployment-titles/**",
+      "maxDuration": 15,
+      "excludeFiles": "{server/data/**,server/deployment-flixer.json,client/**,client-terrarium/**,mobile/**,docs/**}"
+    },
+    "api/stream.js": {
+      "includeFiles": "{server/deployment-flixer.json,server/deployment-titles/**}",
       "maxDuration": 60,
       "excludeFiles": "{server/data/**,client/public/**,client/dist*/**,client-terrarium/dist*/**,mobile/**,docs/**}"
     }

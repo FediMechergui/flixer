@@ -1,3 +1,4 @@
+import {readPackedTitle,readPackedEpisodeTitle} from './title-packs.js';
 import {FRENCH_STREAM_ORIGIN,getFrenchDetails} from './french-providers.js';
 import { mergeCachedProviders } from './provider-sync.js';
 import fs from 'node:fs';
@@ -32,14 +33,17 @@ export function readLibrary() {
   if(stamp!==loadedStamp){loaded=JSON.parse(fs.readFileSync(file,'utf8'));if(!process.env.VERCEL)loaded=mergeCachedProviders(loaded,PRODUCT).catalog;loadedStamp=stamp;}
   return loaded;
 }
-function locate(catalog,id) {
-  for (const show of catalog.shows || []) {
-    if (show.id===id || show.offerings?.some(o=>o.id===id)) return show;
-    const version=show.versions?.find(v=>v.id===id || v.offerings?.some(o=>o.id===id));
-    if (version) return {...version,providerMetadata:true,documentary:version.documentary ?? version.offerings?.some(o=>o.documentary===true)};
+const catalogueLookups=new WeakMap();
+const homeResults=new WeakMap();
+function lookup(catalog){
+  let saved=catalogueLookups.get(catalog);if(saved&&saved.shows===catalog.shows&&saved.size===(catalog.shows?.length||0))return saved;
+  const titles=new Map();for(const show of catalog.shows||[]){
+    for(const id of [show.id,...(show.offerings||[]).map(o=>o.id)])if(!titles.has(id))titles.set(id,show);
+    for(const version of show.versions||[]){const row={...version,providerMetadata:true,documentary:version.documentary??version.offerings?.some(o=>o.documentary===true)};for(const id of [version.id,...(version.offerings||[]).map(o=>o.id)])if(!titles.has(id))titles.set(id,row);}
   }
-  return null;
+  saved={shows:catalog.shows,size:catalog.shows?.length||0,titles};catalogueLookups.set(catalog,saved);return saved;
 }
+function locate(catalog,id){const row=lookup(catalog).titles.get(id)||null;return row&&catalog.packedTitles?readPackedTitle(row.id)||row:row;}
 function matchingCatalogue(catalog,rows,aliases,query=''){
   const ids=new Set(rows.flatMap(row=>[row.id,aliases[row.id]]).filter(Boolean));
   const titles=new Set(rows.flatMap(row=>[row.title,...(row.altTitles||[])].map(title=>`${row.kind}:${titleKey(title)}`)));
@@ -48,7 +52,7 @@ function matchingCatalogue(catalog,rows,aliases,query=''){
     || show.offerings?.some(o=>ids.has(o.id)) || show.versions?.some(v=>ids.has(v.id))
     || [show.title,...(show.altTitles||[])].some(title=>titles.has(`${show.kind}:${titleKey(title)}`) || query && matchesSearch(title,query))
     || external.has(`${show.kind}:tmdb:${show.tmdbId}`) || external.has(`${show.kind}:imdb:${show.imdbId}`));
-  return {...catalog,shows};
+  return {...catalog,shows:catalog.packedTitles?shows.map(s=>readPackedTitle(s.id)||s):shows};
 }
 function trustedSource(id,source) {
   if(typeof source!=='string')return null;
@@ -211,14 +215,16 @@ export function libraryPage(catalog,{kind,page=1,perPage=24,genre,year,search}={
   return {items:items.slice((page-1)*perPage,page*perPage),page,total:items.length,totalPages:Math.ceil(items.length/perPage)};
 }
 export function libraryHome(catalog=readLibrary()) {
+  const saved=homeResults.get(catalog);if(saved&&saved.shows===catalog.shows&&saved.revision===catalog.generatedAt&&saved.size===(catalog.shows?.length||0))return saved.value;
   const recent={...catalog,shows:[...(catalog.shows||[])].sort((a,b)=>String(b.providerUpdatedAt||b.latestAt||b.publishedAt||'').localeCompare(String(a.providerUpdatedAt||a.latestAt||a.publishedAt||'')))};
   const trendingMovies=libraryPage(recent,{kind:'film',perPage:16}).items;
   const trendingSeries=libraryPage(recent,{kind:'series',perPage:16}).items;
-  return {featured:trendingMovies[0]||trendingSeries[0]||null,trendingMovies,trendingSeries,rails:[
+  const value={featured:trendingMovies[0]||trendingSeries[0]||null,trendingMovies,trendingSeries,rails:[
     {id:'trending-movies',title:'Latest movies',items:trendingMovies},
     {id:'trending-series',title:'Latest series',items:trendingSeries},
     ...['action','sci-fi','comedy','horror'].map(genre=>({id:genre,title:genre,items:libraryPage(recent,{kind:'film',genre,perPage:12}).items})),
   ]};
+  homeResults.set(catalog,{shows:catalog.shows,revision:catalog.generatedAt,size:catalog.shows?.length||0,value});return value;
 }
 export async function discoverLibrary({kind='film',page=1,genre,year,collection='',latest=false,product=PRODUCT,catalog=readLibrary(),fetchers}={}) {
   if(!['film','series'].includes(kind))throw new Error('Invalid catalogue kind');
@@ -260,9 +266,9 @@ export async function discoverLibrary({kind='film',page=1,genre,year,collection=
   return {items,page,totalPages:Math.max(page,...pages.map(result=>Number(result.totalPages)||page)),providers,providerErrors:results.map((r,i)=>r.status==='rejected'?{provider:providers[i].provider,error:r.reason.message}:null).filter(Boolean)};
 }
 export async function unifiedStream(id,{showId,source,prefix='/api/stream',catalog,product=PRODUCT,quick=false,fresh=false,resolveTitle=unifiedTitle,resolveMyflixer=resolveMyflixerStream,resolveHdtoday=resolveHdtodayServers,resolveSpecialist=resolveSpecialistServers}={}) {
-  if(!catalog)catalog=product==='flixer' && specialistUrl(showId||id)?{product,shows:[]}:readLibrary();
+  if(!catalog){const saved=product==='flixer'&&showId?readPackedTitle(showId):null;catalog=saved?{product,shows:[saved]}:product==='flixer'&&specialistUrl(showId||id)?{product,shows:[]}:readLibrary();}
   if(catalog.product && catalog.product!==product)return null;
-  let base=showId?locate(catalog,showId):catalog.shows?.find(s=>s.episodes?.some(e=>e.id===id||e.offerings?.some(o=>o.id===id)));
+  let base=showId?locate(catalog,showId):catalog.packedTitles?readPackedEpisodeTitle(id):catalog.shows?.find(s=>s.episodes?.some(e=>e.id===id||e.offerings?.some(o=>o.id===id)));
   if(!base && !showId && /^mf:m:/.test(id))base=locate(catalog,id);
   const fm=parseFmoviesId(id),hd=parseHdtodayId(id);
   const targetId=showId||base?.id||(fm?`fm:${fm.kind==='film'?'m':'s'}:${fm.tmdbId}`:hd?`hd:${hd.kind==='film'?'m':'s'}:${hd.slug}`:id);

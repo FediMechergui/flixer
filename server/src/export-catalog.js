@@ -39,7 +39,7 @@ export function leanCatalog(catalog, product) {
 }
 
 // Prepare a complete export beside its destination, then swap it in with rollback.
-export function writeCatalog(outDir, catalog, product) {
+export function writeCatalog(outDir, catalog, product, {titleFiles=true}={}) {
   if (!catalog.shows?.length) throw new Error(`Refusing to export an empty ${product} catalogue`);
   outDir = path.resolve(outDir);
   const stage = `${outDir}.stage-${randomUUID()}`;
@@ -76,7 +76,7 @@ export function writeCatalog(outDir, catalog, product) {
       const summaries=new Map(lean.shows.map(s=>[s.id,s.blurb]));
       fs.writeFileSync(path.join(stage,'bootstrap.json'),JSON.stringify({...index,shows:recent.slice(0,600).map(s=>({...s,blurb:summaries.get(s.id)||''}))}));
     }
-    for (const show of payload.shows) {
+    for (const show of titleFiles?payload.shows:[]) {
       writeTitle(show);
       for (const version of show.versions || [])writeTitle(version);
     }

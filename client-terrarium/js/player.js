@@ -11,7 +11,7 @@
     fsExit: '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-14v3h3v2h-5V5h2z"/></svg>'
   };
 
-  // Player 2 first when present: the most reliable embed in practice, then the list order.
+  // Keep a confirmed preference; otherwise prefer direct media or official YouTube.
   function initialIndex(servers) {
     try{
       const preference=JSON.parse(localStorage.getItem('flixer:player-preference')||'null');
@@ -21,7 +21,7 @@
         if(index>=0)return index;
       }
     }catch{}
-    const i = servers.findIndex(s => s.type==='youtube'||s.videoId||s.type==='file'||s.type==='dessinanime');
+    const i = servers.findIndex(s => s.type==='youtube'||s.videoId||s.type==='file'||s.type==='mp4'||s.type==='hls'||s.type==='dessinanime');
     return i !== -1 ? i : 0;
   }
 
@@ -52,18 +52,18 @@
 
   function mount(container, opts) {
     const servers = Array.isArray(opts.servers) ? opts.servers : [];
-    const st = { idx: initialIndex(servers), hls: null, destroyed: false, noticeTimer: null, switchTimer: null, startupTimer: null, generation: 0, attempted: new Set() };
+    const st = { idx: initialIndex(servers), hls: null, destroyed: false, noticeTimer: null, switchTimer: null, startupTimer: null, generation: 0, recoveryTried:false, attempted: new Set() };
 
     container.innerHTML = `<div class="player" tabindex="-1">
       <div class="player__bar">
-        <div class="player__servers" id="pl-servers"></div>
-        <button type="button" class="btn btn--ghost btn--sm" data-browser-player>Open player</button>
+        <div class="player__servers" id="pl-servers" role="group" aria-label="Playback sources"></div>
+        <button type="button" class="btn btn--ghost btn--sm" data-browser-player>Play in app</button>
         <button type="button" class="player__fs" data-close-player aria-label="Close player" title="Close player">&#215;</button>
         <button type="button" class="player__fs" data-fs aria-label="Fullscreen">${ICON.fs}</button>
       </div>
       <div class="player__hot" data-hot aria-hidden="true"></div>
       <div class="player__stage" id="pl-stage"></div>
-      <div class="player__notice" id="pl-notice" hidden></div>
+      <div class="player__notice" id="pl-notice" role="status" aria-live="polite" hidden></div>
     </div>`;
     const root = $(".player", container);
     const stage = $("#pl-stage", root);
@@ -72,10 +72,10 @@
     const fsBtn = $("[data-fs]", root);
 
     function renderBar() {
-      if (servers.length <= 1) { bar.hidden = true; return; }
+      if (!servers.length) { bar.hidden = true; return; }
       bar.hidden = false;
       bar.innerHTML = `<span class="player__bar-title"><i class="dot"></i>Server</span>` +
-        servers.map((s, i) => `<button type="button" class="player__srv ${i === st.idx ? "is-active" : ""}" data-i="${i}" title="Switch to ${esc(s.name)}">${esc(s.name)}</button>`).join("");
+        servers.map((s, i) => `<button type="button" class="player__srv ${i === st.idx ? "is-active" : ""}" data-i="${i}" aria-pressed="${i === st.idx}" title="Switch to ${esc(s.name)}">${esc(s.name)}</button>`).join("");
       $$("[data-i]", bar).forEach(b => b.addEventListener("click", () => {
         const index=+b.dataset.i;
         load(index);
@@ -102,14 +102,15 @@
       stage.innerHTML = "";
     }
 
-    $('[data-browser-player]',root).addEventListener('click',()=>{const server=servers[st.idx],url=server?.embedUrl||opts.sourceUrl;window.FlixerBrowser?.open(url).catch(()=>{});});
+    async function openNativePlayer(){const server=servers[st.idx],url=server?.embedUrl;if(!url)return;teardownMedia();stage.innerHTML='<div class="player__loading">Player open in the app</div>';try{await window.FlixerBrowser.openPlayer(url);}catch(e){if(!st.destroyed)showNotice(e.message,true);}if(!st.destroyed)stage.innerHTML='<div class="player__loading">Choose a source above to continue.</div>';}
+    $('[data-browser-player]',root).addEventListener('click',openNativePlayer);
 
     function load(i, automatic = false) {
       if (st.destroyed) return;
       if (!automatic) st.attempted.clear();
       st.attempted.add(i);
       st.idx = i;
-      $('[data-browser-player]',root).hidden=servers[i]?.provider==='dessinanime'||!['embed','browser'].includes(servers[i]?.type);
+      $('[data-browser-player]',root).hidden=!window.FlixerBrowser?.hasNativePlayer?.()||servers[i]?.provider==='dessinanime'||!['embed','browser'].includes(servers[i]?.type);
       renderBar();
       teardownMedia();
       const s = servers[i];
@@ -119,7 +120,7 @@
         resolveDessinPlayer(s).then(choices=>{if(st.destroyed||st.generation!==generation)return;servers.splice(i,1,...choices);load(i);}).catch(()=>{if(!st.destroyed&&st.generation===generation)failover();});return;
       }
       if (["hls","mp4","file"].includes(s.type) && s.streamUrl) return loadHls(s);
-      if(s.type==='browser'&&s.embedUrl){stage.innerHTML='<div class="player__error"><p>Open the source player in the app browser.</p><button class="btn btn--primary" data-source-player>Open player</button></div>'; $('[data-source-player]',stage).addEventListener('click',()=>window.FlixerBrowser?.open(s.embedUrl).catch(()=>{}));return;}
+      if(s.type==='browser'&&s.embedUrl){stage.innerHTML='<div class="player__error"><p>Open this player inside Flixer.</p><button class="btn btn--primary" data-source-player>Open player</button></div>'; $('[data-source-player]',stage).addEventListener('click',()=>openNativePlayer());return;}
       if (s.embedUrl) return loadEmbed(s);
       failover();
     }
@@ -206,8 +207,17 @@
 
     function showError() {
       teardownMedia();
+      if(opts.onDiscover&&!st.recoveryTried){
+        st.recoveryTried=true;const generation=st.generation;let timer;
+        stage.innerHTML='<div class="player__loading"><span class="spinner"></span><strong>Checking other sources</strong><span>Looking for another player for this episode.</span></div>';
+        Promise.race([Promise.resolve().then(()=>opts.onDiscover()),new Promise(resolve=>{timer=setTimeout(()=>resolve(null),9000);})]).then(fresh=>{
+          if(st.destroyed||generation!==st.generation)return;
+          const alternatives=(fresh?.servers||[]).filter(s=>!servers.some(old=>(old.streamUrl||old.embedUrl||old.videoId||old.id)===(s.streamUrl||s.embedUrl||s.videoId||s.id)));
+          if(alternatives.length){servers.push(...alternatives);load(servers.length-alternatives.length);}else showError();
+        }).catch(()=>{if(!st.destroyed&&generation===st.generation)showError();}).finally(()=>clearTimeout(timer));return;
+      }
       stage.innerHTML = `<div class="player__error">
-        <p>Unable to play this title on any server right now.</p>
+        <strong>No player is available right now</strong><p>Try a fresh server list or choose another source. You can close this player at any time.</p>
         <div class="player__error-actions">
           ${servers.length||opts.onRetry ? `<button type="button" class="btn btn--primary btn--sm" data-retry>Refresh servers</button>` : ""}
           ${opts.onDiscover?`<button class="btn btn--outline btn--sm" data-discover-players>Find other sources</button>`:""}
