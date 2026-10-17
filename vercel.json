@@ -84,7 +84,22 @@
     }
   ],
   "functions": {
-    "api/*.js": {
+    "api/discover.js": {
+      "includeFiles": "{server/deployment-flixer.json,server/deployment-titles/**}",
+      "maxDuration": 60,
+      "excludeFiles": "{server/data/**,client/public/**,client/dist*/**,client-terrarium/dist*/**,mobile/**,docs/**}"
+    },
+    "api/genres.js": {
+      "includeFiles": "{server/deployment-flixer.json,server/deployment-titles/**}",
+      "maxDuration": 60,
+      "excludeFiles": "{server/data/**,client/public/**,client/dist*/**,client-terrarium/dist*/**,mobile/**,docs/**}"
+    },
+    "api/home.js": {
+      "includeFiles": "{server/deployment-flixer.json,server/deployment-titles/**}",
+      "maxDuration": 60,
+      "excludeFiles": "{server/data/**,client/public/**,client/dist*/**,client-terrarium/dist*/**,mobile/**,docs/**}"
+    },
+    "api/movies.js": {
       "includeFiles": "{server/deployment-flixer.json,server/deployment-titles/**}",
       "maxDuration": 60,
       "excludeFiles": "{server/data/**,client/public/**,client/dist*/**,client-terrarium/dist*/**,mobile/**,docs/**}"
@@ -94,7 +109,22 @@
       "maxDuration": 15,
       "excludeFiles": "{server/data/**,server/deployment-flixer.json,client/**,client-terrarium/**,mobile/**,docs/**}"
     },
+    "api/search.js": {
+      "includeFiles": "{server/deployment-flixer.json,server/deployment-titles/**}",
+      "maxDuration": 60,
+      "excludeFiles": "{server/data/**,client/public/**,client/dist*/**,client-terrarium/dist*/**,mobile/**,docs/**}"
+    },
+    "api/series.js": {
+      "includeFiles": "{server/deployment-flixer.json,server/deployment-titles/**}",
+      "maxDuration": 60,
+      "excludeFiles": "{server/data/**,client/public/**,client/dist*/**,client-terrarium/dist*/**,mobile/**,docs/**}"
+    },
     "api/stream.js": {
+      "includeFiles": "{server/deployment-flixer.json,server/deployment-titles/**}",
+      "maxDuration": 60,
+      "excludeFiles": "{server/data/**,client/public/**,client/dist*/**,client-terrarium/dist*/**,mobile/**,docs/**}"
+    },
+    "api/title.js": {
       "includeFiles": "{server/deployment-flixer.json,server/deployment-titles/**}",
       "maxDuration": 60,
       "excludeFiles": "{server/data/**,client/public/**,client/dist*/**,client-terrarium/dist*/**,mobile/**,docs/**}"
