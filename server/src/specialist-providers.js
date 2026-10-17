@@ -1,3 +1,5 @@
+import {OFFICIAL_PROVIDERS,parseOfficialId,officialUrl,officialIdFromUrl,fetchOfficialPage,getOfficialDetails} from './youtube-originals.js';
+import {ONEPACE_PROVIDERS,parseOnePaceId,onePaceUrl,fetchOnePacePage,getOnePaceDetails,resolveOnePaceServers} from './onepace.js';
 import { load } from 'cheerio';
 import {artworkUrl} from '../../shared/artwork.js';
 import { safeRemoteFetch } from './stream-security.js';
@@ -12,15 +14,19 @@ export const SPECIALISTS = {
   ...ARABIC_PROVIDERS,
   ...FRENCH_PROVIDERS,
   ...DESSIN_PROVIDERS,
+  ...ONEPACE_PROVIDERS,
+  ...OFFICIAL_PROVIDERS,
   animegg:{name:'AnimeGG',origin:'https://www.animegg.org',kind:'series',collections:['anime','anime-sub','anime-dub']},
   megacartoons:{name:'MegaCartoons',origin:'https://www.megacartoons.net',kind:'series',collections:['cartoons','classic-cartoons']},
   toontales:{name:'ToonTales',origin:'https://www.toontales.net',kind:'film',collections:['cartoons','classic-cartoons']},
-  myasiantv:{name:'MyAsianTV',origin:'https://myasiantv.com.bz',kind:null,collections:['kdrama']},
+  myasiantv:{name:'MyAsianTV',origin:'https://myasiantv.com.bz',kind:null,collections:['kdrama','jdrama','cdrama']},
   multimovies:{name:'MultiMovies',origin:'https://m1.multimovies.courses',aliases:['https://multimovies.garden'],kind:null,collections:['indian','kdrama','anime']},
   yoturkish:{name:'YoTurkish',origin:'https://www1.yoturkish.com',kind:'series',collections:['turkish']},
 };
 const slugPattern='[a-z0-9][a-z0-9_-]{0,259}';
 export function parseSpecialistId(id){
+  const official=parseOfficialId(id);if(official)return official;
+  const pace=parseOnePaceId(id);if(pace)return pace;
   const dessin=parseDessinId(id);if(dessin)return dessin;
   const french=parseFrenchId(id);if(french)return french;
   const arabic=parseArabicId(id);if(arabic)return arabic;
@@ -31,6 +37,8 @@ export function parseSpecialistId(id){
   return {provider:m[1],type:m[2],slug:m[3],...(m[4]?{season:Number(m[4]),number:Number(m[5])}:{})};
 }
 export function specialistUrl(id){
+  const official=officialUrl(id);if(official)return official;
+  const pace=onePaceUrl(id);if(pace)return pace;
   const dessin=dessinUrl(id);if(dessin)return dessin;
   const french=frenchUrl(id);if(french)return french;
   const arabic=arabicUrl(id);if(arabic)return arabic;
@@ -41,9 +49,12 @@ export function specialistUrl(id){
   return `${SPECIALISTS[p.provider].origin}${prefix}${p.slug}${p.provider==='animegg'?'':'/'}`;
 }
 export function specialistIdFromUrl(value){
+  const official=officialIdFromUrl(value);if(official)return official;
   const arabic=arabicIdFromUrl(value);if(arabic)return arabic;
   try{const u=new URL(value);for(const [provider,cfg] of Object.entries(SPECIALISTS)){
     if(ARABIC_PROVIDERS[provider]||provider==='frenchstream')continue;
+    if(provider==='youtubeoriginals'){continue;}
+    if(provider==='onepace'){if(u.origin===cfg.origin&&u.pathname==='/en/watch'&&!u.search&&!u.username&&!u.password){const id='sp:onepace:s:'+u.hash.slice(1);if(parseOnePaceId(id))return id;}continue;}
     if(provider==='dessinanime'){if(u.origin===cfg.origin&&!u.search&&!u.hash&&!u.username&&!u.password){const m=/^\/(movie|tv)\/([^/]+)\/?$/.exec(u.pathname);const id=m&&`sp:dessinanime:${m[1]==='movie'?'m':'s'}:${decodeURIComponent(m[2])}`;if(parseDessinId(id))return id;}continue;}
     if(u.origin!==cfg.origin&&!cfg.aliases?.includes(u.origin) || u.search || u.hash || u.username || u.password)continue;
     if(provider==='multimovies'){const m=new RegExp(`^/(movie|series)/(${slugPattern})$`).exec(u.pathname);if(m)return `sp:${provider}:${m[1]==='movie'?'m':'s'}:${m[2]}`;continue;}
@@ -168,6 +179,8 @@ export function parseSpecialistDetails(id,html){
     const country=/Country:\s*(Korean|Chinese|Japanese|Taiwanese|Thai|Indian)/i.exec(info)?.[1]?.toLowerCase();
     if(country)result.countries=[{korean:'KR',chinese:'CN',japanese:'JP',taiwanese:'TW',thai:'TH',indian:'IN'}[country]];
     if(country==='korean')result.collections=['kdrama'];
+    if(country==='japanese')result.collections=['jdrama'];
+    if(['chinese','taiwanese'].includes(country))result.collections=['cdrama'];
     $('.list-episode a[href]').each((_,a)=>{
       const u=localUrl($(a).attr('href'),cfg.origin),m=u && new RegExp(`^/(${slugPattern})/$`).exec(u.pathname);if(!m)return;
       const label=clean($(a).text()),n=/\bEp\s*(\d+(?:\.\d+)?)/i.exec(label);
@@ -199,6 +212,8 @@ export function parseSpecialistDetails(id,html){
   return {...result,...pagination($,url,result.episodeCount)};
 }
 export async function getSpecialistDetails(id,{fresh=false}={}){
+  if(parseOfficialId(id))return getOfficialDetails(id);
+  if(parseOnePaceId(id))return getOnePaceDetails(id);
   if(parseDessinId(id))return getDessinDetails(id,{fresh});
   if(parseFrenchId(id))return getFrenchDetails(id,{fresh});
   if(parseArabicId(id))return getArabicDetails(id,{fresh});
@@ -222,6 +237,8 @@ export function specialistJobs({kind,collection='',latest=false}={}){
     .flatMap(([provider,cfg])=>(!cfg.kind&&!kind?['film','series']:[kind||cfg.kind]).map(kind=>({provider,kind,page:1,latest,collection})));
 }
 export async function fetchSpecialistPage({provider,page:pageNum=1,cursor,search,latest=false,kind='series',collection=''}={}){
+  if(provider==='youtubeoriginals')return fetchOfficialPage({page:pageNum,search,latest,kind,collection});
+  if(provider==='onepace')return fetchOnePacePage({page:pageNum,search,latest,kind});
   if(provider==='dessinanime')return fetchDessinPage({page:pageNum,cursor,search,kind,collection});
   if(provider==='frenchstream')return fetchFrenchPage({page:pageNum,search,kind,collection});
   if(ARABIC_PROVIDERS[provider])return fetchArabicPage({provider,page:pageNum,search,kind,collection});
@@ -351,6 +368,7 @@ export function parseSpecialistServers(id,html){
   return [...new Map(servers.map(s=>[s.embedUrl||s.streamUrl,s])).values()];
 }
 export async function resolveSpecialistServers(id,options={}){
+  if(parseOnePaceId(id))return resolveOnePaceServers(id);
   if(parseDessinId(id))return resolveDessinServers(id);
   if(parseFrenchId(id))return resolveFrenchServers(id,options);
   if(parseArabicId(id))return resolveArabicServers(id,options);

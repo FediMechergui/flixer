@@ -224,9 +224,9 @@ export async function discoverLibrary({kind='film',page=1,genre,year,collection=
   if(!['film','series'].includes(kind))throw new Error('Invalid catalogue kind');
   page=Math.min(500,Math.max(1,Math.floor(Number(page)||1)));
   const documentary=product==='dahsha';
-  const regional = !documentary && ({french:{language:'fr'},'french-originals':{language:'fr'},'french-cartoons':{language:'fr',genre:'animation'},'french-entertainment':{language:'fr'},arabic:{country:'EG'},egyptian:{country:'EG'},tunisian:{country:'TN'},plays:{},kdrama:{country:'KR'},indian:{country:'IN'},turkish:{country:'TR'},anime:{country:'JP',genre:'animation'},'anime-sub':{country:'JP',genre:'animation'},'anime-dub':{country:'JP',genre:'animation'},cartoons:{genre:'animation'},'classic-cartoons':{genre:'animation'}}[collection]);
+  const regional = !documentary && ({jdrama:{country:'JP'},cdrama:{country:'CN'},canadian:{country:'CA'},'french-canadian':{country:'CA',language:'fr'},'french-series':{language:'fr'},'youtube-shows':{},'one-pace':{},french:{language:'fr'},'french-originals':{language:'fr'},'french-cartoons':{language:'fr',genre:'animation'},'french-entertainment':{language:'fr'},arabic:{country:'EG'},egyptian:{country:'EG'},tunisian:{country:'TN'},plays:{},kdrama:{country:'KR'},indian:{country:'IN'},turkish:{country:'TR'},anime:{country:'JP',genre:'animation'},'anime-sub':{country:'JP',genre:'animation'},'anime-dub':{country:'JP',genre:'animation'},cartoons:{genre:'animation'},'classic-cartoons':{genre:'animation'}}[collection]);
   if(collection && !regional)throw new Error('Invalid collection');
-  if(collection==='kdrama' && kind!=='series')return {items:[],page,totalPages:page,providers:[],providerErrors:[]};
+  if(['kdrama','jdrama','cdrama','french-series','youtube-shows','one-pace'].includes(collection) && kind!=='series')return {items:[],page,totalPages:page,providers:[],providerErrors:[]};
   if(collection==='plays' && kind==='series')return {items:[],page,totalPages:page,providers:[],providerErrors:[]};
   genre=regional?.genre || genre;
   latest=latest===true||latest==='true';
@@ -287,7 +287,7 @@ export async function unifiedStream(id,{showId,source,prefix='/api/stream',catal
     if(product==='flixer' && specialistUrl(o.id))return resolveSpecialist(o.id,{fresh});
     if(o.provider==='fmovies')return fmoviesServers(o.id);
     if(o.provider==='hdtoday')return resolveHdtoday(o.id,{tmdbId:title.tmdbId || title.offerings?.find(provider=>provider.provider==='fmovies')?.tmdbId});
-    if(o.provider==='youtube')return [{id:`youtube:${o.id}`,name:'YouTube',provider:'youtube',type:'youtube',videoId:o.id}];
+    if(o.provider==='youtube')return [{id:`youtube:${o.id}`,name:o.name||'YouTube',provider:'youtube',type:'youtube',videoId:o.id}];
     if(o.provider==='myflixer'){
       const resolved=await resolveMyflixer(o.id,prefix);
       return (resolved.servers||[]).map(s=>({...s,id:`myflixer:${s.id}`,name:`Myflixer · ${s.name}`,provider:'myflixer'}));

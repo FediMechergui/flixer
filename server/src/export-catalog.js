@@ -25,6 +25,7 @@ export function leanCatalog(catalog, product) {
   const pick = (record, keys) => Object.fromEntries(keys.filter(key => record[key] !== undefined).map(key => [key, record[key]]));
   return { ...payload, shows: payload.shows.map(show => ({
     ...pick(show, ['id','wpId','slug','kind','title','altTitles','year','lang','contentLang','originalLanguage','countries','audioMode','audioModes','collections','tags','primaryTag','episodeCount','seasons','totalDurationSec','totalViews','latestAt','latestEpisode','firstAt','publishedAt','portrait','synopsisGenerated','tvm','tmdbId','imdbId','documentary','offerings','firstSeenAt','providerUpdatedAt','providerMetadata','sourceUrl','access','episodesCheckedAt','audioLanguages','subtitleLanguages']),
+    collections:[...new Set([...(show.collections||[]),...((show.versions||[]).some(v=>(v.collections||[]).includes('youtube-shows'))?['youtube-shows']:[])])],
     versions: (show.versions || []).map(v => ({...pick(v,['id','title','year','sourceUrl','offerings','kind','documentary','providerMetadata','tags','lang','tmdbId','imdbId']),uncertainMatch:true})),
     channelId: show.channelId || show.channel?.id,
     posterId: show.posterVideoId || show.posterId,

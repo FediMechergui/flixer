@@ -4,6 +4,11 @@ export function matchesCollection(show,id){
   const animation=tags.some(t=>/^(97|animation|anime)$/i.test(String(t))),japanese=countries.includes('JP')||['ja','japanese'].includes(lang),anime=animation&&(japanese||collections.includes('anime')||tags.includes('anime'));
   const french=collections.includes('french')||lang==='fr'||(show.audioLanguages||[]).includes('fr');
   if(id==='french')return french;
+  if(id==='french-series')return show.kind==='series'&&french;
+  if(id==='canadian')return countries.includes('CA');
+  if(id==='french-canadian')return countries.includes('CA')&&lang==='fr';
+  if(id==='youtube-shows')return collections.includes(id)||(show.versions||[]).some(v=>(v.collections||[]).includes(id));
+  if(id==='one-pace')return collections.includes(id);
   if(id==='french-originals')return lang==='fr';
   if(id==='french-cartoons')return french&&animation;
   if(id==='french-entertainment')return french&&tags.some(tag=>['reality','talk','theatre','music'].includes(tag));
@@ -12,6 +17,8 @@ export function matchesCollection(show,id){
   if(id==='tunisian')return collections.includes(id)||countries.includes('TN');
   if(id==='plays')return collections.includes(id)||tags.includes('theatre');
   if(id==='kdrama')return show.kind==='series'&&!animation&&(collections.includes(id)||countries.includes('KR')||['ko','korean'].includes(lang));
+  if(id==='jdrama')return show.kind==='series'&&!animation&&(collections.includes(id)||countries.includes('JP')||['ja','japanese'].includes(lang));
+  if(id==='cdrama')return show.kind==='series'&&!animation&&(collections.includes(id)||countries.some(c=>['CN','TW'].includes(c))||['zh','cmn','yue','chinese','mandarin','cantonese'].includes(lang));
   if(id==='indian')return collections.includes(id)||countries.includes('IN')||['hi','hindi','ta','tamil','te','telugu','ml','malayalam','kn','kannada','bn','bengali','mr','marathi','pa','punjabi'].includes(lang);
   if(id==='turkish')return collections.includes(id)||countries.includes('TR')||['tr','turkish'].includes(lang);
   if(id==='anime')return anime;

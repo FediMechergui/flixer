@@ -36,7 +36,8 @@ function scopes(product) {
     ...(!documentary?[
       {provider:'myflixer',kind:'film',page:1},{provider:'myflixer',kind:'series',page:1},
       ...['film','series'].map(kind=>({provider:'fmovies',kind,language:'fr',page:1})),
-      ...['KR','IN','TR','EG','TN'].flatMap(country=>['film','series'].map(kind=>({provider:'fmovies',kind,country,page:1}))),
+      ...['film','series'].map(kind=>({provider:'fmovies',kind,country:'CA',language:'fr',page:1})),
+      ...['KR','JP','CN','TW','CA','IN','TR','EG','TN'].flatMap(country=>['film','series'].map(kind=>({provider:'fmovies',kind,country,page:1}))),
       {provider:'fmovies',kind:'series',country:'JP',genre:'animation',page:1},
       ...specialistJobs(),
       ...['film','series'].map(kind=>({provider:'frenchstream',kind,collection:'french-originals',page:1})),
@@ -52,14 +53,14 @@ function scopes(product) {
 async function fetchPage(job) {
   if(job.provider==='myflixer')return (job.kind==='film'?fetchMovies:fetchSeries)({...job,perPage:100});
   const result=await (job.provider==='fmovies'?fetchFmoviesPage(job):job.provider==='hdtoday'?fetchHdtodayPage(job):fetchSpecialistPage(job));
-  if(['frenchstream','dessinanime'].includes(job.provider)){let cursor=0;await Promise.all(Array.from({length:Math.min(4,result.items.length)},async()=>{while(cursor<result.items.length){const index=cursor++;try{const detail=await getSpecialistDetails(result.items[index].id);result.items[index]={...mergeShow(result.items[index],detail),title:detail.title};}catch{ /* retain discovered catalogue entries when detail access fails */ }}}));}
+  if(['frenchstream','dessinanime','myasiantv'].includes(job.provider)){let cursor=0;await Promise.all(Array.from({length:Math.min(4,result.items.length)},async()=>{while(cursor<result.items.length){const index=cursor++;try{const detail=await getSpecialistDetails(result.items[index].id);result.items[index]={...mergeShow(result.items[index],detail),title:detail.title};}catch{ /* retain discovered catalogue entries when detail access fails */ }}}));}
   return result;
 }
-export async function refreshProviders({product='dahsha',full=false,pageBudget=Number(process.env.PROVIDER_SCAN_PAGES||12),log=console.log}={}) {
+export async function refreshProviders({product='dahsha',full=false,latestOnly=false,pageBudget=Number(process.env.PROVIDER_SCAN_PAGES||12),log=console.log}={}) {
   if(running.has(product))return running.get(product);
-  const promise=scan({product,full,pageBudget,log}).finally(()=>running.delete(product));running.set(product,promise);return promise;
+  const promise=scan({product,full,latestOnly,pageBudget,log}).finally(()=>running.delete(product));running.set(product,promise);return promise;
 }
-async function scan({product,full,pageBudget,log}) {
+async function scan({product,full,latestOnly,pageBudget,log}) {
   const cache=providerCache(product),items=new Map(cache.items.map(i=>[i.id,i]));
   cache.queue=cache.queue.filter(job=>!(job.provider==='egydead'&&job.collection==='plays'));
   const errors={};let requests=0;
@@ -91,19 +92,19 @@ async function scan({product,full,pageBudget,log}) {
       const sort=seed.kind==='series'?'popularity.desc':'primary_release_date.desc';
       return fetchPage(seed.provider==='fmovies'?{...seed,...(seed.kind==='film'?{year:currentYear}:{}),sort}:{...seed,latest:true});
     }));
-    results.forEach((result,index)=>{if(result.status==='fulfilled'){put(result.value.items);requests++;}else errors[chunk[index].provider]=result.reason.message;});
+    results.forEach((result,index)=>{if(result.status==='fulfilled'){put(result.value.items);requests++;if(result.value.partial)errors[chunk[index].provider]='Partial source response; cached records retained';}else errors[chunk[index].provider]=result.reason.message;});
   }
   if(!cache.queue.length && !cache.completed)cache.queue=scopes(product);
   // Existing resumable scans keep their cursors when new source families arrive.
-  if(product==='flixer' && cache.specialistScopesVersion!==6){
+  if(product==='flixer' && cache.specialistScopesVersion!==7){
     const key=job=>JSON.stringify([job.provider,job.kind,job.country,job.language,job.genre,job.year,job.collection]);
     const known=new Set(cache.queue.map(key));
     cache.queue.push(...seeds.filter(job=>(job.country||job.language||!['fmovies','hdtoday'].includes(job.provider))&&!known.has(key(job))));
-    cache.specialistScopesVersion=6;cache.completed=false;
+    cache.specialistScopesVersion=7;cache.completed=false;
   }
   if(full && cache.completed){cache.queue=scopes(product);cache.completed=false;}
   let scanned=0;
-  while(cache.queue.length && (full || scanned<pageBudget)) {
+  while(!latestOnly && cache.queue.length && (full || scanned<pageBudget)) {
     if(cache.queue.every(job=>unavailable(job.provider)||paused.has(job.provider)||deferred.has(job)))break;
     // Give each provider/region a turn. Hundreds of old FMovies year partitions
     // must not keep a new animation or regional catalogue waiting for weeks.
@@ -119,6 +120,7 @@ async function scan({product,full,pageBudget,log}) {
     const job=cache.queue[0];
     try {
       const result=await fetchPage(job);put(result.items);requests++;scanned++;
+      if(result.partial){errors[job.provider]='Partial source response; historical page retained for retry';deferred.add(job);cache.queue.push(cache.queue.shift());continue;}
       // Partition capped TMDB discovery by release/first-air year, then genre if necessary.
       if(job.provider==='fmovies' && job.page===1 && result.totalPages>=500 && !job.year){
         cache.queue.shift();
@@ -147,7 +149,7 @@ async function scan({product,full,pageBudget,log}) {
   }
   cache.items=[...items.values()];cache.errors=errors;cache.completed=cache.queue.length===0;
   if(product==='flixer'){
-    const refreshed=await refreshSeriesEpisodes(cache.items,{limit:Number(process.env.PROVIDER_EPISODE_REFRESH_LIMIT||120)});
+    const refreshed=await refreshSeriesEpisodes(cache.items,{limit:Number(process.env.PROVIDER_EPISODE_REFRESH_LIMIT||(latestOnly?24:120))});
     cache.items=refreshed.items;cache.episodeRefresh={...refreshed.report,at:new Date().toISOString()};
     log(`[episodes:${product}] ${refreshed.report.checked} series checked; ${refreshed.report.addedEpisodes} episodes added; ${refreshed.report.errors.length} unavailable`);
   }

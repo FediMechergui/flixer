@@ -749,6 +749,12 @@
       if(id==='french')return french;
       if(id==='french-originals')return lang==='fr';
       if(id==='french-cartoons')return french&&animation;
+      if(id==='french-series')return i.type==='tv'&&french;
+      if(id==='canadian')return countries.includes('CA');
+      if(id==='french-canadian')return countries.includes('CA')&&lang==='fr';
+      if(id==='youtube-shows'||id==='one-pace')return i.collections.includes(id);
+      if(id==='jdrama')return i.type==='tv'&&!animation&&(i.collections.includes(id)||countries.includes('JP')||['ja','japanese'].includes(lang));
+      if(id==='cdrama')return i.type==='tv'&&!animation&&(i.collections.includes(id)||countries.some(c=>['CN','TW'].includes(c))||['zh','cmn','yue','chinese','mandarin','cantonese'].includes(lang));
       if(id==='french-entertainment')return french&&i.genreIds.some(tag=>['reality','talk','theatre','music'].includes(tag));
       if (id === "kdrama") return i.type === "tv" && (i.collections.includes('kdrama') || countries.includes("KR") || ["ko", "korean"].includes(lang)) && !animation;
       if (id === "arabic") return i.collections.includes('arabic') || lang==='ar' || countries.some(c=>['TN','EG','MA','DZ','LB','SY','SA','JO','IQ','KW','AE','QA','BH','OM','YE','PS','SD','LY'].includes(c));
@@ -766,7 +772,7 @@
     }
     async collections() {
       const items = await this.all();
-      return [["french","French catalogue"],["french-originals","French originals"],["french-cartoons","French cartoons"],["french-entertainment","French entertainment"],["arabic","Arabic movies & TV"],["egyptian","Egyptian"],["tunisian","Tunisian movies & TV"],["plays","Plays & theatre"],["kdrama","K-drama"],["indian","Indian movies & TV"],["turkish","Turkish movies & TV"],["anime","Anime"],["anime-sub","Anime - confirmed sub"],["anime-dub","Anime - confirmed dub"],["cartoons","Cartoons"],["classic-cartoons","Classic cartoons"]]
+      return [["jdrama","J-drama"],["cdrama","C-drama"],["canadian","Canadian movies & TV"],["french-canadian","French Canadian"],["french-series","French TV shows"],["youtube-shows","Official YouTube shows"],["one-pace","One Pace"],["french","French catalogue"],["french-originals","French originals"],["french-cartoons","French cartoons"],["french-entertainment","French entertainment"],["arabic","Arabic movies & TV"],["egyptian","Egyptian"],["tunisian","Tunisian movies & TV"],["plays","Plays & theatre"],["kdrama","K-drama"],["indian","Indian movies & TV"],["turkish","Turkish movies & TV"],["anime","Anime"],["anime-sub","Anime - confirmed sub"],["anime-dub","Anime - confirmed dub"],["cartoons","Cartoons"],["classic-cartoons","Classic cartoons"]]
         .map(([id,name]) => ({id,name,count:items.filter(i=>this.inCollection(i,id)).length}));
     }
     async countries() { return []; }

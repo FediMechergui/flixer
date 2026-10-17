@@ -13,7 +13,7 @@ const option=(name,fallback)=>{const i=args.indexOf(name);return i>=0?args[i+1]:
 const requested=option('--product',process.env.APP_PRODUCT||'flixer');
 if(!['both','dahsha','flixer'].includes(requested))throw new Error('Invalid product');
 for(const product of requested==='both'?['dahsha','flixer']:[requested]){
-  const cache=await refreshProviders({product,full:args.includes('--full'),pageBudget:Number(option('--pages','24'))});
+  const cache=await refreshProviders({product,full:args.includes('--full'),latestOnly:args.includes('--latest-only'),pageBudget:Number(option('--pages','24'))});
   const out=path.join(root,'client/public',product==='dahsha'?'data':'data-flixer');
   const file=path.join(out,'catalog.json');
   let base=readJson(product==='dahsha'?'catalog.json':'flixer-catalog.json',null);
