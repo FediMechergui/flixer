@@ -102,7 +102,18 @@
       stage.innerHTML = "";
     }
 
-    async function openNativePlayer(){const server=servers[st.idx],url=server?.embedUrl;if(!url)return;teardownMedia();stage.innerHTML='<div class="player__loading">Player open in the app</div>';try{await window.FlixerBrowser.openPlayer(url);}catch(e){if(!st.destroyed)showNotice(e.message,true);}if(!st.destroyed)stage.innerHTML='<div class="player__loading">Choose a source above to continue.</div>';}
+    async function openNativePlayer() {
+      const server = servers[st.idx], url = server?.embedUrl;
+      if (!url || st.destroyed) return;
+      teardownMedia();
+      const generation = st.generation;
+      const current = () => !st.destroyed && st.generation === generation;
+      stage.innerHTML = '<div class="player__loading">Player open in the app</div>';
+      try { await window.FlixerBrowser.openPlayer(url); }
+      catch (e) { if (current()) showNotice(e.message, true); }
+      if (current()) stage.innerHTML = '<div class="player__loading">Choose a source above to continue.</div>';
+    }
+
     $('[data-browser-player]',root).addEventListener('click',openNativePlayer);
 
     function load(i, automatic = false) {
