@@ -21,6 +21,7 @@ import com.getcapacitor.BridgeWebChromeClient;
 public class FullscreenChromeClient extends BridgeWebChromeClient {
     private final Bridge bridge;
     private View customView;
+    private FrameLayout fullscreenContainer;
     private CustomViewCallback customViewCallback;
     private int originalOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED;
 
@@ -50,7 +51,20 @@ public class FullscreenChromeClient extends BridgeWebChromeClient {
         originalOrientation = activity.getRequestedOrientation();
         view.setBackgroundColor(0xFF000000);
         ViewGroup decor = (ViewGroup) activity.getWindow().getDecorView();
-        decor.addView(view, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        fullscreenContainer = new FrameLayout(activity);
+        fullscreenContainer.setBackgroundColor(0xFF000000);
+        fullscreenContainer.addView(view, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        android.widget.Button exit = new android.widget.Button(activity);
+        exit.setText("Exit player");
+        exit.setContentDescription("Exit fullscreen player");
+        exit.setTextColor(0xFFFFFFFF);
+        exit.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xDD242424));
+        int margin = (int)(24 * activity.getResources().getDisplayMetrics().density);
+        FrameLayout.LayoutParams exitParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, android.view.Gravity.TOP | android.view.Gravity.END);
+        exitParams.setMargins(margin, margin, margin, margin);
+        fullscreenContainer.addView(exit, exitParams);
+        exit.setOnClickListener(button -> onHideCustomView());
+        decor.addView(fullscreenContainer, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         // Keep WebView visible beneath decor to prevent Chromium GPU buffer / Skia mailbox destruction on orientation shift
         activity.setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
         setSystemBarsHidden(true);
@@ -61,7 +75,11 @@ public class FullscreenChromeClient extends BridgeWebChromeClient {
         if (customView == null) return;
         Activity activity = bridge.getActivity();
         ViewGroup decor = (ViewGroup) activity.getWindow().getDecorView();
-        decor.removeView(customView);
+        if (fullscreenContainer != null) {
+            decor.removeView(fullscreenContainer);
+            fullscreenContainer.removeAllViews();
+            fullscreenContainer = null;
+        }
         customView = null;
         if (customViewCallback != null) {
             try {

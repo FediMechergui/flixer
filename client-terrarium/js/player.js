@@ -58,6 +58,7 @@
       <div class="player__bar">
         <div class="player__servers" id="pl-servers"></div>
         <button type="button" class="btn btn--ghost btn--sm" data-browser-player>Open player</button>
+        <button type="button" class="player__fs" data-close-player aria-label="Close player" title="Close player">&#215;</button>
         <button type="button" class="player__fs" data-fs aria-label="Fullscreen">${ICON.fs}</button>
       </div>
       <div class="player__hot" data-hot aria-hidden="true"></div>
@@ -83,11 +84,12 @@
       if (active && active.scrollIntoView) active.scrollIntoView({ inline: "nearest", block: "nearest" });
     }
 
-    function showNotice(text) {
-      notice.innerHTML = `<span class="spinner"></span><span>${esc(text)}</span>`;
+    function showNotice(text, persistent = false) {
+      notice.innerHTML = `<span class="spinner"></span><span>${esc(text)}</span>${persistent?'<button type="button" aria-label="Dismiss player notice" data-dismiss-notice>Close</button>':''}`;
+      $('[data-dismiss-notice]',notice)?.addEventListener('click',()=>{notice.hidden=true;});
       notice.hidden = false;
       clearTimeout(st.noticeTimer);
-      st.noticeTimer = setTimeout(() => { notice.hidden = true; }, 2500);
+      if(!persistent)st.noticeTimer = setTimeout(() => { notice.hidden = true; }, 2500);
     }
 
     function teardownMedia() {
@@ -163,7 +165,7 @@
       showNotice("Opening player...");
       // Cross-origin load cannot confirm playback: offer help without interrupting a working film.
       st.startupTimer = setTimeout(() => {
-        if (!st.destroyed) showNotice("Taking a while? Try another server above");
+        if (!st.destroyed) showNotice("Playback has not started? Switch servers above or close the player.", true);
       }, 12000);
       stage.innerHTML = `<iframe src="${esc(s.embedUrl)}" title="${esc(opts.title || "Player")}" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" allowfullscreen ${s.sandbox === null ? "" : 'sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"'} frameborder="0" referrerpolicy="no-referrer-when-downgrade"></iframe>`;
       const frame=$('iframe',stage),generation=st.generation;
@@ -177,7 +179,7 @@
     window.addEventListener('flixer:player-error',onPlayerFailure);
     const onProviderMessage=event=>{
       const frame=$('iframe',stage);
-      const trusted=['https://embos.top','https://mxdrop.click','https://mixdrop.top','https://hgcloud.to','https://vkvideo.ru','https://www.ok.ru','https://ok.ru','https://s1.hdup400.com','https://player.mediadelivery.net','https://playmogo.com','https://watch.easyvidplayer.com','https://vidcore.io','https://vidcore.net'];
+      const trusted=['https://embos.top','https://mxdrop.click','https://mixdrop.top','https://hgcloud.to','https://vkvideo.ru','https://www.ok.ru','https://ok.ru','https://s1.hdup400.com','https://player.mediadelivery.net','https://playmogo.com','https://watch.easyvidplayer.com','https://vidcore.io','https://vidcore.net',"https://vidzy.cc","https://vidzy.org","https://rufiiguta.com","https://engifuosi.com","https://kitraskimisi.com","https://tukipasti.com","https://vidsrc.mov","https://vidsrc.fyi","https://embed.vidsrc.si","https://vidfast.pro","https://vidup.to","https://vidrock.net","https://vidnest.fun","https://vidlink.pro","https://111movies.net","https://multiembed.mov","https://mappletv.uk","https://moviesapi.to","https://vidapi.xyz","https://player.vidlove.cc"];
       if(!frame||!trusted.includes(event.origin)||event.source!==frame.contentWindow)return;
       if(event.data?.type==='flixer:provider-missing')failover();
       if(event.data?.type==='flixer:provider-playing'){
@@ -257,6 +259,11 @@
     hot.addEventListener("pointermove", e => { if (e.pointerType === "mouse") revealUi(); });
     bar.addEventListener("pointerdown", revealUi);
     bar.addEventListener("pointermove", revealUi);
+    $('[data-close-player]',root).addEventListener('click',()=>{
+      const fullscreen=document.fullscreenElement||document.webkitFullscreenElement;
+      if(fullscreen&&(fullscreen===root||root.contains(fullscreen))){const exit=document.exitFullscreen||document.webkitExitFullscreen;try{Promise.resolve(exit?.call(document)).finally(()=>opts.onExit?.()).catch(()=>{});}catch{opts.onExit?.();}}
+      else opts.onExit?.();
+    });
     fsBtn.addEventListener("click", toggleFullscreen);
     document.addEventListener("fullscreenchange", onFsChange);
     document.addEventListener("webkitfullscreenchange", onFsChange);
@@ -274,6 +281,8 @@
       },
       destroy() {
         st.destroyed = true;
+        const fullscreen=document.fullscreenElement||document.webkitFullscreenElement;
+        if(fullscreen&&(fullscreen===root||root.contains(fullscreen)))try{const exit=document.exitFullscreen||document.webkitExitFullscreen;Promise.resolve(exit?.call(document)).catch(()=>{});}catch{}
         clearTimeout(st.noticeTimer);
         clearTimeout(uiTimer);
         window.removeEventListener('flixer:player-error',onPlayerFailure);

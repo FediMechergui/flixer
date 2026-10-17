@@ -867,6 +867,7 @@
     let lastSave = 0;
     state.player = mountedPlayer = FlixerPlayer.mount($(".watch__player", el), {
       servers: sources.servers,
+      onExit: goBack,
       poster: episode.still || show.backdrop || show.poster,
       title: `${show.title}${type === "tv" ? " · " + episode.title : ""}`,
       startAt: resumeAt(episode.id),

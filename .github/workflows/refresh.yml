@@ -76,9 +76,5 @@ jobs:
         run: node scripts/snapshot.js save
       - name: Deploy refreshed snapshot through the project hook
         if: steps.refresh.outcome == 'success' && steps.snapshot.outcome == 'success' && env.VERCEL_TOKEN == '' && env.VERCEL_DEPLOY_HOOK != ''
-        run: |
-          node --input-type=module - <<'NODE'
-          const response = await fetch(process.env.VERCEL_DEPLOY_HOOK.trim(), { method: 'POST', signal: AbortSignal.timeout(30000) });
-          if (!response.ok) throw new Error(`Snapshot deployment failed: HTTP ${response.status}`);
-          console.log('Flixer deployment requested with the refreshed snapshot.');
-          NODE
+        timeout-minutes: 4
+        run: node scripts/deploy-snapshot.js

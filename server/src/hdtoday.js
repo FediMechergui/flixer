@@ -138,7 +138,7 @@ export function hdtodayServers(id) {
   });
 }
 
-const playerHosts = new Set(['vidsrc.mov','vidsrc.fyi','embed.vidsrc.si','vidfast.pro','vidup.to','vidrock.net','vidnest.fun','vidlink.pro','111movies.net','multiembed.mov','mappletv.uk','moviesapi.to']);
+const playerHosts = new Set(['vidsrc.mov','vidsrc.fyi','embed.vidsrc.si','vidfast.pro','vidup.to','vidrock.net','vidnest.fun','vidlink.pro','111movies.net','multiembed.mov','mappletv.uk','moviesapi.to','player.vidlove.cc']);
 export function parseHdtodayPlayer(html) {
   if (/<title>\s*(?:Quick check|Just a moment)/i.test(html)) return null;
   const target = /<meta\b[^>]*http-equiv=["']refresh["'][^>]*content=["'][^"']*?url=([^"']+)/i.exec(html)?.[1];
@@ -173,9 +173,9 @@ export function hdtodayMovieFallbacks(id,tmdbId) {
     `https://embed.vidsrc.si/embed/movie/${numericId}?autoplay=1&ds_lang=en`,
     `https://vidfast.pro/movie/${numericId}?autoPlay=true`,`https://vidup.to/movie/${numericId}?autoPlay=true`,
     `https://vidrock.net/movie/${numericId}`,`https://vidnest.fun/movie/${numericId}`,`https://vidlink.pro/movie/${numericId}?autoplay=true&title=true`,
-    `https://111movies.net/movie/${numericId}`,`https://multiembed.mov/?video_id=${numericId}&tmdb=1`,
+    `https://player.vidlove.cc/embed/movie/${numericId}`,`https://multiembed.mov/?video_id=${numericId}&tmdb=1`,
     `https://mappletv.uk/embed/movie/${numericId}`,`https://moviesapi.to/movie/${numericId}`];
-  return hdtodayServers(id).map((server,index)=>({...server,embedUrl:urls[index],sandbox:null,sourceUrl:server.embedUrl,resolution:'verified-provider-route'}));
+  return hdtodayServers(id).map((server,index)=>({...server,embedUrl:urls[index],sandbox:null,sourceUrl:server.embedUrl,...(index===8?{name:'HDToday - Vidlove'}:{}),resolution:'documented-provider-route',availability:'unverified'}));
 }
 export async function resolveHdtodayServers(id,{tmdbId,fetchPlayer=path=>request(path,{timeoutMs:5000})}={}) {
   const fallback=[...hdtodayTvFallbacks(id,tmdbId),...hdtodayMovieFallbacks(id,tmdbId)];

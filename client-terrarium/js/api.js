@@ -23,7 +23,7 @@
   const SYNC_EVERY = 3 * 60 * 1000;
   const DELTA_CAP = 2500;
   const UNI = window.FlixerUniverses;
-  const unrestrictedPlayers=new Set(['vidsrc.mov','vidsrc.fyi','embed.vidsrc.si','vidfast.pro','vidup.to','vidrock.net','vidnest.fun','vidlink.pro','111movies.net','multiembed.mov','mappletv.uk','moviesapi.to','embos.top','vidcore.net','vidcore.io','vidapi.xyz','embedmaster.link']);
+  const unrestrictedPlayers=new Set(['vidsrc.mov','vidsrc.fyi','embed.vidsrc.si','vidfast.pro','vidup.to','vidrock.net','vidnest.fun','vidlink.pro','111movies.net','multiembed.mov','mappletv.uk','moviesapi.to','embos.top','vidcore.net','vidcore.io','vidapi.xyz','embedmaster.link','player.vidlove.cc']);
   const embedSandbox=server=>{try{const u=new URL(server.embedUrl||server.rawEmbedUrl);if(u.protocol==='https:'&&!u.username&&!u.password&&(unrestrictedPlayers.has(u.hostname)||/^(?:balance|[1-9])\.medmedia03\.wiki$/.test(u.hostname)))return null;}catch{}return server.sandbox;};
   const GENRES = [
     [39, "Action", "action"], [42, "Adventure", "adventure"], [97, "Animation", "animation"], [2343589, "Biography", "biography"],
@@ -97,6 +97,7 @@
     const episodes = Array.isArray(s.episodes) ? s.episodes : [];
     const tvm = s.tvm || null;
     const title = decodeEntities(s.title);
+    const slugName=slugTitle(s.slug),alternate=slugName&&UNI.norm(slugName)!==UNI.norm(title)?slugName:"";
     return {
       id: s.id,
       offerings: s.offerings || [],
@@ -130,8 +131,8 @@
       episodeCount: s.episodeCount || episodes.length || (type === "movie" ? 1 : 0),
       firstEpisodeId: episodes[0] ? episodes[0].id : s.firstEpisodeId || s.id,
       sourceUrl: s.sourceUrl || (type === "tv" ? `${SOURCE}/series/${s.slug}/` : `${SOURCE}/${s.slug}/`),
-      alt: (() => { const a = slugTitle(s.slug); return a && UNI.norm(a) !== UNI.norm(title) ? a : ""; })(),
-      universes: [...new Set([...UNI.detect(title), ...UNI.detect(slugTitle(s.slug)), ...(s._uni || [])])],
+      alt: alternate,
+      universes: [...new Set([...UNI.detect(title), ...(alternate?UNI.detect(alternate):[]), ...(s._uni || [])])],
       stem: UNI.stem(title)
     };
   }
@@ -316,9 +317,9 @@
           this._recentIds=new Set(store.get('recentIds',[]).filter(id=>this._byId.has(id)));
           this._universeData = new Map(); this._serviceLogos = new Map();
           const notify=()=>{this._reindex();window.dispatchEvent(new CustomEvent("flixer:catalog",{detail:{updated:true}}));};
-          this._indexReady = new Promise(resolve=>setTimeout(resolve,100)).then(()=>getJson(`${CFG.mobile ? "" : DATA_BASE}/data/index.json`,60000)).then(({body})=>{
+          this._indexReady = new Promise(resolve=>setTimeout(resolve,750)).then(()=>getJson(`${CFG.mobile ? "" : DATA_BASE}/data/index.json`,60000)).then(async({body})=>{
             if(body.product!=='flixer')throw new Error('Wrong product index');
-            this._merge(body.shows || [],{snapshotAt:body.generatedAt||this._bundleAt||'1970-01-01',persist:false});if(Date.parse(body.generatedAt)>Date.parse(this._fullIndexAt||0))this._fullIndexAt=body.generatedAt;notify();
+            const rows=body.shows||[];for(let offset=0;offset<rows.length;offset+=1000){this._merge(rows.slice(offset,offset+1000),{snapshotAt:body.generatedAt||this._bundleAt||'1970-01-01',persist:false});if(offset+1000<rows.length)await new Promise(resolve=>setTimeout(resolve,0));}if(Date.parse(body.generatedAt)>Date.parse(this._fullIndexAt||0))this._fullIndexAt=body.generatedAt;notify();
           }).catch(error=>console.warn('[flixer] full index unavailable:',error.message));
           this._metadataReady=Promise.allSettled([
             getJson(`${CFG.mobile ? "" : DATA_BASE}/data/universes.json`).then(({body})=>{
@@ -387,7 +388,7 @@
       // Name-derived patterns for universes that only exist in the Wikidata data.
       const auto = [...data.values()].filter(u => !UNI.byId(u.id)).map(u => ({ id: u.id, patterns: UNI.autoPatterns(u.name, u.short) })).filter(u => u.patterns.length);
       const version=[...data.values()].map(u=>`${u.id}:${u.name}:${u.short}`).join('|');this._autoUniverseCache ||=new Map();
-      if (auto.length) c.items.forEach(i => {let cached=this._autoUniverseCache.get(i.id);if(!cached||cached.title!==i.title||cached.alt!==i.alt||cached.version!==version){cached={title:i.title,alt:i.alt,version,ids:[...new Set([...UNI.detect(i.title,auto),...(i.alt?UNI.detect(i.alt,auto):[])])]};this._autoUniverseCache.set(i.id,cached);}if(cached.ids.some(id=>!i.universes.includes(id)))i.universes=[...new Set([...i.universes,...cached.ids])];});
+      if (auto.length) c.items.forEach(i => {let cached=this._autoUniverseCache.get(i.id);if(!cached||cached.title!==i.title||cached.alt!==i.alt||cached.version!==version){cached={title:i.title,alt:i.alt,version,ids:[...new Set([...UNI.detect(i.title,auto,false),...(i.alt?UNI.detect(i.alt,auto,false):[])])]};this._autoUniverseCache.set(i.id,cached);}if(cached.ids.some(id=>!i.universes.includes(id)))i.universes=[...new Set([...i.universes,...cached.ids])];});
       // Wikidata members matched onto the live index.
       const itemById = new Map(c.items.map(i => [i.id, i]));
       data.forEach(u => {
@@ -521,8 +522,8 @@
       let added = 0;
       const identity=r=>r.tmdbId?`${r.kind}:tmdb:${r.tmdbId}`:r.year?`${r.kind}:${this._key(r.title)}:${r.year}`:null;
       const keys=show=>new Set([identity(show),...(show.year?[show.title,...(show.altTitles||[])].map(title=>`${show.kind}:${this._key(title)}:${show.year}`):[])].filter(Boolean));
-      const addIdentity=show=>{for(const key of keys(show)){let set=this._identities.get(key);if(!set)this._identities.set(key,set=new Set());set.add(show);}};
-      if(!this._identities){this._identities=new Map();c.shows.forEach(addIdentity);}
+      const addIdentity=(show,prepared=keys(show))=>{for(const key of prepared){let set=this._identities.get(key);if(!set)this._identities.set(key,set=new Set());set.add(show);}};
+      if(!this._identities){this._identities=new Map();c.shows.forEach(show=>addIdentity(show));}
       const uniqueIdentity=key=>{const set=this._identities.get(key);return set?.size===1?[...set][0]:null;};
       rows.forEach(r => {
         if (!r || !r.id) return;
@@ -558,7 +559,7 @@
           if (r.poster&&Object.values(r.poster).some(Boolean)&&(!cur.poster||!Object.values(cur.poster).some(Boolean)||fresh&&sameTitle)) cur.poster = r.poster;
           if (r.portrait&&(!cur.portrait||fresh&&sameTitle))cur.portrait=r.portrait;
           if (Array.isArray(r.episodes)&&r.episodes.length) { const ordered=fresh&&sameTitle?[...r.episodes,...(cur.episodes||[])]:[...(cur.episodes||[]),...r.episodes];cur.episodes=[...new Map(ordered.reverse().map(e=>[e.id,e])).values()].reverse();cur.episodeCount=cur.episodes.length; }
-          for(const key of oldKeys)if(!keys(cur).has(key)){this._identities.get(key)?.delete(cur);if(!this._identities.get(key)?.size)this._identities.delete(key);}addIdentity(cur);
+          const currentKeys=keys(cur);for(const key of oldKeys)if(!currentKeys.has(key)){this._identities.get(key)?.delete(cur);if(!this._identities.get(key)?.size)this._identities.delete(key);}addIdentity(cur,currentKeys);
         } else {
           this._universeDirty=true;
           this._rowRevisions ||= new Map();this._rowRevisions.set(r.id,Number(r._catalogRevision)||Date.parse(snapshotAt)||(snapshotAt?0:Date.now()));

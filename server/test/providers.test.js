@@ -30,6 +30,8 @@ test('HDToday movie players resolve directly without exposing blocked wrappers',
   const id='hd:m:movie-happy-gay-3s131e2c';
   const options=await resolveHdtodayServers(id,{tmdbId:1503719,fetchPlayer:async()=>{throw new Error('Must not fetch a wrapper when the identity is known');}});
   assert.equal(options.length,12);
+  assert.ok(options.some(s=>s.embedUrl==='https://player.vidlove.cc/embed/movie/1503719'));
+  assert.ok(options.every(s=>s.availability==='unverified'));
   assert.equal(options[0].embedUrl,'https://vidsrc.mov/embed/movie/1503719');
   assert.ok(options.every(s=>!s.embedUrl.startsWith('https://hdtoday.sx/')));
   assert.ok(options.every(s=>s.sandbox===null));

@@ -60,10 +60,10 @@
   // "Spider-Man: No Way Home" share "spider man".
   const stem = s => norm(String(s || "").split(/[:–—\-(]/)[0]).replace(/\b(part|chapter|episode|vol|volume)\b.*$/, "").replace(/\b\d+\b$/, "").replace(/\b(ii|iii|iv|v|vi|vii|viii)\b$/, "").trim();
 
-  function detect(title, extra) {
+  function detect(title, extra, includeBase = true) {
     const n = norm(title);
     if (!n) return [];
-    const out = UNIVERSES.filter(u => u.patterns.some(p => p.test(n))).map(u => u.id);
+    const out = includeBase ? UNIVERSES.filter(u => u.patterns.some(p => p.test(n))).map(u => u.id) : [];
     if (extra) extra.forEach(u => { if (!out.includes(u.id) && u.patterns.some(p => p.test(n))) out.push(u.id); });
     return out;
   }
