@@ -10,3 +10,5 @@ test('CimaTN accepts its actual public Wix MP4 choice without accepting arbitrar
 test('provider retries back off blocked sources while retaining an hourly retry',()=>{const now=Date.now(),first=nextProviderRetry(null,'HTTP 403',now);assert.equal(providerCoolingDown(first,now+1000),true);assert.equal(providerCoolingDown(first,now+900000),false);let state=first;for(let i=0;i<10;i++)state=nextProviderRetry(state,'HTTP 403',now);assert.equal(Date.parse(state.retryAt)-now,3600000);});
 
 test('Cima4u verification pages cannot complete a crawl as an empty catalogue',()=>{assert.throws(()=>parseCimafuList('<html><title>Just a moment</title></html>'),/unavailable/);});
+
+test('Cima4u canonical series pagination retains its parent identity',()=>{const id=cimafuId('s','https://cimafu.live/series/example/');assert.doesNotThrow(()=>parseCimafuDetails(id,'<link rel="canonical" href="https://cimafu.live/series/example/page/2/"><h1>Example</h1>'));assert.throws(()=>parseCimafuDetails(id,'<link rel="canonical" href="https://cimafu.live/series/another/page/2/">'),/identity mismatch/);});
