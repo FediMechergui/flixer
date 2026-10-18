@@ -32,6 +32,7 @@ if (!exported) {
   if (listing.status !== 0 || listing.stdout.trim().split(/\r?\n/).some(name => !allowed.has(name.replace(/^\.\//, '')))) throw new Error('Invalid snapshot archive entries');
   run('tar', ['-xzf', archive, '-C', serverData, '--no-same-owner', '--no-same-permissions']);
   fs.rmSync(archive, { force: true });
+  if(product==='flixer')run('node',[path.join(root,'scripts/import-reviewed-sources.js')],{env:{...process.env,DATA_DIR:serverData}});
   run('node', [path.join(root, 'server', 'src', 'export.js'),'--cached'], {env:{...process.env,DATA_DIR:serverData,FLIXER_PACKED_EXPORT:product==='flixer'?'1':'0'}});
 }
 
@@ -40,7 +41,7 @@ if(product==='flixer'){
   run('node',[path.join(root,'scripts/pack-titles.js')],{env:{...process.env,DATA_DIR:serverData}});
   const providers=JSON.parse(fs.readFileSync(path.join(serverData,'providers-flixer.json'),'utf8'));
   fs.writeFileSync(path.join(root,'server/deployment-dessinanime.json'),JSON.stringify((providers.items||[]).filter(row=>/^sp:dessinanime:/.test(row.id))));
-  fs.writeFileSync(path.join(root,'server/deployment-arabic.json'),JSON.stringify((providers.items||[]).filter(row=>/^sp:(?:cimatn|tuniflix|streamtunisie|kirmalk|ahwaktv|egydead|cinetimes):/.test(row.id))));
+  fs.writeFileSync(path.join(root,'server/deployment-arabic.json'),JSON.stringify((providers.items||[]).filter(row=>/^sp:(?:cimafu|cimatn|tuniflix|streamtunisie|kirmalk|ahwaktv|egydead|cinetimes):/.test(row.id))));
 }
 run('node', product==='flixer'
   ? [path.join(root,'scripts/build-terrarium.js'),'--out','client/dist-flixer','--shows','0','--backend-data']

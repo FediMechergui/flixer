@@ -96,7 +96,7 @@ DessinAnime supplies anonymous catalogue/search APIs and `/api/stream?playerId=.
 
 Search starts requests to all registered providers concurrently and displays completed results while slower sources respond. Known alternate titles widen those requests; cancelled searches cannot overwrite a newer query. Arabic diacritics and spelling variants, accents and ampersands are normalized for search without weakening identity checks for merging.
 
-The GitHub refresh workflow schedules latest-release passes every 30 minutes and deeper historical traversal every two hours. Scheduled jobs can be delayed by GitHub; they are not an exact-time guarantee. It scans latest listings, resumes historical catalogue cursors and rotates a bounded episode-detail queue across providers. This is eventual coverage, not a promise that every series is rechecked every two hours. A title opened in the app refreshes its series details after a short cache interval. Failures retain existing episodes and catalogue records. Hosted HDToday failures retain cached data until ordinary access is permitted.
+The GitHub refresh workflow schedules latest-release passes every 15 minutes and deeper historical traversal every two hours. Scheduled jobs can be delayed by GitHub; they are not an exact-time guarantee. It scans latest listings, resumes historical catalogue cursors and rotates a bounded episode-detail queue across providers. This is eventual coverage, not a promise that every series is rechecked every two hours. A title opened in the app refreshes its series details after a short cache interval. Failures retain existing episodes and catalogue records. Hosted HDToday failures retain cached data until ordinary access is permitted.
 
 
 ## Regional and official show sources
@@ -121,3 +121,14 @@ Closing a native player updates only its own active playback attempt. Switching 
 The source selector sits below the picture with 44 px touch controls. After all advertised servers fail, one bounded alternate-source lookup runs automatically; manual server choices and closing the player cancel its UI changes. Fonts are bundled locally with their licenses.
 
 Vercel builds package full title records into 256 compressed hash buckets instead of uploading one file per title. `/data/shows/:id.json` keeps the existing APK URL contract through a cacheable saved-title endpoint, including uncertain editions and full source synopses. Known episode playback can load its verified parent record from the same packs without parsing the whole deployment catalogue. Bootstrap and catalogue indexes remain static. The deployment's legacy catalogue fallback contains index metadata; full details come from the saved-title endpoint. A refresh with a deployment hook skips the redundant local static build before triggering Vercel.
+
+
+## Cima4u and Arabic coverage
+
+Cima4u (`cimafu.live`) uses public category pagination, structured title/parent-series metadata and the watch page's explicit server list. Arabic originals and Arabic-subtitled international media keep separate language evidence. Imports retain actual sparse episodes, known season numbers, source posters and synopses. Advertisements, related-title cards and unsupported player hosts are excluded. Its ordinary source requests can time out; cached records survive and incomplete pages retain their retry cursor.
+
+Ahwak canonical series pages (`view-serie.php?id=...`) retain their actual season tabs. Reviewed metadata includes Bab Al-Hara's 303 linked episodes across seasons 1?10 and 13, and the 1993 Al-Za'eem play separately from similarly named series. The play includes a public Sham Cinema YouTube alternative. Reviewed records are merged into the latest restored snapshot on deployment and refresh; they never replace the existing catalogue.
+
+CimaTN's source-listed Wix MP4 choices now use the in-app video player. Additional observed iframe hosts are recognized, while source posts without a working watch configuration remain catalogue entries. Tuniflix 403 responses preserve cached data. Blocked providers retry with bounded backoff (up to an hour), including exclusion from episode checks during cooldown.
+
+Latest refreshes are scheduled at minutes 02, 17, 32 and 47; historical traversal remains every two hours. GitHub scheduling and deployments can delay publication. App polling stays unchanged, and source crawls run outside app navigation. Snapshot restores retry transient failures and validate the complete archive before promoting any files. `node scripts/audit-provider-matrix.js` writes a read-only first-page/type/category sample report; successful server resolution or HTTP responses are not labelled as confirmed video playback.

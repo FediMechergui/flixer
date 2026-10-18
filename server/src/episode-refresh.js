@@ -5,9 +5,9 @@ import {mergeShow} from './merge-library.js';
 
 const provider=row=>row.id.startsWith('mf:')?'myflixer':row.id.startsWith('fm:')?'fmovies':parseSpecialistId(row.id)?.provider;
 async function resolve(row){if(row.id.startsWith('mf:'))return getTitleDetails(row.id);if(row.id.startsWith('fm:'))return getFmoviesDetails(row);return getSpecialistDetails(row.id,{fresh:true});}
-export async function refreshSeriesEpisodes(rows,{limit=120,now=Date.now(),resolveDetails=resolve,intervalMs=2*3600000}={}){
+export async function refreshSeriesEpisodes(rows,{limit=120,now=Date.now(),resolveDetails=resolve,intervalMs=2*3600000,skipProviders=new Set()}={}){
   const lanes=new Map(),report={checked:0,addedEpisodes:0,changedShows:0,errors:[]};
-  for(const row of rows){const name=provider(row);if(row.kind!=='series'||!name||row.access==='catalogue-only')continue;const checked=Date.parse(row.episodesCheckedAt||'')||0,modified=Date.parse(row.latestAt||row.providerUpdatedAt||'')||0;if(now-checked<intervalMs&&modified<=checked)continue;if(!lanes.has(name))lanes.set(name,[]);lanes.get(name).push(row);}
+  for(const row of rows){const name=provider(row);if(row.kind!=='series'||!name||skipProviders.has(name)||row.access==='catalogue-only')continue;const checked=Date.parse(row.episodesCheckedAt||'')||0,modified=Date.parse(row.latestAt||row.providerUpdatedAt||'')||0;if(now-checked<intervalMs&&modified<=checked)continue;if(!lanes.has(name))lanes.set(name,[]);lanes.get(name).push(row);}
   for(const lane of lanes.values())lane.sort((a,b)=>(Date.parse(a.episodesCheckedAt||'')||0)-(Date.parse(b.episodesCheckedAt||'')||0)||String(b.providerUpdatedAt||b.latestAt||'').localeCompare(String(a.providerUpdatedAt||a.latestAt||'')));
   const jobs=[];while(jobs.length<limit&&[...lanes.values()].some(l=>l.length))for(const lane of lanes.values())if(lane.length&&jobs.length<limit)jobs.push(lane.shift());
   const updates=new Map();let cursor=0;

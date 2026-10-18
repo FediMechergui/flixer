@@ -8,7 +8,7 @@ const providerIndex=args.indexOf('--provider'),provider=providerIndex<0?null:arg
 if(provider&&!/^(hdtoday|fmovies|[a-z]+)$/.test(provider))throw new Error('Invalid provider');
 if(!Number.isInteger(limit)||limit<1||limit>2000)throw new Error('Invalid metadata limit');
 const cache=readJson('providers-flixer.json',{}),items=new Map((cache.items||[]).map(row=>[row.id,row]));
-const arabic=/^sp:(?:cimatn|tuniflix|streamtunisie|kirmalk|ahwaktv|egydead|cinetimes):/;
+const arabic=/^sp:(?:cimafu|cimatn|tuniflix|streamtunisie|kirmalk|ahwaktv|egydead|cinetimes):/;
 const rows=[...items.values()].filter(row=>(!provider||row.id.startsWith(provider==='hdtoday'?'hd:':provider==='fmovies'?'fm:':`sp:${provider}:`))&&(parseSpecialistId(row.id)||/^(fm|hd):/.test(row.id))&&(!row.synopsis?.trim()||/^hd:/.test(row.id)&&!row.tmdbId||!artworkUrl(row.portrait)&&!artworkUrl(row.poster?.custom))&&Date.now()-Date.parse(row.metadataCheckedAt||0)>24*3600000)
   .sort((a,b)=>Number(arabic.test(b.id))-Number(arabic.test(a.id))).slice(0,limit);
 let enriched=0,failed=0;

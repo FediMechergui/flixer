@@ -1,3 +1,4 @@
+import {nextProviderRetry,providerCoolingDown} from './provider-retry.js';
 import { readJson, writeJson } from './store.js';
 import { fetchFmoviesPage, FMOVIES_GENRES } from './fmovies.js';
 import { fetchHdtodayPage } from './hdtoday.js';
@@ -42,6 +43,9 @@ function scopes(product) {
       ...specialistJobs(),
       ...['film','series'].map(kind=>({provider:'frenchstream',kind,collection:'french-originals',page:1})),
       ...['film','series'].map(kind=>({provider:'dessinanime',kind,collection:'french-cartoons',page:1})),
+      ...['film','series'].map(kind=>({provider:'cimafu',kind,collection:'arabic',page:1})),
+      {provider:'cimafu',kind:'series',collection:'anime',page:1},
+      ...['film','series'].map(kind=>({provider:'cimafu',kind,collection:'cartoons',page:1})),
       ...['arabic','turkish'].flatMap(collection=>['film','series'].map(kind=>({provider:'tuniflix',kind,collection,page:1}))),
       {provider:'streamtunisie',kind:'series',collection:'arabic',page:1},
       {provider:'multimovies',kind:'film',collection:'indian',page:1},
@@ -63,13 +67,13 @@ export async function refreshProviders({product='dahsha',full=false,latestOnly=f
 async function scan({product,full,latestOnly,pageBudget,log}) {
   const cache=providerCache(product),items=new Map(cache.items.map(i=>[i.id,i]));
   cache.queue=cache.queue.filter(job=>!(job.provider==='egydead'&&job.collection==='plays'));
-  const errors={};let requests=0;
+  const errors={...cache.errors},attempted=new Set(),failed=new Set();let requests=0;
   const deferred=new Set();
-  const unavailable=provider=>/HTTP (?:401|403|429)|verification required|origin changed/i.test(errors[provider]||'');
+  const unavailable=provider=>failed.has(provider)&&/HTTP (?:401|403|429)|verification required|origin changed/i.test(errors[provider]||'');
   // Cached HDToday data is the default until ordinary hosted access returns.
   // Independent feeds require explicit configuration, never just a file's presence.
   const feed=process.env.HDTODAY_EXTERNAL_FEED==='1'?validateHdtodayFeed(readJson('hdtoday-feed.json',null)):null;
-  const paused=new Set(feed?['hdtoday']:[]);
+  const paused=new Set([...(feed?['hdtoday']:[]),...Object.entries(cache.retryState||{}).filter(([,state])=>providerCoolingDown(state)).map(([provider])=>provider)]);
   const put=rows=>{for(const row of rows){const old=items.get(row.id);const now=new Date().toISOString();
     const fresh=!old?.latestAt || !row.latestAt || row.latestAt>=old.latestAt;
     const merged=old?mergeShow(old,row):row;
@@ -87,20 +91,21 @@ async function scan({product,full,latestOnly,pageBudget,log}) {
   const currentYear=new Date().getUTCFullYear();
   const seeds=scopes(product);
   for(let offset=0;offset<seeds.length;offset+=4){
-    const chunk=seeds.slice(offset,offset+4).filter(seed=>!paused.has(seed.provider));
+    const chunk=seeds.slice(offset,offset+4).filter(seed=>!paused.has(seed.provider)&&!unavailable(seed.provider));
     const results=await Promise.allSettled(chunk.map(seed=>{
+      attempted.add(seed.provider);
       const sort=seed.kind==='series'?'popularity.desc':'primary_release_date.desc';
       return fetchPage(seed.provider==='fmovies'?{...seed,...(seed.kind==='film'?{year:currentYear}:{}),sort}:{...seed,latest:true});
     }));
-    results.forEach((result,index)=>{if(result.status==='fulfilled'){put(result.value.items);requests++;if(result.value.partial)errors[chunk[index].provider]='Partial source response; cached records retained';}else errors[chunk[index].provider]=result.reason.message;});
+    results.forEach((result,index)=>{const provider=chunk[index].provider;if(result.status==='fulfilled'){put(result.value.items);requests++;if(result.value.partial){errors[provider]='Partial source response; cached records retained';failed.add(provider);}else if(!failed.has(provider))delete errors[provider];}else{errors[provider]=result.reason.message;failed.add(provider);}});
   }
   if(!cache.queue.length && !cache.completed)cache.queue=scopes(product);
   // Existing resumable scans keep their cursors when new source families arrive.
-  if(product==='flixer' && cache.specialistScopesVersion!==7){
+  if(product==='flixer' && cache.specialistScopesVersion!==8){
     const key=job=>JSON.stringify([job.provider,job.kind,job.country,job.language,job.genre,job.year,job.collection]);
     const known=new Set(cache.queue.map(key));
     cache.queue.push(...seeds.filter(job=>(job.country||job.language||!['fmovies','hdtoday'].includes(job.provider))&&!known.has(key(job))));
-    cache.specialistScopesVersion=7;cache.completed=false;
+    cache.specialistScopesVersion=8;cache.completed=false;
   }
   if(full && cache.completed){cache.queue=scopes(product);cache.completed=false;}
   let scanned=0;
@@ -119,8 +124,8 @@ async function scan({product,full,latestOnly,pageBudget,log}) {
     if(unavailable(cache.queue[0].provider)||paused.has(cache.queue[0].provider)||deferred.has(cache.queue[0])){cache.queue.push(cache.queue.shift());continue;}
     const job=cache.queue[0];
     try {
-      const result=await fetchPage(job);put(result.items);requests++;scanned++;
-      if(result.partial){errors[job.provider]='Partial source response; historical page retained for retry';deferred.add(job);cache.queue.push(cache.queue.shift());continue;}
+      attempted.add(job.provider);const result=await fetchPage(job);put(result.items);requests++;scanned++;
+      if(result.partial){failed.add(job.provider);errors[job.provider]='Partial source response; historical page retained for retry';deferred.add(job);cache.queue.push(cache.queue.shift());continue;}
       // Partition capped TMDB discovery by release/first-air year, then genre if necessary.
       if(job.provider==='fmovies' && job.page===1 && result.totalPages>=500 && !job.year){
         cache.queue.shift();
@@ -137,7 +142,7 @@ async function scan({product,full,latestOnly,pageBudget,log}) {
       if(scanned%10===0)log(`[providers:${product}] ${items.size} records; ${cache.queue.length} scan partitions remain`);
       if(scanned%10===0)writeJson(filename(product),{...cache,items:[...items.values()],errors,completed:false});
     }catch(e){
-      errors[job.provider]=e.message;
+      errors[job.provider]=e.message;failed.add(job.provider);
       deferred.add(job);
       // Keep the failed cursor for the next refresh, but let other providers make progress.
       cache.queue.push(cache.queue.shift());
@@ -149,10 +154,11 @@ async function scan({product,full,latestOnly,pageBudget,log}) {
   }
   cache.items=[...items.values()];cache.errors=errors;cache.completed=cache.queue.length===0;
   if(product==='flixer'){
-    const refreshed=await refreshSeriesEpisodes(cache.items,{limit:Number(process.env.PROVIDER_EPISODE_REFRESH_LIMIT||(latestOnly?24:120))});
+    const refreshed=await refreshSeriesEpisodes(cache.items,{skipProviders:paused,limit:Number(process.env.PROVIDER_EPISODE_REFRESH_LIMIT||(latestOnly?24:120))});
     cache.items=refreshed.items;cache.episodeRefresh={...refreshed.report,at:new Date().toISOString()};
     log(`[episodes:${product}] ${refreshed.report.checked} series checked; ${refreshed.report.addedEpisodes} episodes added; ${refreshed.report.errors.length} unavailable`);
   }
+  cache.retryState||={};for(const provider of attempted){if(failed.has(provider))cache.retryState[provider]=nextProviderRetry(cache.retryState[provider],errors[provider]);else{delete cache.retryState[provider];delete errors[provider];}}
   cache.lastRefreshAt=new Date().toISOString();
   writeJson(filename(product),cache);
   log(`[providers:${product}] ${cache.items.length} source records; complete=${cache.completed}; requests=${requests}${Object.keys(errors).length?`; errors=${JSON.stringify(errors)}`:''}`);

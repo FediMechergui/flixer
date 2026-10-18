@@ -45,3 +45,5 @@ server/deployment-*.json
 server/data/hdtoday-feed.json
 
 server/deployment-titles/
+
+server/snapshot-restore-*/

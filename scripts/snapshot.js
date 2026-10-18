@@ -1,7 +1,8 @@
+import {SNAPSHOT_FILES,validateSnapshotEntries,validateSnapshotDirectory} from './snapshot-validation.js';
 // Saves / restores the server's cached data (playlists, details, seen, catalog) as a GitHub Release
 // asset, so CI refreshes are incremental instead of re-scanning ~30k videos from scratch.
 //   node scripts/snapshot.js save      -> uploads server/data snapshot to release "data-snapshot"
-//   node scripts/snapshot.js restore   -> downloads it into server/data (no-op if absent)
+//   node scripts/snapshot.js restore   -> validates a complete snapshot before replacing server/data
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -10,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dataDir = path.join(root, 'server', 'data');
 const TAG = 'data-snapshot';
-const FILES = ["flixer-catalog.json", "providers-flixer.json", "provider-aliases-flixer.json", "provider-identities-flixer.json", "provider-matches-flixer.json"];
+const FILES = SNAPSHOT_FILES;
 const ARCHIVE = 'data-snapshot.tar.gz';
 const archive = path.join(root, ARCHIVE);
 // No shell: paths with spaces (OneDrive folders) must reach tar/gh untouched. Windows resolves
@@ -48,11 +49,26 @@ if (mode === 'save') {
   console.log(`snapshot saved (${present.join(', ')})`);
 } else if (mode === 'restore') {
   fs.mkdirSync(dataDir, { recursive: true });
-  const r = sh('gh', ['release', 'download', TAG, '--pattern', ARCHIVE, '--dir', '.', '--clobber'], { cwd: root });
-  if (r.status !== 0 || !fs.existsSync(archive)) { console.log('no snapshot available - starting from scratch'); process.exit(0); }
-  if (sh('tar', ['-xzf', path.relative(dataDir, archive)], { cwd: dataDir }).status !== 0) process.exit(1);
-  fs.rmSync(archive, { force: true });
-  console.log('snapshot restored');
+  let downloaded=false;
+  for(let attempt=1;attempt<=3;attempt++){
+    const r=sh('gh',['release','download',TAG,'--pattern',ARCHIVE,'--dir','.','--clobber'],{cwd:root,timeout:90000});
+    if(r.status===0&&fs.existsSync(archive)){downloaded=true;break;}
+    console.warn(`[snapshot] download attempt ${attempt}/3 failed; existing data retained`);
+    if(attempt<3)await new Promise(resolve=>setTimeout(resolve,1000*attempt));
+  }
+  if(!downloaded)throw new Error('Snapshot restore failed; refusing to refresh or publish an incomplete replacement');
+  const stage=path.join(root,'server',`snapshot-restore-${process.pid}`);
+  if(!path.resolve(stage).startsWith(path.join(root,'server')+path.sep))throw new Error('Invalid snapshot staging path');
+  fs.mkdirSync(stage,{recursive:true});
+  try{
+    const listing=spawnSync(exe('tar'),['-tzf',archive],{encoding:'utf8'});
+    if(listing.status!==0)throw new Error('Snapshot archive validation failed');validateSnapshotEntries(listing.stdout);
+    if(sh('tar',['-xzf',archive,'-C',stage,'--no-same-owner','--no-same-permissions']).status!==0)throw new Error('Snapshot extraction failed; existing data retained');
+    validateSnapshotDirectory(stage);
+    fs.mkdirSync(dataDir,{recursive:true});
+    for(const name of [...FILES.filter(n=>n!=='flixer-catalog.json'),'flixer-catalog.json']){const destination=path.join(dataDir,name),pending=destination+'.restore-pending';fs.copyFileSync(path.join(stage,name),pending);fs.renameSync(pending,destination);}
+    fs.rmSync(archive,{force:true});console.log('snapshot restored and validated');
+  }finally{fs.rmSync(stage,{recursive:true,force:true});}
 } else {
   console.error('usage: node scripts/snapshot.js save|restore');
   process.exit(1);

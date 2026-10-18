@@ -1,9 +1,11 @@
+import {CIMAFU_PROVIDERS,parseCimafuId,cimafuUrl,cimafuId,cimafuIdFromUrl,getCimafuDetails,fetchCimafuPage,resolveCimafuServers} from './cimafu.js';
 import { load } from 'cheerio';
 import { safeRemoteFetch } from './stream-security.js';
 import JSON5 from 'json5';
 import fs from 'node:fs';
 
 export const ARABIC_PROVIDERS={
+  ...CIMAFU_PROVIDERS,
   streamtunisie:{name:'StreamTunisie',origin:'https://streamtunisie.net',kind:null,collections:['arabic','tunisian']},
   kirmalk:{name:'Kirmalk',origin:'https://kirmalk.com',kind:null,collections:['arabic','egyptian','plays']},
   ahwaktv:{name:'AhwakTV',origin:'https://yam.ahwaktv.net',kind:null,collections:['arabic','egyptian']},
@@ -16,6 +18,7 @@ const clean=x=>String(x||'').replace(/\s+/g,' ').trim();
 const dedupe=rows=>[...new Map(rows.map(r=>[r.id,r])).values()];
 const fixed=(value,origin)=>{try{const u=new URL(value,origin);return u.origin===origin&&!u.username&&!u.password?u:null;}catch{return null;}};
 export function parseArabicId(id){
+  const cimafu=parseCimafuId(id);if(cimafu)return cimafu;
   const m=/^sp:(streamtunisie|kirmalk|ahwaktv|egydead|tuniflix|cinetimes|cimatn):([sme]):([A-Za-z0-9_-]{1,300})(?::([1-9]\d{0,3}))?$/.exec(String(id));
   if(!m)return null;
   const [,provider,type,token]=m;
@@ -37,18 +40,23 @@ export function parseArabicId(id){
   return {provider,type,slug:token,pathname};
 }
 export function arabicUrl(id){
+  if(parseCimafuId(id))return cimafuUrl(id);
   const p=parseArabicId(id);if(!p)return null;const origin=ARABIC_PROVIDERS[p.provider].origin;
   if(p.provider==='tuniflix')return `${origin}/${p.type==='s'?'serie':p.type==='m'?'movie':'episode'}/${p.slug}`;
   if(p.provider==='cinetimes')return `${origin}/t/${p.slug}`;
+  if(p.provider==='ahwaktv'&&p.type==='s'&&/^v_[1-9]\d*$/.test(p.slug))return `${origin}/view-serie.php?id=${p.slug.slice(2)}`;
   if(p.query)return `${origin}/search.php?keywords=${encodeURIComponent(p.query)}&btn=Search`;
   return p.pathname?origin+p.pathname:`${origin}/${p.type==='s'?'category.php?cat=':'watch.php?vid='}${p.slug}`;
 }
 export function arabicId(provider,type,value){
+  if(provider==='cimafu')return cimafuId(type,value);
   const cfg=ARABIC_PROVIDERS[provider],u=cfg&&fixed(value,cfg.origin);if(!u)return null;
   let token;
   if(provider==='tuniflix'||provider==='cinetimes'){
     const prefix=provider==='cinetimes'?'/t/':`/${type==='s'?'serie':type==='m'?'movie':'episode'}/`;
     if(!u.pathname.startsWith(prefix)||u.search||u.hash)return null;token=u.pathname.slice(prefix.length).replace(/\/$/,'');
+  }else if(provider==='ahwaktv'&&type==='s'&&u.pathname==='/view-serie.php'){
+    const number=u.searchParams.get('id');if(!/^[1-9]\d*$/.test(number||''))return null;token='v_'+number;
   }else if(['kirmalk','ahwaktv'].includes(provider)){
     if(u.pathname!==(type==='s'?'/category.php':'/watch.php'))return null;
     token=u.searchParams.get(type==='s'?'cat':'vid');
@@ -56,9 +64,10 @@ export function arabicId(provider,type,value){
   const id=`sp:${provider}:${type}:${token}`;return parseArabicId(id)?id:null;
 }
 export function arabicIdFromUrl(value){
+  const cimafu=cimafuIdFromUrl(value);if(cimafu)return cimafu;
   for(const [provider,cfg] of Object.entries(ARABIC_PROVIDERS)){
     const u=fixed(value,cfg.origin);if(!u)continue;
-    const type=u.pathname==='/category.php'||u.pathname.startsWith('/series/')||u.pathname.startsWith('/serie/')||u.pathname.startsWith('/season/')?'s':u.pathname.startsWith('/episode/')?'e':'m';
+    const type=u.pathname==='/view-serie.php'||u.pathname==='/category.php'||u.pathname.startsWith('/series/')||u.pathname.startsWith('/serie/')||u.pathname.startsWith('/season/')?'s':u.pathname.startsWith('/episode/')?'e':'m';
     return arabicId(provider,type,u.href);
   }return null;
 }
@@ -66,7 +75,7 @@ const cache=new Map();
 let savedStamp='',savedRows=new Map(),savedEpisodes=new Map();
 export function arabicSnapshot(id){
   const deployment=new URL('../deployment-arabic.json',import.meta.url),local=new URL('../data/providers-flixer.json',import.meta.url);
-  const file=fs.existsSync(deployment)?deployment:local;if(!fs.existsSync(file))return null;
+  const file=!process.env.VERCEL&&fs.existsSync(local)?local:fs.existsSync(deployment)?deployment:local;if(!fs.existsSync(file))return null;
   const stamp=`${file}:${fs.statSync(file).mtimeMs}`;
   if(stamp!==savedStamp){const data=JSON.parse(fs.readFileSync(file,'utf8'));savedRows=new Map((Array.isArray(data)?data:data.items||[]).filter(r=>parseArabicId(r.id)).map(r=>[r.id,r]));savedEpisodes=new Map();for(const row of savedRows.values())for(const episode of row.episodes||[])savedEpisodes.set(episode.id,row);savedStamp=stamp;}
   return savedRows.get(id)||savedEpisodes.get(id)||null;
@@ -117,6 +126,8 @@ export function parseArabicList(provider,html,url,{kind='film',collection=''}={}
       const id=arabicId(provider,type,u.href);if(!id||!title)return;
       items.push(row(id,title,$(a).find('img').attr('src'),{collection:collection||'tunisian',country:collection==='arabic'?null:'TN'}));
     });
+  }else if(provider==='ahwaktv'&&type==='s'&&u.pathname==='/view-serie.php'){
+    const number=u.searchParams.get('id');if(!/^[1-9]\d*$/.test(number||''))return null;token='v_'+number;
   }else if(['kirmalk','ahwaktv'].includes(provider)){
     $('.video-card,.pm-ul-browse-videos li,.pm-ul-browse-videos .thumbnail,.pm-ul-search-videos li').each((_,card)=>{
       const a=$(card).find('a[href*="watch.php?vid="][title]').first(),title=clean(a.attr('title'));if(!title)return;
@@ -180,7 +191,7 @@ export function parseArabicDetails(id,html){
       const epId=arabicId(p.provider,'e',u.href);if(!epId)return;
       const slot=/-s(\d+)e(\d+)\/$/i.exec(u.pathname);
       const number=Number(/(?:الحلقة|حلقه|episode)\s*0*(\d+)/i.exec(label)?.[1]||slot?.[2]||/episode[-_]?0*(\d+)|-(\d+)-episode|[-_]e0*(\d+)\//i.exec(u.pathname)?.slice(1).find(Boolean))||null;
-      item.episodes.push({id:epId,title:label,season:p.provider==='streamtunisie'?null:slot?Number(slot[1]):season,number,sourceUrl:u.href,offerings:[{provider:p.provider,id:epId}]});
+      item.episodes.push({id:epId,title:label,season:p.provider==='streamtunisie'?null:slot?Number(slot[1]):Number(/^Season([1-9]\d*)$/.exec($(a).closest('.tabcontent').attr('id')||'')?.[1])||season,number,sourceUrl:u.href,offerings:[{provider:p.provider,id:epId}]});
     });
     const pages=paging($,arabicUrl(id),[]);item.totalPages=pages.totalPages;item.episodesComplete=pages.totalPages===1;
   }else if(p.type==='e'){
@@ -205,6 +216,7 @@ export async function collectArabicPages(entries,fetchEntry,concurrency=4){
   return results;
 }
 async function getLiveArabicDetails(id){
+  if(parseCimafuId(id))return getCimafuDetails(id);
   if(parseArabicId(id)?.provider==='cimatn')return getCimaDetails(id);
   const url=arabicUrl(id),item=parseArabicDetails(id,await arabicPage(url));
   if(item.sourceSeasons){
@@ -224,7 +236,8 @@ async function getLiveArabicDetails(id){
   return item;
 }
 const scopes={kirmalk:{film:'movie14',series:'serieseg4',plays:'msr7'},ahwaktv:{film:'aflam-arabya1',series:'moslslat-msriya'}};
-export async function fetchArabicPage({provider,kind='film',collection='',page=1,search}={}){
+export async function fetchArabicPage({provider,kind='film',collection='',page=1,search,latest=false}={}){
+  if(provider==='cimafu')return fetchCimafuPage({kind,collection,page,search,latest});
   if(provider==='egydead'&&collection==='plays')return {items:[],page,totalPages:1,hasNext:false,unsupported:true};
   if(provider==='cimatn')return fetchCimaPage({kind,page,search});
   if(provider==='tuniflix'&&!collection&&!search)collection='tunisian';
@@ -255,7 +268,7 @@ export async function fetchArabicPage({provider,kind='film',collection='',page=1
   }
   result.items=result.items.filter(r=>search||!kind||r.kind===kind);return result;
 }
-const embedHosts=new Set(['www.youtube.com','www.youtube-nocookie.com','youtube.com','player.vimeo.com','www.dailymotion.com','geo.dailymotion.com','hgcloud.to','audinifer.com','morencius.com','mixdrop.top','playmogo.com','s1.hdup400.com','watch.easyvidplayer.com','watch.strp2p.site','vkvideo.ru','ok.ru','www.ok.ru','player.mediadelivery.net','app.videas.fr','www.vidspeed.org','uqload.net','movearnpre.com','dingtezuni.com','q7v3k8m2p1.top']);
+const embedHosts=new Set(['uqload.vc','cima.easyvidplayer.com','www.youtube.com','www.youtube-nocookie.com','youtube.com','player.vimeo.com','www.dailymotion.com','geo.dailymotion.com','hgcloud.to','audinifer.com','morencius.com','mixdrop.top','playmogo.com','s1.hdup400.com','watch.easyvidplayer.com','watch.strp2p.site','vkvideo.ru','ok.ru','www.ok.ru','player.mediadelivery.net','app.videas.fr','www.vidspeed.org','uqload.net','movearnpre.com','dingtezuni.com','q7v3k8m2p1.top']);
 export function parseArabicServers(id,html){
   const p=parseArabicId(id),$=load(html),urls=[];
   if(p.provider==='streamtunisie'){
@@ -270,7 +283,7 @@ export function parseArabicServers(id,html){
   if(['tuniflix','cimatn'].includes(p.provider))$('iframe[src]').each((_,el)=>urls.push($(el).attr('src')));
   if(p.provider==='cinetimes')$('video source[src],iframe[src*="youtube.com/embed/"]').each((_,el)=>urls.push($(el).attr('src')));
   if(p.provider==='egydead')$('.watchAreaMaster [data-link],.watchServers [data-link],.serversList [data-link]').each((_,el)=>urls.push($(el).attr('data-link')));
-  const direct=urls.filter(value=>p.provider==='cinetimes'?pSafeCommons(value):p.provider==='streamtunisie'&&safeSourceHls(value)).map((url,i)=>({id:`${p.provider}:direct:${i}`,provider:p.provider,name:`${ARABIC_PROVIDERS[p.provider].name} - direct video`,type:p.provider==='cinetimes'?'file':'hls',streamUrl:url}));
+  const direct=urls.filter(value=>safeTunisianFile(value)||(p.provider==='cinetimes'?pSafeCommons(value):p.provider==='streamtunisie'&&safeSourceHls(value))).map((url,i)=>({id:`${p.provider}:direct:${i}`,provider:p.provider,name:`${ARABIC_PROVIDERS[p.provider].name} - direct video`,type:p.provider==='cinetimes'||safeTunisianFile(url)?'file':'hls',streamUrl:url}));
   return [...direct,...[...new Set(urls)].flatMap((value,i)=>{try{const u=new URL(value);if(u.protocol!=='https:'||u.username||u.password||u.port||!embedHosts.has(u.hostname))return [];
     const videoId=['www.youtube.com','www.youtube-nocookie.com','youtube.com'].includes(u.hostname)?/^\/embed\/([\w-]{11})/.exec(u.pathname)?.[1]:null;
     return [{id:`${p.provider}:${i}`,provider:p.provider,name:`${ARABIC_PROVIDERS[p.provider].name} - ${videoId?'YouTube':u.hostname}`,type:videoId?'youtube':'embed',...(videoId?{videoId}:{embedUrl:u.href,sandbox:null})}];
@@ -278,10 +291,11 @@ export function parseArabicServers(id,html){
 }
 export function ahwakPlaybackLink(html){const $=load(html),href=$('#video-wrapper #play-video[href],#video-wrapper a.controls-play-pause-big[href]').first().attr('href'),url=fixed(href,ARABIC_PROVIDERS.ahwaktv.origin);return url&&url.pathname==='/see.php'&&/^[A-Za-z0-9_-]{1,100}$/.test(url.searchParams.get('vid')||'')?url.href:null;}
 export async function resolveArabicServers(id,{fresh=false}={}){
+  if(parseCimafuId(id))return resolveCimafuServers(id,{fresh});
   const saved=arabicSnapshot(id),episode=saved?.episodes?.find(e=>e.id===id),stored=episode?.cachedPlayers;
   if(!fresh&&stored?.length&&parseArabicId(id)?.provider!=='cimatn'){
     const validated=approvedPlayers(id,stored.map(s=>({url:s.embedUrl||(s.type==='youtube'?`https://www.youtube.com/embed/${s.videoId}`:'')})));
-    const files=stored.filter(s=>s.type==='file'&&pSafeCommons(s.streamUrl)||parseArabicId(id)?.provider==='streamtunisie'&&s.type==='hls'&&safeSourceHls(s.streamUrl));
+    const files=stored.filter(s=>s.type==='file'&&(pSafeCommons(s.streamUrl)||safeTunisianFile(s.streamUrl))||parseArabicId(id)?.provider==='streamtunisie'&&s.type==='hls'&&safeSourceHls(s.streamUrl));
     if(validated.length||files.length)return [...validated,...files];
   }
   if(parseArabicId(id)?.provider==='cimatn'){
@@ -321,6 +335,7 @@ function approvedPlayers(id,entries){
   const html=entries.filter(x=>typeof x?.url==='string').map(x=>`<iframe src="${x.url.replace(/[&"<>]/g,c=>({'&':'&amp;','"':'&quot;','<':'&lt;','>':'&gt;'}[c]))}"></iframe>`).join('');
   return parseArabicServers(id,html);
 }
+export function safeTunisianFile(value){try{const u=new URL(value);return u.protocol==='https:'&&u.hostname==='video.wixstatic.com'&&!u.username&&!u.password&&!u.port&&/^\/video\/[a-f0-9_]+\/(?:[0-9]+p\/)?mp4\/file\.mp4$/.test(u.pathname);}catch{return false;}}
 function pSafeCommons(value){try{const u=new URL(value);return u.protocol==='https:'&&u.hostname==='upload.wikimedia.org'&&!u.username&&!u.password&&!u.port&&/\.(?:webm|mp4)$/.test(u.pathname);}catch{return false;}}
 function safeSourceHls(value){try{const u=new URL(value);if(u.protocol!=='https:'||u.hostname!=='s2.savefiles.com'||u.username||u.password||u.port||!u.pathname.endsWith('.m3u8'))return false;const start=Number(u.searchParams.get('s')),duration=Number(u.searchParams.get('e'));return !start||!duration||(start+duration)*1000>Date.now();}catch{return false;}}
 async function cimaWatchData(html){
@@ -359,8 +374,9 @@ async function fetchCimaPage({kind,page,search}){
   for(const entry of feed.entry||[]){
     const source=entry.link?.find(l=>l.rel==='alternate')?.href,id=arabicId('cimatn',kind==='series'?'s':'m',source);if(!id)continue;
     const body=entry.content?.$t||'',watch=await cimaWatchData(body);
-    if(kind==='series'?!Object.keys(watch?.episodes||{}).length:!watch?.servers?.length)continue;
+    const playable=kind==='series'?Object.keys(watch?.episodes||{}).length>0:!!watch?.servers?.length;
     const item=row(id,entry.title.$t,entry.media$thumbnail?.url?.replace('/s72-c/','/s640/'),{collection:'tunisian',country:'TN'});
+    item.access=playable?'public':'catalogue-only';item.synopsis=parseArabicDetails(id,body).synopsis||'';
     item.publishedAt=entry.published?.$t;item.providerUpdatedAt=entry.updated?.$t;item.originalLanguage=null;
     // Blog publication date is not the film's release year.
     const match=/year[^>]*>\s*((?:19|20)\d{2})/i.exec(body),tagYear=entry.category?.find(c=>/^(?:19|20)\d{2}$/.test(c.term))?.term;item.year=tagYear?Number(tagYear):match?Number(match[1]):item.year;

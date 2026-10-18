@@ -6,6 +6,7 @@ on:
   schedule:
     - cron: '17 */2 * * *'   # historical catalogue traversal
     - cron: '47 * * * *'     # latest releases
+    - cron: '2,32 * * * *'   # latest releases every 15 minutes overall
     - cron: '17 1-23/2 * * *' # latest releases between historical runs
   workflow_dispatch:
     inputs:
@@ -42,6 +43,8 @@ jobs:
         run: npm ci --prefix server && npm ci --prefix client
       - name: Restore data snapshot
         run: node scripts/snapshot.js restore
+      - name: Apply reviewed Arabic source identities
+        run: node scripts/import-reviewed-sources.js
       - name: Continue complete Arabic catalogue traversal and sample playback routes
         if: github.event_name != 'schedule' || github.event.schedule == '17 */2 * * *'
         run: node scripts/audit-arabic.js --crawl --pages 180 --samples 1

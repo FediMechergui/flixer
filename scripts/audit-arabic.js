@@ -8,6 +8,7 @@ const args=process.argv.slice(2),value=(name,fallback)=>args.includes(name)?args
 const budget=Number(value('--pages','30')),sampleCount=Number(value('--samples','2'));
 const cache=readJson('providers-flixer.json',{}),items=new Map((cache.items||[]).map(r=>[r.id,r]));
 const jobs=Object.keys(ARABIC_PROVIDERS).flatMap(provider=>(provider==='cinetimes'?['film']:['film','series']).map(kind=>({provider,kind,collection:['tuniflix','cimatn','streamtunisie','cinetimes'].includes(provider)?'tunisian':kind==='series'?'egyptian':'arabic'})));
+jobs.push(...['film','series'].map(kind=>({provider:'cimafu',kind,collection:'arabic'})));
 jobs.push(...['arabic','turkish'].flatMap(collection=>['film','series'].map(kind=>({provider:'tuniflix',kind,collection}))),{provider:'streamtunisie',kind:'series',collection:'arabic'},{provider:'kirmalk',kind:'film',collection:'plays'});
 const key=j=>[j.provider,j.kind,j.collection].join(':');
 const coverage=cache.arabicCoverage||{},report={at:new Date().toISOString(),pages:[],playback:[],coverage};
