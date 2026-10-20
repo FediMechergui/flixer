@@ -126,8 +126,6 @@ export function parseArabicList(provider,html,url,{kind='film',collection=''}={}
       const id=arabicId(provider,type,u.href);if(!id||!title)return;
       items.push(row(id,title,$(a).find('img').attr('src'),{collection:collection||'tunisian',country:collection==='arabic'?null:'TN'}));
     });
-  }else if(provider==='ahwaktv'&&type==='s'&&u.pathname==='/view-serie.php'){
-    const number=u.searchParams.get('id');if(!/^[1-9]\d*$/.test(number||''))return null;token='v_'+number;
   }else if(['kirmalk','ahwaktv'].includes(provider)){
     $('.video-card,.pm-ul-browse-videos li,.pm-ul-browse-videos .thumbnail,.pm-ul-search-videos li').each((_,card)=>{
       const a=$(card).find('a[href*="watch.php?vid="][title]').first(),title=clean(a.attr('title'));if(!title)return;

@@ -109,12 +109,31 @@
       const generation = st.generation;
       const current = () => !st.destroyed && st.generation === generation;
       stage.innerHTML = '<div class="player__loading">Player open in the app</div>';
-      try { await window.FlixerBrowser.openPlayer(url); }
+      try { const result=await window.FlixerBrowser.openPlayer(url);
+        if(current()&&['failed','next'].includes(result?.reason)){failover();return;}
+        if(current()&&result?.reason==='closed'){opts.onExit?.();return;}
+      }
       catch (e) { if (current()) showNotice(e.message, true); }
       if (current()) stage.innerHTML = '<div class="player__loading">Choose a source above to continue.</div>';
     }
 
     $('[data-browser-player]',root).addEventListener('click',openNativePlayer);
+
+    async function openDirectPlayer(server){
+      const generation=st.generation,current=()=>!st.destroyed&&st.generation===generation;
+      stage.innerHTML='<div class="player__loading">Video open in the app</div>';
+      try{
+        const result=await window.FlixerBrowser.openMedia(server,{title:opts.title,startAt:opts.startAt,onProgress:state=>{
+          if(!current())return;
+          if(state.playing){try{localStorage.setItem('flixer:player-preference',JSON.stringify({provider:server.provider,name:server.name,audioMode:server.audioMode,confirmed:true}));}catch{}}
+          if(state.duration>0)opts.onProgress?.(state.position,state.duration);
+        }});
+        if(!current())return;
+        if(['failed','next'].includes(result?.reason))return failover();
+        if(result?.reason==='ended')return opts.onEnded?.();
+        opts.onExit?.();
+      }catch{if(current())failover();}
+    }
 
     function load(i, automatic = false) {
       if (st.destroyed) return;
@@ -130,7 +149,8 @@
         const generation=st.generation;showNotice('Resolving source video...');
         resolveDessinPlayer(s).then(choices=>{if(st.destroyed||st.generation!==generation)return;servers.splice(i,1,...choices);load(i);}).catch(()=>{if(!st.destroyed&&st.generation===generation)failover();});return;
       }
-      if (["hls","mp4","file"].includes(s.type) && s.streamUrl) return loadHls(s);
+      if (["hls","mp4","file","dash"].includes(s.type) && s.streamUrl) return window.FlixerBrowser?.hasNativeVideo?.()?openDirectPlayer(s):loadHls(s);
+      if(s.embedUrl&&['embed','browser'].includes(s.type)&&window.FlixerBrowser?.hasNativePlayer?.())return openNativePlayer();
       if(s.type==='browser'&&s.embedUrl){stage.innerHTML='<div class="player__error"><p>Open this player inside Flixer.</p><button class="btn btn--primary" data-source-player>Open player</button></div>'; $('[data-source-player]',stage).addEventListener('click',()=>openNativePlayer());return;}
       if (s.embedUrl) return loadEmbed(s);
       failover();
@@ -302,6 +322,7 @@
       },
       destroy() {
         st.destroyed = true;
+        window.FlixerBrowser?.closePlayers?.();
         const fullscreen=document.fullscreenElement||document.webkitFullscreenElement;
         if(fullscreen&&(fullscreen===root||root.contains(fullscreen)))try{const exit=document.exitFullscreen||document.webkitExitFullscreen;Promise.resolve(exit?.call(document)).catch(()=>{});}catch{}
         clearTimeout(st.noticeTimer);

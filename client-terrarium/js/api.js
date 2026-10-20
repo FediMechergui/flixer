@@ -964,6 +964,7 @@
       const toAbsolute = url => !url ? null : (/^https?:\/\//.test(url) ? url : API_BASE + url);
       try {
         const params = new URLSearchParams({id});
+        if(window.FlixerBrowser?.hasNativeVideo?.())params.set('transport','direct');
         if(fresh)params.set('fresh','1');
         if (show.id) params.set('showId',show.id);
         [show.sourceUrl, ...(show.offerings || []).map(o => o.sourceUrl)].filter(Boolean).forEach(source => params.append('source',source));
@@ -971,7 +972,7 @@
         const servers = [];
         (Array.isArray(data.servers) ? data.servers : []).forEach((s, idx) => {
           if(s.requiresBrowserVerification || /^https:\/\/hdtoday\.sx\//i.test(s.embedUrl || ''))return;
-          const streamUrl = toAbsolute(s.streamUrl || s.rawStreamUrl);
+          const streamUrl = toAbsolute(window.FlixerBrowser?.hasNativeVideo?.()?(s.rawStreamUrl || s.streamUrl):(s.streamUrl || s.rawStreamUrl));
           const youtubeId = s.type === 'youtube' && /^[A-Za-z0-9_-]{11}$/.test(s.videoId || '') ? s.videoId : null;
           const embedUrl = youtubeId ? `https://www.youtube.com/embed/${youtubeId}?autoplay=1&playsinline=1&rel=0` : toAbsolute(s.embedUrl || s.rawEmbedUrl);
           if (streamUrl || embedUrl || s.type==='dessinanime'&&s.provider==='dessinanime'&&Number.isSafeInteger(s.playerId)&&s.playerId>0) servers.push({ ...s, sandbox:youtubeId?null:embedSandbox(s), id: s.id != null ? s.id : idx, name: s.name || "Player " + (idx + 1), type: s.type || (streamUrl ? "hls" : "embed"), streamUrl, embedUrl });

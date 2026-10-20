@@ -664,7 +664,7 @@ export async function handleEmbedPlayer(id, req, res, proxyPrefix = '/api/stream
  * Resolve playback streams and player embed for an episode or film.
  * Extracts all 7 player providers from Myflixer.
  */
-export async function resolveMyflixerStream(id, proxyPrefix = '/api/stream') {
+export async function resolveMyflixerStream(id, proxyPrefix = '/api/stream', {transport='proxy'}={}) {
   if (!validMediaId(id)) throw new Error('Invalid stream ID');
   const isMovie = id.startsWith('mf:m:');
   const slug = id.replace(/^mf:[mse]:/, '');
@@ -729,8 +729,9 @@ export async function resolveMyflixerStream(id, proxyPrefix = '/api/stream') {
           id: `hls_${idx}`,
           name: `${s.quality || `Server ${idx + 1}`} (HLS)`,
           type: 'hls',
-          streamUrl: proxyUrl(proxyPrefix, s.uri),
+          streamUrl: transport==='direct'?s.uri:proxyUrl(proxyPrefix, s.uri),
           rawStreamUrl: s.uri,
+          headers:s.headers,
         });
       });
     }
@@ -775,7 +776,7 @@ export async function resolveMyflixerStream(id, proxyPrefix = '/api/stream') {
         ...s,
         id: idx,
         name: s.quality || `Server ${idx + 1}`,
-        proxyUri: proxyUrl(proxyPrefix, s.uri),
+        ...(transport==='direct'?{}:{proxyUri:proxyUrl(proxyPrefix, s.uri)}),
       })),
     };
   } catch (e) {

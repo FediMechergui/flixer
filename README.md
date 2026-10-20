@@ -131,4 +131,12 @@ Ahwak canonical series pages (`view-serie.php?id=...`) retain their actual seaso
 
 CimaTN's source-listed Wix MP4 choices now use the in-app video player. Additional observed iframe hosts are recognized, while source posts without a working watch configuration remain catalogue entries. Tuniflix 403 responses preserve cached data. Blocked providers retry with bounded backoff (up to an hour), including exclusion from episode checks during cooldown.
 
+### Android direct media and embedded players
+
+Android uses a separate Media3 surface for source-provided MP4, HLS and DASH URLs. The device requests video manifests, segments and files directly from the source CDN. `/api/stream?transport=direct` returns direct Myflixer media choices without generating segment-proxy URLs; older APKs retain their existing transport. Vercel still serves catalogue/search/title data and resolves source links. Source-provided request headers are limited to Referer and User-Agent in the native media client.
+
+Approved HTML players open in an isolated Android WebView with Close and Next source controls, with no Capacitor bridge exposed to remote pages. Main-document HTTP errors and known missing-video messages advance to the next source. Official YouTube embeds retain their supported iframe integration. Native media reports position and duration back to Flixer; navigating away releases the player. Source sites' restrictions and expired/deleted files still apply.
+
+Run `node scripts/audit-provider-matrix.js` for catalogue samples, then `node scripts/audit-player-routes.js` to probe every advertised route for each sampled title's first actual episode. Reports in `artifacts/` distinguish HTTP reachability, source errors and Android host support; HTTP 200 does not certify playback. Full catalogue import and universal playback are not guaranteed by those sample audits.
+
 Latest refreshes are scheduled at minutes 02, 17, 32 and 47; historical traversal remains every two hours. GitHub scheduling and deployments can delay publication. App polling stays unchanged, and source crawls run outside app navigation. Snapshot restores retry transient failures and validate the complete archive before promoting any files. `node scripts/audit-provider-matrix.js` writes a read-only first-page/type/category sample report; successful server resolution or HTTP responses are not labelled as confirmed video playback.

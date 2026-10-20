@@ -265,7 +265,7 @@ export async function discoverLibrary({kind='film',page=1,genre,year,collection=
   const providers=results.map((r,i)=>({provider:names[i],page,totalPages:pages[i].totalPages,ok:r.status==='fulfilled',cached:!!pages[i].cached}));
   return {items,page,totalPages:Math.max(page,...pages.map(result=>Number(result.totalPages)||page)),providers,providerErrors:results.map((r,i)=>r.status==='rejected'?{provider:providers[i].provider,error:r.reason.message}:null).filter(Boolean)};
 }
-export async function unifiedStream(id,{showId,source,prefix='/api/stream',catalog,product=PRODUCT,quick=false,fresh=false,resolveTitle=unifiedTitle,resolveMyflixer=resolveMyflixerStream,resolveHdtoday=resolveHdtodayServers,resolveSpecialist=resolveSpecialistServers}={}) {
+export async function unifiedStream(id,{showId,source,prefix='/api/stream',catalog,product=PRODUCT,quick=false,fresh=false,transport='proxy',resolveTitle=unifiedTitle,resolveMyflixer=resolveMyflixerStream,resolveHdtoday=resolveHdtodayServers,resolveSpecialist=resolveSpecialistServers}={}) {
   if(!catalog){const saved=product==='flixer'&&showId?readPackedTitle(showId):null;catalog=saved?{product,shows:[saved]}:product==='flixer'&&specialistUrl(showId||id)?{product,shows:[]}:readLibrary();}
   if(catalog.product && catalog.product!==product)return null;
   let base=showId?locate(catalog,showId):catalog.packedTitles?readPackedEpisodeTitle(id):catalog.shows?.find(s=>s.episodes?.some(e=>e.id===id||e.offerings?.some(o=>o.id===id)));
@@ -295,7 +295,7 @@ export async function unifiedStream(id,{showId,source,prefix='/api/stream',catal
     if(o.provider==='hdtoday')return resolveHdtoday(o.id,{tmdbId:title.tmdbId || title.offerings?.find(provider=>provider.provider==='fmovies')?.tmdbId});
     if(o.provider==='youtube')return [{id:`youtube:${o.id}`,name:o.name||'YouTube',provider:'youtube',type:'youtube',videoId:o.id}];
     if(o.provider==='myflixer'){
-      const resolved=await resolveMyflixer(o.id,prefix);
+      const resolved=await resolveMyflixer(o.id,prefix,{transport:transport==='direct'?'direct':'proxy'});
       return (resolved.servers||[]).map(s=>({...s,id:`myflixer:${s.id}`,name:`Myflixer · ${s.name}`,provider:'myflixer'}));
     }
     return [];

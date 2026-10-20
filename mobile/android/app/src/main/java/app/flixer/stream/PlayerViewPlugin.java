@@ -14,6 +14,9 @@ import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import androidx.webkit.WebViewCompat;
+import androidx.webkit.WebViewFeature;
+import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
@@ -28,7 +31,7 @@ public class PlayerViewPlugin extends Plugin {
     private Dialog playerDialog;
     private WebView playerWebView;
     private static final Set<String> HOSTS = new HashSet<>(Arrays.asList(
-        "www.youtube.com", "www.youtube-nocookie.com", "embos.top", "mxdrop.click", "mixdrop.top", "hgcloud.to", "vkvideo.ru", "www.ok.ru", "ok.ru", "s1.hdup400.com", "vidzy.cc", "vidzy.org", "rufiiguta.com", "engifuosi.com", "kitraskimisi.com", "tukipasti.com", "player.mediadelivery.net", "playmogo.com", "watch.easyvidplayer.com", "vidcore.io", "vidcore.net", "vidsrc.mov", "vidsrc.fyi", "embed.vidsrc.si", "vidfast.pro", "vidup.to", "vidrock.net", "vidnest.fun", "vidlink.pro", "111movies.net", "multiembed.mov", "mappletv.uk", "moviesapi.to", "vidapi.xyz", "player.vidlove.cc", "mixdrop.ps", "cybervynx.com", "1vid.xyz", "vidmoly.org", "vidspeed.org", "www.mp4upload.com", "bysesukior.com", "bysetayico.com", "doodstream.com", "cima.easyvidplayer.com", "zumivids.com", "cimatnwatchingg.blogspot.com", "embedmaster.link", "fsvid.lol", "kokoflix.lol", "trakx.lol", "uqload.vc", "voe.sx", "doodstream.com", "player.vimeo.com", "www.dailymotion.com", "geo.dailymotion.com", "audinifer.com", "morencius.com", "watch.strp2p.site", "app.videas.fr", "www.vidspeed.org", "uqload.net", "movearnpre.com", "dingtezuni.com", "q7v3k8m2p1.top"
+        "sv2.nontongo.stream", "www.animegg.org", "abysscdn.com", "rozgarlelo.modiplay.xyz", "streams.iqsmartgames.com", "embed.vidrift.net", "vidout.pages.dev", "embed.filmu.in", "vidbolt.xyz", "youtube.com", "www.youtube.com", "www.youtube-nocookie.com", "embos.top", "mxdrop.click", "mixdrop.top", "hgcloud.to", "vkvideo.ru", "www.ok.ru", "ok.ru", "s1.hdup400.com", "vidzy.cc", "vidzy.org", "rufiiguta.com", "engifuosi.com", "kitraskimisi.com", "tukipasti.com", "player.mediadelivery.net", "playmogo.com", "watch.easyvidplayer.com", "vidcore.io", "vidcore.net", "vidsrc.mov", "vidsrc.fyi", "embed.vidsrc.si", "vidfast.pro", "vidup.to", "vidrock.net", "vidnest.fun", "vidlink.pro", "111movies.net", "multiembed.mov", "mappletv.uk", "moviesapi.to", "vidapi.xyz", "player.vidlove.cc", "mixdrop.ps", "cybervynx.com", "1vid.xyz", "vidmoly.org", "vidspeed.org", "www.mp4upload.com", "bysesukior.com", "bysetayico.com", "doodstream.com", "cima.easyvidplayer.com", "zumivids.com", "cimatnwatchingg.blogspot.com", "embedmaster.link", "fsvid.lol", "kokoflix.lol", "trakx.lol", "uqload.vc", "voe.sx", "doodstream.com", "player.vimeo.com", "www.dailymotion.com", "geo.dailymotion.com", "audinifer.com", "morencius.com", "watch.strp2p.site", "app.videas.fr", "www.vidspeed.org", "uqload.net", "movearnpre.com", "dingtezuni.com", "q7v3k8m2p1.top"
     ));
     private boolean approved(String value) {
         if (value == null || value.length() > 3000) return false;
@@ -46,18 +49,32 @@ public class PlayerViewPlugin extends Plugin {
             if (playerDialog != null) { call.reject("A player is already open"); return; }
             Dialog dialog = new Dialog(getActivity(), android.R.style.Theme_Material_NoActionBar_Fullscreen);
             playerDialog = dialog;
+            String[] reason={"closed"};boolean[] played={false};
             LinearLayout layout = new LinearLayout(getActivity()); layout.setOrientation(LinearLayout.VERTICAL); layout.setBackgroundColor(Color.rgb(12,18,16));
             LinearLayout toolbar = new LinearLayout(getActivity()); toolbar.setPadding(dp(8),dp(6),dp(8),dp(6)); toolbar.setGravity(android.view.Gravity.CENTER_VERTICAL);
             Button close = new Button(getActivity()); close.setText("Close player"); close.setAllCaps(false); close.setTextSize(14); close.setBackgroundColor(Color.TRANSPARENT); close.setContentDescription("Close in-app player"); close.setTextColor(Color.rgb(243,178,87)); close.setOnClickListener(v -> dialog.dismiss());
             toolbar.addView(close,new LinearLayout.LayoutParams(dp(128),dp(48)));
             TextView title = new TextView(getActivity()); title.setText(Uri.parse(url).getHost()); title.setTextColor(Color.rgb(234,240,235)); title.setTextSize(13); title.setMaxLines(1); title.setEllipsize(android.text.TextUtils.TruncateAt.END); toolbar.addView(title,new LinearLayout.LayoutParams(0,dp(44),1));
+            Button next=new Button(getActivity());next.setText("Next source");next.setAllCaps(false);next.setOnClickListener(v->{reason[0]="next";dialog.dismiss();});toolbar.addView(next);
             layout.addView(toolbar);
             FrameLayout stage = new FrameLayout(getActivity()); layout.addView(stage,new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,0,1));
             WebView web = new WebView(getActivity()); playerWebView = web; web.setBackgroundColor(Color.BLACK);
             WebSettings settings = web.getSettings(); settings.setJavaScriptEnabled(true); settings.setDomStorageEnabled(true); settings.setAllowFileAccess(false); settings.setAllowContentAccess(false); settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW); settings.setMediaPlaybackRequiresUserGesture(false); settings.setSupportMultipleWindows(true); settings.setJavaScriptCanOpenWindowsAutomatically(false);
+            android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(web,true);
+            // Health messages only; remote pages never receive Capacitor's app bridge.
+            if(WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)&&WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)){
+                Set<String> origins=new HashSet<>();for(String host:HOSTS)origins.add("https://"+host);origins.add("https://*.medmedia03.wiki");
+                WebViewCompat.addWebMessageListener(web,"FlixerPlayback",origins,(view,message,origin,main,reply)->{
+                    if("playing".equals(message.getData()))played[0]=true;
+                    if("missing".equals(message.getData())&&!played[0]){reason[0]="failed";dialog.dismiss();}
+                });
+                WebViewCompat.addDocumentStartJavaScript(web,"(()=>{let sent=false;const send=x=>{try{FlixerPlayback.postMessage(x)}catch{}};document.addEventListener('timeupdate',e=>{const v=e.target;if(!sent&&v instanceof HTMLVideoElement&&v.currentTime>1&&!v.paused&&v.getBoundingClientRect().width>0){sent=true;send('playing')}},true);const check=()=>{const text=(document.body?.innerText||'').trim();if(text.length<1800&&/we can't find the video|we couldn't find this title on any server|video (?:has been|was) (?:removed|deleted)|file (?:not found|was deleted)|403 Forbidden/i.test(text))send('missing')};document.addEventListener('DOMContentLoaded',()=>{check();const o=new MutationObserver(check);if(document.body)o.observe(document.body,{childList:true,subtree:true});setTimeout(()=>o.disconnect(),15000)},{once:true});})()",origins);
+            }
             web.setWebViewClient(new WebViewClient() {
                 @Override public boolean shouldOverrideUrlLoading(WebView view, String target) { return !approved(target); }
                 @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) { return request.isForMainFrame() && !approved(request.getUrl().toString()); }
+                @Override public void onReceivedHttpError(WebView view,WebResourceRequest request,android.webkit.WebResourceResponse response){if(request.isForMainFrame()&&response.getStatusCode()>=400){reason[0]="failed";dialog.dismiss();}}
+                @Override public void onReceivedError(WebView view,WebResourceRequest request,android.webkit.WebResourceError error){if(request.isForMainFrame()){reason[0]="failed";dialog.dismiss();}}
             });
             web.setWebChromeClient(new WebChromeClient() {
                 private View video;
@@ -70,7 +87,7 @@ public class PlayerViewPlugin extends Plugin {
                 @Override public boolean onCreateWindow(WebView view, boolean isDialog, boolean isUserGesture, android.os.Message resultMsg) { return false; }
             });
             stage.addView(web,new FrameLayout.LayoutParams(-1,-1)); dialog.setContentView(layout);
-            dialog.setOnDismissListener(d -> { web.stopLoading();web.loadUrl("about:blank");stage.removeAllViews();web.destroy();playerWebView=null;playerDialog=null;call.resolve(); });
+            dialog.setOnDismissListener(d -> { web.stopLoading();web.loadUrl("about:blank");stage.removeAllViews();web.destroy();playerWebView=null;playerDialog=null;JSObject result=new JSObject();result.put("reason",reason[0]);result.put("played",played[0]);call.resolve(result); });
             dialog.show(); if(dialog.getWindow()!=null)dialog.getWindow().setLayout(-1,-1);web.loadUrl(url);
         });
     }

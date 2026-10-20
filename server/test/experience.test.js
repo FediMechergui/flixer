@@ -10,7 +10,7 @@ function fixture(shows, streams = {}, respond, options = {}) {
   const catalog={product:'flixer',shows,generatedAt:options.generatedAt};
   const storage=options.storage||new Map();
   const events=[],listeners=new Map();
-  const context=vm.createContext({window:{FLIXER_CONFIG:{live:false,...options.config},dispatchEvent:e=>{events.push(e);for(const listener of listeners.get(e.type)||[])listener(e);},addEventListener:(type,listener)=>{if(!listeners.has(type))listeners.set(type,new Set());listeners.get(type).add(listener);},removeEventListener:(type,listener)=>listeners.get(type)?.delete(listener)},console,URL,URLSearchParams,CustomEvent:class {constructor(type,opts){this.type=type;this.detail=opts?.detail;}},localStorage:{getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,value)},AbortController,setTimeout,clearTimeout,fetch:async input=>{
+  const context=vm.createContext({window:{FlixerBrowser:options.browser,FLIXER_CONFIG:{live:false,...options.config},dispatchEvent:e=>{events.push(e);for(const listener of listeners.get(e.type)||[])listener(e);},addEventListener:(type,listener)=>{if(!listeners.has(type))listeners.set(type,new Set());listeners.get(type).add(listener);},removeEventListener:(type,listener)=>listeners.get(type)?.delete(listener)},console,URL,URLSearchParams,CustomEvent:class {constructor(type,opts){this.type=type;this.detail=opts?.detail;}},localStorage:{getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,value)},AbortController,setTimeout,clearTimeout,fetch:async input=>{
     const url=String(input);requests.push(url);
     const custom=options.fetchBody?await options.fetchBody(url):undefined;
     const body=custom!==undefined?custom:url.includes('/data/index.json')&&options.index?await options.index:url.includes('/api/discover?')&&respond?await respond(url):url.includes('/api/stream?')?streams:/\/(bootstrap|index)\.json/.test(url)?catalog:{};
@@ -211,4 +211,9 @@ test('first-open playback waits for a delayed saved episode instead of reporting
  const row={id:'mf:s:cold-series',kind:'series',title:'Cold series'},ep={id:'mf:e:cold-series-s01e01',title:'First',season:1,number:1,offerings:[{provider:'dessinanime',id:'sp:dessinanime:e:456-les-simpson:1:1'}]};
  const {api}=fixture([row],{},null,{fetchBody:async url=>{if(url.includes('/data/shows/')){await new Promise(resolve=>setTimeout(resolve,350));return {...row,episodes:[ep],synopsis:'Source synopsis'};}}});
  const start=Date.now(),result=await api.episode(row.id,ep.id);assert.equal(result.episode.id,ep.id);assert.ok(Date.now()-start<1500);await api._indexReady;await api._metadataReady;
+});
+
+test('Android requests direct transport and keeps video segments off the API backend',async()=>{
+ const {api,requests}=fixture([],{servers:[{id:'hls',type:'hls',streamUrl:'https://backend.example/api/stream?proxy=1',rawStreamUrl:'https://cdn.example/master.m3u8',headers:{Referer:'https://source.example/'}}]},null,{browser:{hasNativeVideo:()=>true}});
+ const result=await api.stream('mf:m:example');assert.equal(result.servers[0].streamUrl,'https://cdn.example/master.m3u8');assert.ok(requests.find(url=>url.includes('/api/stream?')&&url.includes('transport=direct')));assert.equal(result.servers[0].headers.Referer,'https://source.example/');
 });
