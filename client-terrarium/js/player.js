@@ -22,7 +22,11 @@
       }
     }catch{}
     const i = servers.findIndex(s => s.type==='youtube'||s.videoId||s.type==='file'||s.type==='mp4'||s.type==='hls'||s.type==='dessinanime');
-    return i !== -1 ? i : 0;
+    if(i!==-1)return i;
+    if(window.FlixerBrowser?.hasNativeVideo?.()){
+      const hg=servers.findIndex(s=>window.FlixerHgSource?.supports(s));if(hg>=0)return hg;
+    }
+    return 0;
   }
 
   let hlsReady;
@@ -50,9 +54,11 @@
     }finally{clearTimeout(timer);}
   }
 
+  const publicServers=rows=>(Array.isArray(rows)?rows:[]).filter(s=>s&&!/^frenchstream:premium:/i.test(s.id||''));
+
   function mount(container, opts) {
-    const servers = Array.isArray(opts.servers) ? opts.servers : [];
-    const st = { idx: initialIndex(servers), hls: null, destroyed: false, noticeTimer: null, switchTimer: null, startupTimer: null, generation: 0, recoveryTried:false, recovering:false, attempted: new Set() };
+    const servers = publicServers(opts.servers);
+    const st = { idx: initialIndex(servers), hls: null, destroyed: false, noticeTimer: null, switchTimer: null, startupTimer: null, generation: 0, recoveryTried:false, recovering:false, attempted: new Set(), hgAttempted:new Set() };
 
     container.innerHTML = `<div class="player" tabindex="-1">
       <div class="player__bar">
@@ -70,6 +76,13 @@
     const notice = $("#pl-notice", root);
     const bar = $("#pl-servers", root);
     const fsBtn = $("[data-fs]", root);
+    const inlineBounds=()=>{const b=stage.getBoundingClientRect();return {x:b.x,y:b.y,width:b.width,height:b.height,viewportWidth:window.innerWidth};};
+    let boundsFrame=null;
+    const syncNativeBounds=()=>{if(boundsFrame!==null)return;boundsFrame=requestAnimationFrame(()=>{boundsFrame=null;if(!st.destroyed)window.FlixerBrowser?.updatePlayerBounds?.(inlineBounds());});};
+    window.addEventListener('scroll',syncNativeBounds,true);
+    window.addEventListener('resize',syncNativeBounds);
+    const boundsObserver=typeof ResizeObserver==='function'?new ResizeObserver(syncNativeBounds):null;
+    boundsObserver?.observe(stage);
 
     function renderBar() {
       if (!servers.length) { bar.hidden = true; return; }
@@ -96,6 +109,7 @@
       clearTimeout(st.switchTimer);
       clearTimeout(st.startupTimer);
       st.generation++;
+      window.FlixerBrowser?.closePlayers?.();
       if (st.hls) { try { st.hls.destroy(); } catch { /* already gone */ } st.hls = null; }
       const v = $("video", stage);
       if (v) { try { v.pause(); v.removeAttribute("src"); v.load(); } catch { /* ignore */ } }
@@ -109,7 +123,7 @@
       const generation = st.generation;
       const current = () => !st.destroyed && st.generation === generation;
       stage.innerHTML = '<div class="player__loading">Player open in the app</div>';
-      try { const result=await window.FlixerBrowser.openPlayer(url,{captureMedia:captureMedia===true});
+      try { const result=await window.FlixerBrowser.openPlayer(url,{captureMedia:captureMedia===true,bounds:inlineBounds()});
         if(current()&&result?.reason==='media'&&window.FlixerBrowser.hasNativeVideo?.()){
           const media=result.media;
           if(media&&['mp4','hls','dash'].includes(media.format)&&window.FlixerBrowser.publicUrl(media.url))return openDirectPlayer({...server,type:media.format,streamUrl:media.url,rawStreamUrl:media.url,startAt:media.position,headers:{Referer:media.sourceOrigin+'/'},nativeFallbackEmbed:true});
@@ -128,7 +142,7 @@
       const generation=st.generation,current=()=>!st.destroyed&&st.generation===generation;
       stage.innerHTML='<div class="player__loading">Video open in the app</div>';
       try{
-        const result=await window.FlixerBrowser.openMedia(server,{title:opts.title,startAt:server.startAt||opts.startAt,onProgress:state=>{
+        const result=await window.FlixerBrowser.openMedia(server,{title:opts.title,startAt:server.startAt||opts.startAt,bounds:inlineBounds(),onProgress:state=>{
           if(!current())return;
           if(state.playing){try{localStorage.setItem('flixer:player-preference',JSON.stringify({provider:server.provider,name:server.name,audioMode:server.audioMode,confirmed:true}));}catch{}}
           if(state.duration>0)opts.onProgress?.(state.position,state.duration);
@@ -151,6 +165,18 @@
       teardownMedia();
       const s = servers[i];
       if (!s) return showError();
+      const hgSource=s.sourceEmbedUrl||s.embedUrl;
+      if(window.FlixerBrowser?.hasNativeVideo?.()&&window.FlixerHgSource?.supports(s)&&!st.hgAttempted.has(hgSource)){
+        st.hgAttempted.add(hgSource);const generation=st.generation;showNotice('Resolving source video...');
+        window.FlixerHgSource.resolve(s).then(choices=>{
+          if(st.destroyed||st.generation!==generation)return;
+          if(choices.length){
+            st.attempted=new Set([...st.attempted].map(index=>index>i?index+choices.length:index));
+            servers.splice(i,1,...choices,s);
+          }
+          load(i,true);
+        }).catch(()=>{if(!st.destroyed&&st.generation===generation)load(i,true);});return;
+      }
       if(s.type==='dessinanime'){
         const generation=st.generation;showNotice('Resolving source video...');
         resolveDessinPlayer(s).then(choices=>{if(st.destroyed||st.generation!==generation)return;servers.splice(i,1,...choices);load(i);}).catch(()=>{if(!st.destroyed&&st.generation===generation)failover();});return;
@@ -242,6 +268,8 @@
       } else showError();
     }
 
+    function resetHgSources() { st.hgAttempted.clear();window.FlixerHgSource?.clearCache?.(); }
+
     function showError() {
       teardownMedia();
       if(opts.onDiscover&&!st.recoveryTried){
@@ -249,7 +277,7 @@
         stage.innerHTML='<div class="player__loading"><span class="spinner"></span><strong>Checking other sources</strong><span>Looking for another player for this episode.</span></div>';
         Promise.race([Promise.resolve().then(()=>opts.onDiscover()),new Promise(resolve=>{timer=setTimeout(()=>resolve(null),9000);})]).then(fresh=>{
           if(st.destroyed||generation!==st.generation)return;
-          const alternatives=(fresh?.servers||[]).filter(s=>!servers.some(old=>(old.streamUrl||old.embedUrl||old.videoId||old.id)===(s.streamUrl||s.embedUrl||s.videoId||s.id)));
+          const alternatives=publicServers(fresh?.servers).filter(s=>!servers.some(old=>(old.streamUrl||old.embedUrl||old.videoId||old.id)===(s.streamUrl||s.embedUrl||s.videoId||s.id)));
           if(alternatives.length){servers.push(...alternatives);load(servers.length-alternatives.length);}else showError();
         }).catch(()=>{if(!st.destroyed&&generation===st.generation)showError();}).finally(()=>clearTimeout(timer));return;
       }
@@ -260,11 +288,11 @@
           ${opts.onDiscover?`<button class="btn btn--outline btn--sm" data-discover-players>Find other sources</button>`:""}
           ${opts.sourceUrl&&!/^https:\/\/dessinanime\.cc(?:\/|$)/i.test(opts.sourceUrl) ? `<a class="btn btn--outline btn--sm" href="${esc(opts.sourceUrl)}" target="_blank" rel="noopener" data-open-source>Source details</a>` : ""}
         </div></div>`;
-      const discover=$('[data-discover-players]',stage);if(discover)discover.addEventListener('click',async()=>{discover.disabled=true;discover.textContent='Searching sources...';try{const fresh=await opts.onDiscover();if(st.destroyed)return;if(fresh?.servers?.length){servers.splice(0,servers.length,...fresh.servers);load(initialIndex(servers));}else discover.textContent='No other players found';}catch{discover.textContent='Sources unavailable';}finally{discover.disabled=false;}});
+      const discover=$('[data-discover-players]',stage);if(discover)discover.addEventListener('click',async()=>{discover.disabled=true;discover.textContent='Searching sources...';resetHgSources();try{const fresh=await opts.onDiscover();if(st.destroyed)return;if(fresh?.servers?.length){servers.splice(0,servers.length,...publicServers(fresh.servers));load(initialIndex(servers));}else discover.textContent='No other players found';}catch{discover.textContent='Sources unavailable';}finally{discover.disabled=false;}});
       const r = $("[data-retry]", stage);
       if (r) r.addEventListener("click", async () => {
-        r.disabled=true;r.textContent='Finding fresh servers…';
-        if(opts.onRetry)try{const fresh=await opts.onRetry();if(st.destroyed)return;if(fresh?.servers?.length)servers.splice(0,servers.length,...fresh.servers);}catch{}
+        resetHgSources();r.disabled=true;r.textContent='Finding fresh servers…';
+        if(opts.onRetry)try{const fresh=await opts.onRetry();if(st.destroyed)return;if(fresh?.servers?.length)servers.splice(0,servers.length,...publicServers(fresh.servers));}catch{}
         if(!st.destroyed)load(initialIndex(servers));
       });
     }
@@ -272,6 +300,7 @@
     /* Fullscreen: the whole player box goes fullscreen so the server bar stays reachable.
        iOS Safari only allows <video> itself, hence the webkitEnterFullscreen fallback. */
     function toggleFullscreen() {
+      if(window.FlixerBrowser?.hasNativePlayer?.()&&!$('iframe,video',stage)){window.FlixerBrowser.fullscreenPlayer?.();return;}
       if (document.fullscreenElement || document.webkitFullscreenElement) {
         const exit = document.exitFullscreen || document.webkitExitFullscreen;
         if (exit) { const p = exit.call(document); if (p && p.catch) p.catch(() => {}); }
@@ -322,12 +351,16 @@
       updateServers(additional){
         if(st.destroyed)return;
         const key=s=>s.provider==='dessinanime'&&s.playerId?'dessinanime:'+s.playerId:s.streamUrl||s.embedUrl||s.videoId||s.id,seen=new Set(servers.map(key)),first=servers.length;
-        for(const server of additional||[])if(!seen.has(key(server))){seen.add(key(server));servers.push(server);}
+        for(const server of publicServers(additional))if(!seen.has(key(server))){seen.add(key(server));servers.push(server);}
         if(servers.length===first)return;
         if($('.player__error',stage)||st.recovering)load(first,true);else renderBar();
       },
       destroy() {
         st.destroyed = true;
+        if(boundsFrame!==null)cancelAnimationFrame(boundsFrame);
+        boundsObserver?.disconnect();
+        window.removeEventListener('scroll',syncNativeBounds,true);
+        window.removeEventListener('resize',syncNativeBounds);
         window.FlixerBrowser?.closePlayers?.();
         const fullscreen=document.fullscreenElement||document.webkitFullscreenElement;
         if(fullscreen&&(fullscreen===root||root.contains(fullscreen)))try{const exit=document.exitFullscreen||document.webkitExitFullscreen;Promise.resolve(exit?.call(document)).catch(()=>{});}catch{}

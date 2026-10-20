@@ -43,7 +43,7 @@ jobs:
       - name: Android SDK licences
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null 2>&1 || true
       - name: Install
-        run: npm ci --prefix client && npm ci --prefix mobile
+        run: npm ci --prefix server && npm ci --prefix client && npm ci --prefix mobile
       - name: Set increasing Android version code
         run: echo "APP_VERSION_CODE=$((1000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
       - name: Build web (static, pointing at the hosted data)

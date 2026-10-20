@@ -290,7 +290,7 @@ export async function unifiedStream(id,{showId,source,prefix='/api/stream',catal
   const results=await Promise.allSettled(offers.map(async o=>{
     if(quick&&o.provider!=='dessinanime'&&(o.provider==='myflixer'||specialistUrl(o.id)))return [];
     if(quick&&o.provider==='hdtoday'&&!title.tmdbId&&!title.offerings?.some(o=>o.provider==='fmovies'&&o.tmdbId))return [];
-    if(product==='flixer' && specialistUrl(o.id))return resolveSpecialist(o.id,{fresh});
+    if(product==='flixer' && specialistUrl(o.id))return resolveSpecialist(o.id,{fresh,transport:transport==='direct'?'direct':'proxy'});
     if(o.provider==='fmovies')return fmoviesServers(o.id);
     if(o.provider==='hdtoday')return resolveHdtoday(o.id,{tmdbId:title.tmdbId || title.offerings?.find(provider=>provider.provider==='fmovies')?.tmdbId});
     if(o.provider==='youtube')return [{id:`youtube:${o.id}`,name:o.name||'YouTube',provider:'youtube',type:'youtube',videoId:o.id}];

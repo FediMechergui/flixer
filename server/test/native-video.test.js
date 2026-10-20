@@ -40,6 +40,9 @@ test('all fixed specialist embed host lists are accepted by the Android isolated
  assert.ok(accepted.has('sv2.nontongo.stream'));
  assert.ok(accepted.has('sv4.nontongo.day'));
  assert.ok(accepted.has('vidfast.vc'));
+ assert.ok(accepted.has('hglamioz.com'));
+ assert.ok(accepted.has('hgplaycdn.com'));
+ assert.ok(accepted.has('derricknationtop.com'));
 });
 
 test('native source errors advance, closing exits, and stale closes do neither',async()=>{
@@ -48,7 +51,7 @@ test('native source errors advance, closing exits, and stale closes do neither',
  for(const reason of ['failed','next','closed'])for(const stale of [false,true]){
   let finish,failed=0,exited=0;const pending=new Promise(resolve=>finish=resolve);
   const st={idx:0,generation:0,destroyed:false},stage={innerHTML:''};
-  const context=vm.createContext({st,stage,servers:[{embedUrl:'https://vidsrc.mov/embed/movie/77'}],opts:{onExit:()=>exited++},failover:()=>failed++,teardownMedia:()=>st.generation++,showNotice:()=>{},window:{FlixerBrowser:{openPlayer:()=>pending}}});
+  const context=vm.createContext({inlineBounds:()=>({x:0,y:120,width:360,height:203,viewportWidth:360}),st,stage,servers:[{embedUrl:'https://vidsrc.mov/embed/movie/77'}],opts:{onExit:()=>exited++},failover:()=>failed++,teardownMedia:()=>st.generation++,showNotice:()=>{},window:{FlixerBrowser:{openPlayer:()=>pending}}});
   vm.runInContext(source.slice(start,end)+';globalThis.run=openNativePlayer;',context);
   const task=context.run();if(stale){st.generation++;stage.innerHTML='new source';}finish({reason});await task;
   assert.equal(failed,stale||reason==='closed'?0:1);assert.equal(exited,!stale&&reason==='closed'?1:0);if(stale)assert.equal(stage.innerHTML,'new source');
@@ -60,7 +63,7 @@ test('a public media handoff preserves its position and failed handoffs restore 
  const start=source.indexOf('    async function openDirectPlayer('),end=source.indexOf('\n    function load(',start);
  for(const reason of ['failed','next','closed']){
   let restored=0,failed=0,exited=0,position;
-  const context=vm.createContext({st:{generation:1,destroyed:false},stage:{innerHTML:''},opts:{startAt:0,onExit:()=>exited++},openNativePlayer:capture=>{assert.equal(capture,false);restored++},failover:()=>failed++,window:{FlixerBrowser:{openMedia:async(s,o)=>{position=o.startAt;return {reason}}}}});
+  const context=vm.createContext({inlineBounds:()=>({x:0,y:120,width:360,height:203,viewportWidth:360}),st:{generation:1,destroyed:false},stage:{innerHTML:''},opts:{startAt:0,onExit:()=>exited++},openNativePlayer:capture=>{assert.equal(capture,false);restored++},failover:()=>failed++,window:{FlixerBrowser:{openMedia:async(s,o)=>{position=o.startAt;return {reason}}}}});
   vm.runInContext(source.slice(start,end)+';globalThis.run=openDirectPlayer;',context);await context.run({startAt:24,nativeFallbackEmbed:true});
   assert.equal(position,24);assert.equal(restored,reason==='failed'?1:0);assert.equal(failed,reason==='next'?1:0);assert.equal(exited,reason==='closed'?1:0);
  }

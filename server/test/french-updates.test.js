@@ -10,7 +10,7 @@ import {matchesSearch} from '../../shared/search.js';
 import {leanCatalog} from '../src/export-catalog.js';
 
 const titleHtml=`<div id="serie-data" data-newsid="123" data-title="Une histoire - Saison 2" data-affiche="https://image.tmdb.org/t/p/w500/a.jpg"></div><span class="sd-tagz">s-77</span><ul id="s-list"><li><span>Titre Original:</span>A Story</li></ul><div class="flist"><li><span>Langue d'origine:</span>Anglais</li><li><span>Date de sortie:</span>2024</li><li><span>Genre:</span>Animation, Comédie</li></div><div id="s-desc">Actual plot<span class="desc-text">Marketing text</span></div>`;
-const data={vf:{1:{vidzy:'https://vidzy.cc/embed-a.html'},3:{premium:'https://fsvid.lol/embed-b.html'}},vostfr:{1:{voe:'https://kokoflix.lol/osaka_go.php?id=c'}},info:{1:{title:'Premier'},2:{title:'Future'},3:{title:'Third'}}};
+const data={vf:{1:{vidzy:'https://vidzy.cc/embed-a.html'},2:{premium:'https://fsvid.lol/embed-b.html'},3:{vidzy:'https://vidzy.cc/embed-c.html'}},vostfr:{1:{voe:'https://kokoflix.lol/osaka_go.php?id=c'}},info:{1:{title:'Premier'},2:{title:'Future'},3:{title:'Third'}}};
 test('French seasons use verified identities and actual sparse playable episodes, preserving VF and VOSTFR',()=>{
  const s=parseFrenchDetails('sp:frenchstream:s:123',titleHtml,data);
  assert.equal(s.title,'Une histoire');assert.deepEqual(s.altTitles,['A Story']);assert.equal(s.tmdbId,77);assert.equal(s.originalLanguage,'en');assert.equal(s.year,2024);assert.equal(s.synopsis,'Actual plot');
@@ -18,6 +18,11 @@ test('French seasons use verified identities and actual sparse playable episodes
  const players=parseFrenchServers(s.episodes[0].id,data);assert.equal(players.length,2);assert.deepEqual(players[0].audioLanguages,['fr']);assert.deepEqual(players[1].subtitleLanguages,['fr']);assert.equal(parseFrenchServers('sp:frenchstream:e:123:2:2',data).length,0);
  assert.throws(()=>parseFrenchDetails('sp:frenchstream:s:124',titleHtml,data),/identity/);assert.equal(parseFrenchId('sp:frenchstream:e:123:2:../1'),null);
  assert.equal(parseFrenchServers('sp:frenchstream:m:123',{players:{vidzy:{vf:'https://127.0.0.1/private',vo:'https://vidzy.cc.evil.org/embed'}}}).length,0);
+});
+test('French public playback excludes account-only player slots even on a free title',()=>{
+ const result=parseFrenchServers('sp:frenchstream:m:123',{players:{premium:{default:'https://fsvid.lol/embed-paid.html'},vidzy:{vf:'https://vidzy.cc/embed-free.html'}}});
+ assert.equal(result.length,1);assert.equal(result[0].embedUrl,'https://vidzy.cc/embed-free.html');
+ assert.equal(parseFrenchServers('sp:frenchstream:e:123:2:2',data).length,0);
 });
 test('French catalogue pagination reads cstart and search parses public AJAX output without executing onclick',()=>{
  const r=parseFrenchList('<div class="short"><a class="short-poster" href="/index.php?newsid=123"><img src="https://image.tmdb.org/a.jpg"></a><div class="short-title">A Film</div></div><div class="pagi"><a href="/index.php?cstart=716&do=cat&category=films">716</a></div>');assert.equal(r.totalPages,716);assert.equal(r.hasNext,true);

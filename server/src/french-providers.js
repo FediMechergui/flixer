@@ -45,7 +45,7 @@ export function parseFrenchDetails(id,html,data){
   item.access=element.attr('data-ispremium')==='true'||$('#serie-config').attr('data-is-premium')==='true'?'account-required':'public';
   if(p.type==='m')item.episodes=[{id,title:item.title,season:1,number:1,sourceUrl:item.sourceUrl,offerings:item.offerings}];
   else {
-    const numbers=[...new Set(['vf','vostfr','vo'].flatMap(mode=>Object.entries(data?.[mode]||{}).filter(([n,links])=>/^[1-9]\d*$/.test(n)&&Object.values(links||{}).some(value=>typeof value==='string'&&value.startsWith('https://'))).map(([n])=>Number(n))))].sort((a,b)=>a-b);
+    const numbers=[...new Set(['vf','vostfr','vo'].flatMap(mode=>Object.keys(data?.[mode]||{}).filter(n=>/^[1-9]\d*$/.test(n)&&parseFrenchServers(`sp:frenchstream:e:${p.slug}:${season||0}:${n}`,data).length).map(Number)))].sort((a,b)=>a-b);
     item.episodes=numbers.map(number=>{const ep=`sp:frenchstream:e:${p.slug}:${season||0}:${number}`,audioLanguages=data.vf?.[number]?['fr']:[],subtitleLanguages=data.vostfr?.[number]?['fr']:[];return {id:ep,title:clean(data.info?.[number]?.title)||`Episode ${number}`,synopsis:clean(data.info?.[number]?.synopsis),season,number,sourceUrl:item.sourceUrl,audioLanguages,subtitleLanguages,offerings:[{provider:'frenchstream',id:ep,season,number,audioLanguages,subtitleLanguages}]};});
   }
   item.episodeCount=item.episodes.length;item.seasons=season?[season]:[];item.episodesComplete=true;return item;
@@ -83,7 +83,7 @@ export async function getFrenchDetails(id,{allSeasons=true,...options}={}){
 const playerHosts=new Set(['fsvid.lol','vidzy.cc','vidzy.org','kokoflix.lol','trakx.lol','uqload.vc','voe.sx','doodstream.com']);
 export function parseFrenchServers(id,data){
   const p=parseFrenchId(id);if(!p||p.type==='s')return [];const servers=[],seen=new Set();
-  const add=(host,mode,value)=>{try{const u=new URL(value);if(u.protocol!=='https:'||u.username||u.password||u.port||!playerHosts.has(u.hostname)||seen.has(`${mode}:${u.href}`))return;seen.add(`${mode}:${u.href}`);const vf=['vf','vff','vfq'].includes(mode);servers.push({id:`frenchstream:${host}:${mode}`,provider:'frenchstream',type:'embed',name:`French Stream · ${vf?'VF':mode==='vostfr'?'VOSTFR':mode.toUpperCase()} · ${host}`,embedUrl:u.href,sandbox:null,...(vf?{audioLanguage:'fr',audioLanguages:['fr']}:{ }),...(mode==='vostfr'?{subtitleLanguages:['fr']}:{})});}catch{}};
+  const add=(host,mode,value)=>{if(host.toLowerCase()==='premium')return;try{const u=new URL(value);if(u.protocol!=='https:'||u.username||u.password||u.port||!playerHosts.has(u.hostname)||seen.has(`${mode}:${u.href}`))return;seen.add(`${mode}:${u.href}`);const vf=['vf','vff','vfq'].includes(mode);servers.push({id:`frenchstream:${host}:${mode}`,provider:'frenchstream',type:'embed',name:`French Stream · ${vf?'VF':mode==='vostfr'?'VOSTFR':mode.toUpperCase()} · ${host}`,embedUrl:u.href,sandbox:null,...(vf?{audioLanguage:'fr',audioLanguages:['fr']}:{ }),...(mode==='vostfr'?{subtitleLanguages:['fr']}:{})});}catch{}};
   if(p.type==='m')for(const [host,versions] of Object.entries(data.players||{}))for(const [mode,url] of Object.entries(versions||{}))add(host,mode,url);
   else for(const mode of ['vf','vostfr','vo'])for(const [host,url] of Object.entries(data[mode]?.[p.number]||{}))add(host,mode,url);
   return servers.sort((a,b)=>Number(!a.id.startsWith('frenchstream:vidzy:'))-Number(!b.id.startsWith('frenchstream:vidzy:')));

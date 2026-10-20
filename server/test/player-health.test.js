@@ -15,7 +15,7 @@ test('closing an older native player cannot overwrite a newer server or a destro
  for(const action of ['switch','destroy','current']) {
   let finish;const pending=new Promise(resolve=>{finish=resolve;});
   const st={idx:0,generation:0,destroyed:false},stage={innerHTML:''};
-  const context=vm.createContext({st,stage,servers:[{embedUrl:'https://example.test/player'}],teardownMedia:()=>{st.generation++;},showNotice:()=>{},window:{FlixerBrowser:{openPlayer:()=>pending}}});
+  const context=vm.createContext({inlineBounds:()=>({x:0,y:120,width:360,height:203,viewportWidth:360}),st,stage,servers:[{embedUrl:'https://example.test/player'}],teardownMedia:()=>{st.generation++;},showNotice:()=>{},window:{FlixerBrowser:{openPlayer:()=>pending}}});
   vm.runInContext(source.slice(start,end)+';globalThis.openNativePlayer=openNativePlayer;',context);
   const opening=context.openNativePlayer();
   if(action==='switch'){st.generation++;stage.innerHTML='new server';}

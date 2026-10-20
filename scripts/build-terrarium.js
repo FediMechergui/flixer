@@ -5,7 +5,8 @@ import { configureMobile } from './configure-mobile.js';
 // --data-base points at a host that serves /data/*.json.
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath,pathToFileURL } from 'node:url';
+import {createRequire} from 'node:module';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -44,6 +45,11 @@ const hls = path.join(root, 'client', 'node_modules', 'hls.js', 'dist', 'hls.min
 if (!fs.existsSync(hls)) { console.error('[terrarium] hls.js not found; run "npm install --prefix client"'); process.exit(1); }
 fs.mkdirSync(path.join(out, 'js', 'vendor'), { recursive: true });
 fs.copyFileSync(hls, path.join(out, 'js', 'vendor', 'hls.min.js'));
+const require=createRequire(import.meta.url);
+const {rolldown}=await import(pathToFileURL(require.resolve('rolldown',{paths:[path.join(root,'client')]})).href);
+const hgBundle=await rolldown({input:path.join(root,'scripts/browser-hg-entry.js')});
+await hgBundle.write({format:'iife',minify:true,file:path.join(out,'js/vendor/hg-source.min.js')});await hgBundle.close();
+fs.copyFileSync(path.join(root,'server/node_modules/json5/LICENSE.md'),path.join(out,'js/vendor/json5.LICENSE.md'));
 if (!dataBase) {
   // The index always ships. Per-series episode files: all of them on the web, the newest N in the
   // APK (the rest load live when a series is opened). --shows N overrides the mobile default.

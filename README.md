@@ -5,7 +5,7 @@ Flixer covers movies and TV shows across all genres, with its own interface, uni
 - Android app backed by [hosted catalogue and API](https://flixer-mu.vercel.app)
 - Repository: [FediMechergui/flixer](https://github.com/FediMechergui/flixer)
 - Android downloads: [Releases](https://github.com/FediMechergui/flixer/releases)
-- Playback diagnostics: [all 89 previously failed route cases](docs/playback-failures-2026-10-20.md), with remaining upstream failures and device playback evidence.
+- Playback diagnostics: [device verification, recovered alternatives and missing files](docs/playback-verification-2026-10-20.md); [original 89-route HTTP investigation](docs/playback-failures-2026-10-20.md).
 - Dahsha is maintained in its [own repository](https://github.com/FediMechergui/dahsha).
 
 ## Run locally
@@ -115,7 +115,7 @@ Further French/Canadian candidates are [TV5MONDEplus](https://www.tv5mondeplus.c
 
 ## In-app players and faster publication
 
-Android's **Play in app** action opens approved third-party players in a separate WebView with a persistent close control. It uses ordinary HTTPS navigation and does not expose the Capacitor bridge, allow popups, ignore SSL errors or spoof source identities. YouTube keeps its existing embedded player; its top-level embed route can reject playback with error 153. Restricted One Pace files remain official-source links. Removed videos, account requirements and geographic restrictions still apply.
+Android playback starts inline inside the title page. Direct Media3 video and the isolated third-party WebView follow the picture's position when the page scrolls; the source selector and Close stay in the page. Fullscreen requires the player button. Back or Inline restores the picture without restarting it; fullscreen retains Close and Next controls outside system-bar insets. Remote pages never receive the Capacitor bridge. Popups and SSL exceptions are disabled. YouTube keeps its existing embedded player; its top-level embed route can reject playback with error 153. Restricted One Pace files remain official-source links. Removed videos, account requirements and geographic restrictions still apply.
 
 Closing a native player updates only its own active playback attempt. Switching servers or closing the watch screen prevents an older native-player response from replacing the current view.
 
@@ -137,6 +137,10 @@ CimaTN's source-listed Wix MP4 choices now use the in-app video player. Addition
 Android uses a separate Media3 surface for source-provided MP4, HLS and DASH URLs. The device requests video manifests, segments and files directly from the source CDN. `/api/stream?transport=direct` returns direct Myflixer media choices without generating segment-proxy URLs; older APKs retain their existing transport. Vercel still serves catalogue/search/title data and resolves source links. Source-provided request headers are limited to Referer and User-Agent in the native media client.
 
 Approved HTML players open in an isolated Android WebView with Close and Next source controls, with no Capacitor bridge exposed to remote pages. Main-document HTTP errors and known missing-video messages advance to the next source. Official YouTube embeds retain their supported iframe integration. Native media reports position and duration back to Flixer; navigating away releases the player. Source sites' restrictions and expired/deleted files still apply.
+
+Cima4u HG choices can resolve their published HLS configuration directly on the device. A bounded string-table decoder reads public configuration without executing downloaded JavaScript, checks advertised manifests, and keeps the original embedded source as a fallback. Source metadata and video requests go directly from Android to the source/CDN, avoiding Vercel segment traffic and datacentre-bound media URLs. The built-in decoder is bundled with the APK. French Stream premium-only slots are excluded from public player and episode choices.
+
+For device verification, build a debuggable APK and open the debug-only `PlayerAuditActivity`. `node scripts/verify-native-player-routes.js --input PATH --output PATH --seconds 30` exercises its real WebView/Media3 players and saves each completed case atomically. Input cases identify the title, provider, type and current `retest.url`; temporary URLs and captured documents stay in ignored artifacts. Playback requires an advancing content-video clock; a loaded page is insufficient. Human-verification prompts remain manual, and interrupted test infrastructure must be retested separately from source failures. The audit activity and page are excluded from release builds.
 
 Run `node scripts/audit-provider-matrix.js` for catalogue samples, then `node scripts/audit-player-routes.js` to probe every advertised route for each sampled title's first actual episode. Reports in `artifacts/` distinguish HTTP reachability, source errors and Android host support; HTTP 200 does not certify playback. Full catalogue import and universal playback are not guaranteed by those sample audits.
 

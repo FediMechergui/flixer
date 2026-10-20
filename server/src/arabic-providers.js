@@ -307,8 +307,8 @@ export async function cinetimesCommonsServers(html,{fetchJson=async url=>{
   }
   return servers;
 }
-export async function resolveArabicServers(id,{fresh=false}={}){
-  if(parseCimafuId(id))return resolveCimafuServers(id,{fresh});
+export async function resolveArabicServers(id,{fresh=false,transport}={}){
+  if(parseCimafuId(id))return resolveCimafuServers(id,{fresh,transport});
   const saved=arabicSnapshot(id),episode=saved?.episodes?.find(e=>e.id===id),stored=episode?.cachedPlayers;
   if(!fresh&&stored?.length&&parseArabicId(id)?.provider!=='cimatn'){
     const validated=approvedPlayers(id,stored.map(s=>({url:s.embedUrl||(s.type==='youtube'?`https://www.youtube.com/embed/${s.videoId}`:'')})));
