@@ -38,6 +38,8 @@ test('all fixed specialist embed host lists are accepted by the Android isolated
  }
  assert.ok(accepted.has('www.animegg.org'));
  assert.ok(accepted.has('sv2.nontongo.stream'));
+ assert.ok(accepted.has('sv4.nontongo.day'));
+ assert.ok(accepted.has('vidfast.vc'));
 });
 
 test('native source errors advance, closing exits, and stale closes do neither',async()=>{

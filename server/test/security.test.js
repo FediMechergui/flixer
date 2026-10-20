@@ -20,6 +20,11 @@ test('private, mapped, reserved and local addresses are rejected', async () => {
   await assert.rejects(safeRemoteFetch('file:///etc/passwd'), /Invalid/);
 });
 
+test('NAT64 translation addresses allow public IPv4 but preserve all private destination restrictions',()=>{
+ for(const ip of ['64:ff9b::6815:31d1','64:ff9b::808:808','64:ff9b::104.21.49.209','0064:ff9b:0:0:0:0:6815:31d1'])assert.equal(isPublicAddress(ip),true,ip);
+ for(const ip of ['64:ff9b::7f00:1','64:ff9b::a00:1','64:ff9b::a9fe:a9fe','64:ff9b::c0a8:1','64:ff9b::','64:ff9b::e000:1','64:ff9b:1::808:808'])assert.equal(isPublicAddress(ip),false,ip);
+});
+
 test('HLS playlists sign segments, variant playlists and encryption keys', () => {
   const result = rewriteM3u8('#EXTM3U\n#EXT-X-KEY:METHOD=AES-128,URI="key.bin"\n../720/index.m3u8\nsegment.ts', 'https://cdn.example/a/master.m3u8', '/api/stream');
   for (const match of result.matchAll(/\/api\/stream\?[^"\n]+/g)) {

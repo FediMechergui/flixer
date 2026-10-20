@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {parseArabicId,arabicId,arabicUrl,parseArabicList,parseArabicDetails,parseArabicServers,dataLiteral,collectArabicPages,cimaEpisodeEntries,ahwakPlaybackLink} from '../src/arabic-providers.js';
+import {parseArabicId,arabicId,arabicUrl,parseArabicList,parseArabicDetails,parseArabicServers,dataLiteral,collectArabicPages,cimaEpisodeEntries,ahwakPlaybackLink,cinetimesCommonsServers} from '../src/arabic-providers.js';
 import {specialistUrl,specialistJobs} from '../src/specialist-providers.js';
 import {unifiedTitle,discoverLibrary} from '../src/library-service.js';
 import {mergeShow} from '../src/merge-library.js';
@@ -71,6 +71,14 @@ test('direct source HLS uses an approved host and rejects expired signed links',
 test('free Tunisian archive files use the source media host and preserve their actual format',()=>{
   const s=parseArabicServers('sp:cinetimes:m:zohra','<video><source src="https://upload.wikimedia.org/wikipedia/commons/transcoded/film.webm"></video><iframe src="https://evil.test"></iframe>');
   assert.equal(s.length,1);assert.equal(s[0].type,'file');assert.ok(s[0].streamUrl.endsWith('.webm'));
+});
+
+test('Cinetimes resolves only its exact linked Commons film and rejects unrelated files',async()=>{
+  const html='<div class="watch-videos"><a href="https://commons.wikimedia.org/wiki/File:Actual_film.webm">Watch</a><a href="https://evil.test/wiki/File:Other.webm">Other</a></div>';
+  let requests=0;
+  const fetchJson=async url=>{requests++;assert.equal(new URL(url).searchParams.get('titles'),'File:Actual film.webm');return {query:{pages:{1:{ns:6,title:'File:Actual film.webm',imageinfo:[{url:'https://upload.wikimedia.org/wikipedia/commons/a/ab/Actual_film.webm'}]},2:{ns:6,title:'File:Unrelated.webm',imageinfo:[{url:'https://upload.wikimedia.org/wikipedia/commons/a/ab/Unrelated.webm'}]}}}}};
+  const rows=await cinetimesCommonsServers(html,{fetchJson});assert.equal(requests,1);assert.equal(rows.length,1);assert.ok(rows[0].streamUrl.endsWith('/Actual_film.webm'));
+  assert.deepEqual(await cinetimesCommonsServers(html,{fetchJson:async()=>({query:{pages:{1:{ns:6,title:'File:Actual film.webm',imageinfo:[{url:'https://private.example/film.webm'}]}}}})}),[]);
 });
 test('Ahwak episode search groups retain only exact title episodes and actual numbers',()=>{
   const query='خمسين خمسين',id='sp:ahwaktv:s:q_'+Buffer.from(query).toString('base64url');

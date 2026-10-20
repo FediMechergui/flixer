@@ -288,6 +288,25 @@ export function parseArabicServers(id,html){
   }catch{return [];}})];
 }
 export function ahwakPlaybackLink(html){const $=load(html),href=$('#video-wrapper #play-video[href],#video-wrapper a.controls-play-pause-big[href]').first().attr('href'),url=fixed(href,ARABIC_PROVIDERS.ahwaktv.origin);return url&&url.pathname==='/see.php'&&/^[A-Za-z0-9_-]{1,100}$/.test(url.searchParams.get('vid')||'')?url.href:null;}
+// Cinetimes now links some archive films to their Commons file page instead of
+// embedding <video>. Resolve that exact published file through public metadata.
+export async function cinetimesCommonsServers(html,{fetchJson=async url=>{
+  const r=await safeRemoteFetch(url,{timeoutMs:6500,headers:{'User-Agent':'Flixer/1.6 (public archive metadata)',Accept:'application/json'}});
+  if(!r.ok){await r.body?.cancel();throw new Error(`Commons metadata HTTP ${r.status}`);}return r.json();
+}}={}){
+  const $=load(html),titles=new Set();
+  $('.watch-videos a[href]').each((_,el)=>{try{const u=new URL($(el).attr('href'));if(u.origin==='https://commons.wikimedia.org'&&!u.username&&!u.password&&u.pathname.startsWith('/wiki/File:'))titles.add(decodeURIComponent(u.pathname.slice(6)).replace(/_/g,' ').normalize('NFC'));}catch{}});
+  const servers=[];
+  for(const title of [...titles].slice(0,3)){
+    const url=new URL('https://commons.wikimedia.org/w/api.php');url.search=new URLSearchParams({action:'query',format:'json',prop:'imageinfo',iiprop:'url',titles:title});
+    const data=await fetchJson(url.href);
+    for(const page of Object.values(data?.query?.pages||{}))if(page.ns===6&&String(page.title).replace(/_/g,' ').normalize('NFC')===title){
+      const streamUrl=page.imageinfo?.[0]?.url;
+      if(pSafeCommons(streamUrl))servers.push({id:`cinetimes:commons:${servers.length}`,provider:'cinetimes',name:'Cinetimes - Wikimedia archive',type:'file',streamUrl});
+    }
+  }
+  return servers;
+}
 export async function resolveArabicServers(id,{fresh=false}={}){
   if(parseCimafuId(id))return resolveCimafuServers(id,{fresh});
   const saved=arabicSnapshot(id),episode=saved?.episodes?.find(e=>e.id===id),stored=episode?.cachedPlayers;
@@ -314,7 +333,9 @@ export async function resolveArabicServers(id,{fresh=false}={}){
     $('.OptionBx[data-key][data-id]').each((_,el)=>{const key=$(el).attr('data-key'),post=$(el).attr('data-id');if(post===firstId&&/^\d+$/.test(key||''))choices.push(new URL(`/?trembed=${key}&trid=${post}&trtype=${p.type==='m'?1:2}`,ARABIC_PROVIDERS.tuniflix.origin));});
     const wrappers=await collectArabicPages([...new Map(choices.map(u=>[u.href,u])).values()],u=>arabicPage(u.href,{fresh}));return wrappers.flatMap(r=>r.status==='fulfilled'?parseArabicServers(id,r.value):[]);
   }
-  return parseArabicServers(id,html);
+  const servers=parseArabicServers(id,html);
+  if(p.provider==='cinetimes'&&!servers.length)return cinetimesCommonsServers(html);
+  return servers;
 }
 
 // Parse only an object/array literal, never execute source JavaScript. JSON5

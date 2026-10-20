@@ -5,6 +5,7 @@ Flixer covers movies and TV shows across all genres, with its own interface, uni
 - Android app backed by [hosted catalogue and API](https://flixer-mu.vercel.app)
 - Repository: [FediMechergui/flixer](https://github.com/FediMechergui/flixer)
 - Android downloads: [Releases](https://github.com/FediMechergui/flixer/releases)
+- Playback diagnostics: [all 89 previously failed route cases](docs/playback-failures-2026-10-20.md), with remaining upstream failures and device playback evidence.
 - Dahsha is maintained in its [own repository](https://github.com/FediMechergui/dahsha).
 
 ## Run locally

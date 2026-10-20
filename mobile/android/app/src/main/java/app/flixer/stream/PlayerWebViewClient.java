@@ -41,7 +41,7 @@ public class PlayerWebViewClient extends BridgeWebViewClient {
     @Override
     public void onReceivedHttpError(WebView view, WebResourceRequest request, android.webkit.WebResourceResponse response) {
         super.onReceivedHttpError(view,request,response);
-        if(response.getStatusCode()>=400)reportPlayerFailure(view,request,response.getStatusCode(),"text/html".equals(response.getMimeType()));
+        if(response.getStatusCode()>=400 && !PlayerHttpPolicy.needsBrowserVerification(response.getStatusCode(),response.getResponseHeaders()))reportPlayerFailure(view,request,response.getStatusCode(),"text/html".equals(response.getMimeType()));
     }
 
     @Override
