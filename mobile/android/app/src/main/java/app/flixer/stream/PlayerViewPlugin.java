@@ -53,7 +53,7 @@ public class PlayerViewPlugin extends Plugin {
             if (playerDialog != null) { call.reject("A player is already open"); return; }
             Dialog dialog = new Dialog(getActivity(), android.R.style.Theme_Material_NoActionBar_Fullscreen);
             playerDialog = dialog;
-            String[] reason={"closed"};boolean[] played={false};boolean[] verifying={false};
+            String[] reason={"closed"};boolean[] played={false};boolean[] verifying={false};boolean[] challengeDocument={false};
             android.os.Handler watchdog=new android.os.Handler(android.os.Looper.getMainLooper());
             Runnable startupTimeout=()->{if(dialog.isShowing()&&!played[0]){reason[0]="failed";dialog.dismiss();}};JSObject media=new JSObject();boolean captureMedia=call.getBoolean("captureMedia",true);
             LinearLayout layout = new LinearLayout(getActivity()); layout.setOrientation(LinearLayout.VERTICAL); layout.setBackgroundColor(Color.rgb(12,18,16));
@@ -88,10 +88,16 @@ public class PlayerViewPlugin extends Plugin {
                 @Override public android.webkit.WebResourceResponse shouldInterceptRequest(WebView view,WebResourceRequest request){return PlayerAdBlock.intercept(request);}
                 @Override public boolean shouldOverrideUrlLoading(WebView view, String target) { return !approved(target); }
                 @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) { return request.isForMainFrame() && !approved(request.getUrl().toString()); }
-                @Override public void onPageStarted(WebView view,String target,android.graphics.Bitmap favicon){title.setText(Uri.parse(target).getHost());}
+                @Override public void onPageStarted(WebView view,String target,android.graphics.Bitmap favicon){challengeDocument[0]=false;title.setText(Uri.parse(target).getHost());}
+                @Override public void onPageFinished(WebView view,String target){
+                    // A completed page may play through a cross-origin frame whose
+                    // clock we cannot observe. Do not close it for missing telemetry.
+                    if(!challengeDocument[0]){watchdog.removeCallbacks(startupTimeout);verifying[0]=false;}
+                }
                 @Override public void onReceivedHttpError(WebView view,WebResourceRequest request,android.webkit.WebResourceResponse response){
                     if(!request.isForMainFrame()||response.getStatusCode()<400)return;
                     if(PlayerHttpPolicy.needsBrowserVerification(response.getStatusCode(),response.getResponseHeaders())){
+                        challengeDocument[0]=true;
                         title.setText("Browser verification");
                         // Give normal JavaScript/cookie verification a bounded opportunity.
                         // Redirect loops cannot keep extending the deadline.
