@@ -53,6 +53,11 @@ test('regional pages retry inconsistent empty query variants instead of truncati
   assert.equal(calls.length,2);assert.equal(result.totalPages,42);assert.equal(result.items.length,1);assert.deepEqual(result.items[0].countries,['KR']);
   await assert.rejects(fetchFmoviesPage({country:'KR',kind:'series',page:6,fetchHtml:async()=>filter+'Page 6 of 1 No results'}),/cursor retained/);
 });
+
+test('unfiltered FMovies films retry an empty cached first page before giving up',async()=>{
+ let calls=0;const result=await fetchFmoviesPage({kind:'film',fetchHtml:async()=>++calls===1?'Page 1 of 1 No results':'<a href="/movie/actual-123"><article><h3>Actual film</h3></article></a> Page 1 of 500'});
+ assert.equal(calls,2);assert.equal(result.items[0].id,'fm:m:123');assert.equal(result.totalPages,500);
+});
 test('discovery combines all three providers, preserves canonical IDs and survives one failure',async()=>{
   const result=await discoverLibrary({product:'flixer',kind:'film',page:2,genre:'animation',catalog:{shows:[row('mf:m:shared')]},fetchers:[
     async()=>({items:[row('fm:m:12','Shared',{offerings:[{provider:'fmovies',id:'fm:m:12',tmdbId:12}]})],totalPages:5}),

@@ -102,14 +102,19 @@
       stage.innerHTML = "";
     }
 
-    async function openNativePlayer() {
+    async function openNativePlayer(captureMedia = true) {
       const server = servers[st.idx], url = server?.embedUrl;
       if (!url || st.destroyed) return;
       teardownMedia();
       const generation = st.generation;
       const current = () => !st.destroyed && st.generation === generation;
       stage.innerHTML = '<div class="player__loading">Player open in the app</div>';
-      try { const result=await window.FlixerBrowser.openPlayer(url);
+      try { const result=await window.FlixerBrowser.openPlayer(url,{captureMedia:captureMedia===true});
+        if(current()&&result?.reason==='media'&&window.FlixerBrowser.hasNativeVideo?.()){
+          const media=result.media;
+          if(media&&['mp4','hls','dash'].includes(media.format)&&window.FlixerBrowser.publicUrl(media.url))return openDirectPlayer({...server,type:media.format,streamUrl:media.url,rawStreamUrl:media.url,startAt:media.position,headers:{Referer:media.sourceOrigin+'/'},nativeFallbackEmbed:true});
+          return openNativePlayer(false);
+        }
         if(current()&&['failed','next'].includes(result?.reason)){failover();return;}
         if(current()&&result?.reason==='closed'){opts.onExit?.();return;}
       }
@@ -123,16 +128,17 @@
       const generation=st.generation,current=()=>!st.destroyed&&st.generation===generation;
       stage.innerHTML='<div class="player__loading">Video open in the app</div>';
       try{
-        const result=await window.FlixerBrowser.openMedia(server,{title:opts.title,startAt:opts.startAt,onProgress:state=>{
+        const result=await window.FlixerBrowser.openMedia(server,{title:opts.title,startAt:server.startAt||opts.startAt,onProgress:state=>{
           if(!current())return;
           if(state.playing){try{localStorage.setItem('flixer:player-preference',JSON.stringify({provider:server.provider,name:server.name,audioMode:server.audioMode,confirmed:true}));}catch{}}
           if(state.duration>0)opts.onProgress?.(state.position,state.duration);
         }});
         if(!current())return;
+        if(result?.reason==='failed'&&server.nativeFallbackEmbed)return openNativePlayer(false);
         if(['failed','next'].includes(result?.reason))return failover();
         if(result?.reason==='ended')return opts.onEnded?.();
         opts.onExit?.();
-      }catch{if(current())failover();}
+      }catch{if(current()){if(server.nativeFallbackEmbed)return openNativePlayer(false);failover();}}
     }
 
     function load(i, automatic = false) {

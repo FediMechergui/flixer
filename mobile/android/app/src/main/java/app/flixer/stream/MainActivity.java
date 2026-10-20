@@ -12,11 +12,13 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(PlayerViewPlugin.class);
         registerPlugin(DirectVideoPlugin.class);
         super.onCreate(savedInstanceState);
+        PlayerAdBlock.installServiceWorkerFilter();
         chromeClient = new FullscreenChromeClient(getBridge());
         android.webkit.WebView webView = getBridge().getWebView();
         webView.setWebChromeClient(chromeClient);
         getBridge().setWebViewClient(new PlayerWebViewClient(getBridge()));
         if (androidx.webkit.WebViewFeature.isFeatureSupported(androidx.webkit.WebViewFeature.DOCUMENT_START_SCRIPT)) {
+            androidx.webkit.WebViewCompat.addDocumentStartJavaScript(webView,PlayerAdBlock.script(this),PlayerViewPlugin.playerOrigins());
             androidx.webkit.WebViewCompat.addDocumentStartJavaScript(webView,
                 "(()=>{if(parent===window)return;let failed=false,playing=false;const fail=()=>{if(!failed){failed=true;parent.postMessage({type:'flixer:provider-missing'},'https://localhost')}};"
                 + "if(location.hostname==='embos.top'&&/^\\/404\\/?$/.test(location.pathname))fail();"

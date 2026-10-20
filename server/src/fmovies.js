@@ -81,7 +81,7 @@ export async function fetchFmoviesPage({ kind = 'film', documentary = false, pag
   for(const query of [...new Set(variants.map(p=>p.toString()))]){
     html=await fetchHtml(`/${kind === 'film' ? 'movies' : 'tv-series'}?${query}`);
     result=parseFmoviesList(html, { kind, documentary, page, genre:typeof genre === 'number' ? FMOVIES_GENRES[genre] : genre });
-    if(result.items.length || (!country&&!language&&Number(page)===1))break;
+    if(result.items.length)break;
   }
   // An empty cached response must not terminate a known historical cursor.
   if(!result.items.length&&Number(page)>result.totalPages)throw new Error('FMovies returned inconsistent empty pagination; cursor retained');

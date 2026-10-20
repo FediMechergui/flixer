@@ -10,6 +10,11 @@ import com.getcapacitor.BridgeWebViewClient;
 public class PlayerWebViewClient extends BridgeWebViewClient {
     public PlayerWebViewClient(Bridge bridge) { super(bridge); }
 
+    @Override public android.webkit.WebResourceResponse shouldInterceptRequest(WebView view,WebResourceRequest request){
+        android.webkit.WebResourceResponse blocked=PlayerAdBlock.intercept(request);
+        return blocked!=null?blocked:super.shouldInterceptRequest(view,request);
+    }
+
     private void reportPlayerFailure(WebView view, WebResourceRequest request, int status, boolean document) {
         reportPlayerFailure(view,request.getUrl().toString(),status,document);
     }
@@ -41,6 +46,7 @@ public class PlayerWebViewClient extends BridgeWebViewClient {
 
     @Override
     public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+        if(PlayerAds.blocked(request.getUrl().toString()))return true;
         Uri target = request.getUrl();
         String scheme = target.getScheme();
         // This provider redirects missing titles to an HTML error page with HTTP 200.

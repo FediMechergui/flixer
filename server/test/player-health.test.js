@@ -10,7 +10,7 @@ test('native failure reporting and accepted player messages cover the same trust
 import vm from 'node:vm';
 test('closing an older native player cannot overwrite a newer server or a destroyed player',async()=>{
  const source=fs.readFileSync(new URL('../../client-terrarium/js/player.js',import.meta.url),'utf8');
- const start=source.indexOf('    async function openNativePlayer()');
+ const start=source.indexOf('    async function openNativePlayer(');
  const end=source.indexOf("\n    $('[data-browser-player]'",start);
  for(const action of ['switch','destroy','current']) {
   let finish;const pending=new Promise(resolve=>{finish=resolve;});

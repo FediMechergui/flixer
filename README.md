@@ -139,4 +139,10 @@ Approved HTML players open in an isolated Android WebView with Close and Next so
 
 Run `node scripts/audit-provider-matrix.js` for catalogue samples, then `node scripts/audit-player-routes.js` to probe every advertised route for each sampled title's first actual episode. Reports in `artifacts/` distinguish HTTP reachability, source errors and Android host support; HTTP 200 does not certify playback. Full catalogue import and universal playback are not guaranteed by those sample audits.
 
+### Player advertising controls
+
+Android filters known advertising and audience-tracking requests in both the isolated player and the main WebView, including service-worker requests. Rules are local; playback adds no filtering requests to Vercel. Popups remain blocked. A bundled cleanup script hides explicit ad containers while retaining video, subtitle and playback controls. Public MP4/HLS/DASH sources use native playback without loading the host's webpage.
+
+When an embedded player exposes an already-playing, visible public media URL, Flixer can hand it to the native player at the current position. Short clips, hidden videos, blob URLs and encrypted media are excluded from that handoff. If native playback fails, the original player reopens once with handoff disabled. Source access gates and upstream blocks are skipped rather than presented as working video. Ads encoded into the video stream and new unrecognized ad networks are not guaranteed to be removed.
+
 Latest refreshes are scheduled at minutes 02, 17, 32 and 47; historical traversal remains every two hours. GitHub scheduling and deployments can delay publication. App polling stays unchanged, and source crawls run outside app navigation. Snapshot restores retry transient failures and validate the complete archive before promoting any files. `node scripts/audit-provider-matrix.js` writes a read-only first-page/type/category sample report; successful server resolution or HTTP responses are not labelled as confirmed video playback.
