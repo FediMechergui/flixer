@@ -31,3 +31,11 @@ test('navigating away during native close cannot reopen a cancelled player',asyn
  const navigation=window.FlixerBrowser.closePlayers();finish();await navigation;await cancelled;
  assert.equal(opened,0);
 });
+
+test('native media forwards source captions and User-Agent together with the video',async()=>{
+ let request;const subtitles=[{url:'https://ndisk.wcostream.com/getvid?evid=actual-captions',mimeType:'text/vtt',language:'en'}],headers={'User-Agent':'Flixer (Android)'};
+ const plugin={close:async()=>{},addListener:async()=>({remove:async()=>{}}),open:async options=>{request=options;return {reason:'closed'};}};
+ const window={Capacitor:{isNativePlatform:()=>true,Plugins:{DirectVideo:plugin}}};vm.runInNewContext(source,{window,URL,Promise,Math,Date});
+ await window.FlixerBrowser.openMedia({type:'mp4',streamUrl:'https://ndisk.wcostream.com/getvid?evid=actual-video',headers,subtitles});
+ assert.equal(request.subtitles,subtitles);assert.equal(request.headers,headers);
+});

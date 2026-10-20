@@ -27,6 +27,7 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 
 /** Plays public source media directly; no WebView CORS or Vercel segment proxy. */
 @CapacitorPlugin(name = "DirectVideo")
+@androidx.annotation.OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)
 public class DirectVideoPlugin extends Plugin {
     private NativePlayerSurface dialog;
     private ExoPlayer player;
@@ -76,6 +77,13 @@ public class DirectVideoPlugin extends Plugin {
             });
             surface.show();
             MediaItem.Builder item=new MediaItem.Builder().setUri(url);
+            java.util.List<MediaItem.SubtitleConfiguration> subtitles=new java.util.ArrayList<>();
+            org.json.JSONArray tracks=call.getArray("subtitles");
+            if(tracks!=null)for(int i=0;i<Math.min(tracks.length(),4);i++)try{
+                org.json.JSONObject track=tracks.getJSONObject(i);String target=track.optString("url"),mime=track.optString("mimeType");
+                if(valid(target)&&java.util.Arrays.asList(MimeTypes.TEXT_VTT,MimeTypes.APPLICATION_SUBRIP,MimeTypes.APPLICATION_TTML).contains(mime))subtitles.add(new MediaItem.SubtitleConfiguration.Builder(Uri.parse(target)).setMimeType(mime).setLanguage(track.optString("language","en")).setLabel(track.optString("label","Subtitles")).setSelectionFlags(C.SELECTION_FLAG_DEFAULT).build());
+            }catch(org.json.JSONException ignored){}
+            item.setSubtitleConfigurations(subtitles);
             if("hls".equals(type))item.setMimeType(MimeTypes.APPLICATION_M3U8);else if("dash".equals(type))item.setMimeType(MimeTypes.APPLICATION_MPD);
             media.setMediaItem(item.build());double position=call.getDouble("startAt",0.0);if(Double.isFinite(position)&&position>0)media.seekTo((long)(position*1000));media.prepare();media.play();
             handler.postDelayed(timeout,45000);handler.post(progress);

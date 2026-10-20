@@ -7,6 +7,7 @@ import { ARABIC_PROVIDERS,parseArabicId,arabicUrl,arabicIdFromUrl,getArabicDetai
 import {FRENCH_PROVIDERS,parseFrenchId,frenchUrl,fetchFrenchPage,getFrenchDetails,resolveFrenchServers} from './french-providers.js';
 import {matchesSearch} from '../../shared/search.js';
 import {DESSIN_PROVIDERS,parseDessinId,dessinUrl,fetchDessinPage,getDessinDetails,resolveDessinServers} from './dessinanime.js';
+import {WCO_PROVIDERS,parseWcoId,wcoUrl,wcoIdFromUrl,getWcoDetails,fetchWcoPage,resolveWcoServers} from './wco.js';
 
 // Public catalogue/player pages only. IDs reconstruct a fixed origin and a strict
 // path; caller URLs never authorize a fetch or a player destination.
@@ -16,6 +17,7 @@ export const SPECIALISTS = {
   ...DESSIN_PROVIDERS,
   ...ONEPACE_PROVIDERS,
   ...OFFICIAL_PROVIDERS,
+  ...WCO_PROVIDERS,
   animegg:{name:'AnimeGG',origin:'https://www.animegg.org',kind:'series',collections:['anime','anime-sub','anime-dub']},
   megacartoons:{name:'MegaCartoons',origin:'https://www.megacartoons.net',kind:'series',collections:['cartoons','classic-cartoons']},
   toontales:{name:'ToonTales',origin:'https://www.toontales.net',kind:'film',collections:['cartoons','classic-cartoons']},
@@ -25,6 +27,7 @@ export const SPECIALISTS = {
 };
 const slugPattern='[a-z0-9][a-z0-9_-]{0,259}';
 export function parseSpecialistId(id){
+  const wco=parseWcoId(id);if(wco)return wco;
   const official=parseOfficialId(id);if(official)return official;
   const pace=parseOnePaceId(id);if(pace)return pace;
   const dessin=parseDessinId(id);if(dessin)return dessin;
@@ -37,6 +40,7 @@ export function parseSpecialistId(id){
   return {provider:m[1],type:m[2],slug:m[3],...(m[4]?{season:Number(m[4]),number:Number(m[5])}:{})};
 }
 export function specialistUrl(id){
+  const wco=wcoUrl(id);if(wco)return wco;
   const official=officialUrl(id);if(official)return official;
   const pace=onePaceUrl(id);if(pace)return pace;
   const dessin=dessinUrl(id);if(dessin)return dessin;
@@ -49,10 +53,11 @@ export function specialistUrl(id){
   return `${SPECIALISTS[p.provider].origin}${prefix}${p.slug}${p.provider==='animegg'?'':'/'}`;
 }
 export function specialistIdFromUrl(value){
+  const wco=wcoIdFromUrl(value);if(wco)return wco;
   const official=officialIdFromUrl(value);if(official)return official;
   const arabic=arabicIdFromUrl(value);if(arabic)return arabic;
   try{const u=new URL(value);for(const [provider,cfg] of Object.entries(SPECIALISTS)){
-    if(ARABIC_PROVIDERS[provider]||provider==='frenchstream')continue;
+    if(ARABIC_PROVIDERS[provider]||provider==='frenchstream'||provider==='wco')continue;
     if(provider==='youtubeoriginals'){continue;}
     if(provider==='onepace'){if(u.origin===cfg.origin&&u.pathname==='/en/watch'&&!u.search&&!u.username&&!u.password){const id='sp:onepace:s:'+u.hash.slice(1);if(parseOnePaceId(id))return id;}continue;}
     if(provider==='dessinanime'){if(u.origin===cfg.origin&&!u.search&&!u.hash&&!u.username&&!u.password){const m=/^\/(movie|tv)\/([^/]+)\/?$/.exec(u.pathname);const id=m&&`sp:dessinanime:${m[1]==='movie'?'m':'s'}:${decodeURIComponent(m[2])}`;if(parseDessinId(id))return id;}continue;}
@@ -212,6 +217,7 @@ export function parseSpecialistDetails(id,html){
   return {...result,...pagination($,url,result.episodeCount)};
 }
 export async function getSpecialistDetails(id,{fresh=false}={}){
+  if(parseWcoId(id))return getWcoDetails(id,{fresh});
   if(parseOfficialId(id))return getOfficialDetails(id);
   if(parseOnePaceId(id))return getOnePaceDetails(id);
   if(parseDessinId(id))return getDessinDetails(id,{fresh});
@@ -237,6 +243,7 @@ export function specialistJobs({kind,collection='',latest=false}={}){
     .flatMap(([provider,cfg])=>(!cfg.kind&&!kind?['film','series']:[kind||cfg.kind]).map(kind=>({provider,kind,page:1,latest,collection})));
 }
 export async function fetchSpecialistPage({provider,page:pageNum=1,cursor,search,latest=false,kind='series',collection=''}={}){
+  if(provider==='wco')return fetchWcoPage({page:pageNum,search,latest,kind,collection});
   if(provider==='youtubeoriginals')return fetchOfficialPage({page:pageNum,search,latest,kind,collection});
   if(provider==='onepace')return fetchOnePacePage({page:pageNum,search,latest,kind});
   if(provider==='dessinanime')return fetchDessinPage({page:pageNum,cursor,search,kind,collection});
@@ -368,6 +375,7 @@ export function parseSpecialistServers(id,html){
   return [...new Map(servers.map(s=>[s.embedUrl||s.streamUrl,s])).values()];
 }
 export async function resolveSpecialistServers(id,options={}){
+  if(parseWcoId(id))return resolveWcoServers(id,options);
   if(parseOnePaceId(id))return resolveOnePaceServers(id);
   if(parseDessinId(id))return resolveDessinServers(id);
   if(parseFrenchId(id))return resolveFrenchServers(id,options);

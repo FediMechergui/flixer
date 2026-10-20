@@ -109,6 +109,7 @@
       clearTimeout(st.switchTimer);
       clearTimeout(st.startupTimer);
       st.generation++;
+      window.FlixerWcoSource?.cancel?.();
       window.FlixerBrowser?.closePlayers?.();
       if (st.hls) { try { st.hls.destroy(); } catch { /* already gone */ } st.hls = null; }
       const v = $("video", stage);
@@ -123,7 +124,7 @@
       const generation = st.generation;
       const current = () => !st.destroyed && st.generation === generation;
       stage.innerHTML = '<div class="player__loading">Player open in the app</div>';
-      try { const result=await window.FlixerBrowser.openPlayer(url,{captureMedia:captureMedia===true,bounds:inlineBounds()});
+      try { const result=await window.FlixerBrowser.openPlayer(url,{captureMedia:captureMedia===true&&server.captureMedia!==false,bounds:inlineBounds()});
         if(current()&&result?.reason==='media'&&window.FlixerBrowser.hasNativeVideo?.()){
           const media=result.media;
           if(media&&['mp4','hls','dash'].includes(media.format)&&window.FlixerBrowser.publicUrl(media.url))return openDirectPlayer({...server,type:media.format,streamUrl:media.url,rawStreamUrl:media.url,startAt:media.position,headers:{Referer:media.sourceOrigin+'/'},nativeFallbackEmbed:true});
@@ -165,6 +166,17 @@
       teardownMedia();
       const s = servers[i];
       if (!s) return showError();
+      if(s.type==='wco'){
+        const generation=st.generation;showNotice('Resolving source video...',true);
+        if(!window.FlixerBrowser?.hasNativeVideo?.()||!window.FlixerWcoSource?.supports(s))return failover();
+        window.FlixerWcoSource.resolve(s).then(choices=>{
+          if(st.destroyed||st.generation!==generation)return;
+          notice.hidden=true;
+          if(!choices.length)return failover();
+          st.attempted=new Set([...st.attempted].map(index=>index>i?index+choices.length-1:index));
+          servers.splice(i,1,...choices);load(i,true);
+        }).catch(()=>{if(!st.destroyed&&st.generation===generation)failover();});return;
+      }
       const hgSource=s.sourceEmbedUrl||s.embedUrl;
       if(window.FlixerBrowser?.hasNativeVideo?.()&&window.FlixerHgSource?.supports(s)&&!st.hgAttempted.has(hgSource)){
         st.hgAttempted.add(hgSource);const generation=st.generation;showNotice('Resolving source video...');
@@ -268,7 +280,7 @@
       } else showError();
     }
 
-    function resetHgSources() { st.hgAttempted.clear();window.FlixerHgSource?.clearCache?.(); }
+    function resetHgSources() { st.hgAttempted.clear();window.FlixerHgSource?.clearCache?.();window.FlixerWcoSource?.clearCache?.(); }
 
     function showError() {
       teardownMedia();
@@ -357,6 +369,7 @@
       },
       destroy() {
         st.destroyed = true;
+        window.FlixerWcoSource?.cancel?.();
         if(boundsFrame!==null)cancelAnimationFrame(boundsFrame);
         boundsObserver?.disconnect();
         window.removeEventListener('scroll',syncNativeBounds,true);

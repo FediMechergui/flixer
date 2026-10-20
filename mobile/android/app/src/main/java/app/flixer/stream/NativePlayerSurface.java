@@ -13,13 +13,14 @@ import com.getcapacitor.JSObject;
 /** Native playback occupies the HTML stage; only an explicit control expands it. */
 final class NativePlayerSurface {
     interface DismissListener { void dismissed(NativePlayerSurface surface); }
+    interface FullscreenListener { void changed(boolean expanded); }
     private final BridgeActivity activity;
     private final WebView appWeb;
     private final FrameLayout host, viewport;
     private View content, toolbar;
     private JSObject bounds;
     private DismissListener listener;
-    private java.util.function.Consumer<Boolean> fullscreenListener;
+    private FullscreenListener fullscreenListener;
     private boolean showing, fullscreen, keptScreenOn;
     private final OnBackPressedCallback back = new OnBackPressedCallback(true) {
         @Override public void handleOnBackPressed() {
@@ -35,7 +36,7 @@ final class NativePlayerSurface {
     void setContentView(View content) { this.content=content; viewport.addView(content,new FrameLayout.LayoutParams(-1,-1)); }
     void setToolbar(View toolbar) { this.toolbar=toolbar; toolbar.setVisibility(View.GONE); }
     void setOnDismissListener(DismissListener listener) { this.listener=listener; }
-    void setFullscreenListener(java.util.function.Consumer<Boolean> listener) { fullscreenListener=listener; }
+    void setFullscreenListener(FullscreenListener listener) { fullscreenListener=listener; }
     boolean isShowing() { return showing; }
     boolean isFullscreen() { return fullscreen; }
     void show() {
@@ -50,7 +51,7 @@ final class NativePlayerSurface {
     void updateBounds(JSObject bounds) { this.bounds=bounds; layout(); }
     void setFullscreen(boolean expanded) {
         fullscreen=expanded;
-        if(fullscreenListener!=null)fullscreenListener.accept(expanded);
+        if(fullscreenListener!=null)fullscreenListener.changed(expanded);
         if(toolbar!=null)toolbar.setVisibility(expanded?View.VISIBLE:View.GONE);
         layout();
     }

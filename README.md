@@ -54,7 +54,7 @@ Release signing uses a private `mobile/keystore.properties` and keystore; neithe
 
 ## Hosting and refresh
 
-Flixer's Android APK integrates Myflixer, FMovies, cached HDToday, AnimeGG,
+Flixer's Android APK integrates Myflixer, FMovies, cached HDToday, WCO, AnimeGG,
 MegaCartoons, ToonTales, MyAsianTV, MultiMovies, YoTurkish, Tuniflix, CimaTN,
 StreamTunisie, Kirmalk, AhwakTV, EgyDead and Cinetimes. Search and catalogue discovery combine
 providers; matching titles retain existing IDs and gain player choices. Uncertain

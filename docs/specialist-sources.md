@@ -48,13 +48,13 @@ records remain available.
 
 | Source | Evidence | Integration status |
 | --- | --- | --- |
-| WCO (`www.wco.tv`) | Public navigation separates cartoons, dubbed anime, subbed anime, movies and OVA; recent episodes carry explicit version labels. | Catalogue request `/cartoon-list` returned HTTP 403 from local Node. External link only; no playable adapter. Premium releases must not be treated as freely playable. |
+| WCO (`www.wcostream.tv`) | Public cartoon/anime series directories, search and real episode guides; movies are not imported by this adapter. | Android search/details and published MP4 configuration resolve on the device; SD/HD/FHD native playback verified on a classic-cartoon sample. Hosted catalogue requests can return 403. See [current integration and verification](wco-integration.md). |
 | KissKH (`kisskh.ovh`) | Public Angular bundle sets baseUrl `/api/`. Verified GET `/api/DramaList/LastUpdate?ispc=true` and `/api/DramaList/Search?q=love&type=0` returned JSON records. | Research only. Bundle also references `/api/DramaList/Drama/{id}?isq={bool}` and `/api/DramaList/Episode/{id}.png?err=…&ts=…&time=…&kkey=…`. Episode request depends on generated key; details and playback not verified. Never fabricate its request key or infer streams from catalogue presence. |
 | Miruro (`www.miruro.com`) | Homepage accessible; FMHY describes sub/dub anime support. | No verified episode/player contract yet. |
 | YoTurkish (`www.yoturkish.com`) | Redirects to the verified `www1.yoturkish.com` catalogue. | Integrated above; individual third-party servers can still be unavailable. |
 | Einthusan (`einthusan.tv`) | FMHY lists South Asian films, noting VPN/region limitations. | External link only; no verified playback contract. |
 
-WCO, KissKH, Miruro and Einthusan remain research candidates or external links.
+KissKH, Miruro and Einthusan remain research candidates or external links. WCO now has the native integration described above.
 They are not counted as integrated catalogue entries. A future adapter
 must retain source episode IDs and real numbering, explicit audio/subtitle variants,
 latest-update pagination, and uncertain editions without silently merging them.

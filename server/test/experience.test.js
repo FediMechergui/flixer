@@ -217,3 +217,12 @@ test('Android requests direct transport and keeps video segments off the API bac
  const {api,requests}=fixture([],{servers:[{id:'hls',type:'hls',streamUrl:'https://backend.example/api/stream?proxy=1',rawStreamUrl:'https://cdn.example/master.m3u8',headers:{Referer:'https://source.example/'}}]},null,{browser:{hasNativeVideo:()=>true}});
  const result=await api.stream('mf:m:example');assert.equal(result.servers[0].streamUrl,'https://cdn.example/master.m3u8');assert.ok(requests.find(url=>url.includes('/api/stream?')&&url.includes('transport=direct')));assert.equal(result.servers[0].headers.Referer,'https://source.example/');
 });
+
+test('numbered seasons are listed before source episode groups',async()=>{
+  const ep=(slug,season,number)=>({id:`sp:wco:e:o:${slug}`,season,number,offerings:[{provider:'wco',id:`sp:wco:e:o:${slug}`}]});
+  const {api}=fixture([{id:'ordered',kind:'series',title:'Ordered seasons',episodes:[ep('o-shorts-episode-1',null,1),ep('o-season-2-episode-1',2,1),ep('o-episode-1',1,1)]}]);
+  const result=await api.episode('ordered','sp:wco:e:o:o-episode-1');
+  assert.deepEqual(Array.from(result.show.seasons.slice(0,2),s=>s.season_number),[1,2]);
+  assert.ok(result.show.seasons[2].season_number<=0);assert.equal(result.show.seasons[2].name,'Source episodes - Watch Cartoon Online');
+  await api._indexReady;await api._metadataReady;
+});

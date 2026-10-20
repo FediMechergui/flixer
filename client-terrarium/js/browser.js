@@ -10,7 +10,7 @@
   async function openMedia(server,{title,startAt,onProgress,bounds}={}){
     const url=publicUrl(server.rawStreamUrl||server.streamUrl),player=directPlayer();if(!url||!player?.open)throw Error('Native video unavailable');
     const session=String(Date.now())+':'+Math.random(),listener=await player.addListener('progress',state=>{if(state.session===session)onProgress?.(state);});
-    try{return await startPlayer(player,{url,type:server.type,title,startAt,session,headers:server.headers||{},bounds});}finally{await listener.remove();}
+    try{return await startPlayer(player,{url,type:server.type,title,startAt,session,headers:server.headers||{},subtitles:server.subtitles||[],bounds});}finally{await listener.remove();}
   }
   async function closePlayers(){playbackGeneration++;await dismissPlayers();}
   const updatePlayerBounds=bounds=>Promise.allSettled([nativePlayer()?.updateBounds?.({bounds}),directPlayer()?.updateBounds?.({bounds})]);

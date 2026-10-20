@@ -11,6 +11,7 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(PlayerViewPlugin.class);
         registerPlugin(DirectVideoPlugin.class);
+        registerPlugin(WcoSourcePlugin.class);
         super.onCreate(savedInstanceState);
         PlayerAdBlock.installServiceWorkerFilter();
         chromeClient = new FullscreenChromeClient(getBridge());

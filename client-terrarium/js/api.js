@@ -151,7 +151,7 @@
     const thumbs = e.thumbs || {};
     const slug = e.slug || String(e.id || "").replace(/^mf:[mse]:/, "");
     const sourceProvider=(e.offerings||[]).find(o=>o.id.startsWith('sp:'))?.provider || '';
-    const sourceGroups=['animegg','megacartoons','myasiantv','yoturkish'];
+    const sourceGroups=['animegg','megacartoons','myasiantv','yoturkish','wco'];
     return {
       id: e.id,
       offerings: e.offerings || [],
@@ -239,6 +239,7 @@
       return { items: (Array.isArray(body) ? body : []).map(r => this.format(r, years, kind)), total: Number(headers.get("x-wp-total") || 0), totalPages: Number(headers.get("x-wp-totalpages") || 1) };
     },
     async details(id, sources = [],{fresh=false}={}) {
+      if(/^sp:wco:s:[a-z0-9][a-z0-9-]{0,159}$/.test(id)&&window.Capacitor?.Plugins?.WcoSource)return window.FlixerWcoSource.details(id);
       const isSeries = id.startsWith("mf:s:");
       const slug = id.replace(/^mf:[mse]:/, "");
       if (await this.serverOk()) {
@@ -794,6 +795,11 @@
     async show(id) {
       await this.catalog();
       if (this._byId.has(id)) return this._byId.get(id);
+      if(/^sp:wco:s:[a-z0-9][a-z0-9-]{0,159}$/.test(id)&&window.Capacitor?.Plugins?.WcoSource){
+        const row=await window.FlixerWcoSource.details(id);this._merge([row]);this._reindex();
+        if(row.synopsis&&row.episodes?.length&&normalize(row).poster)this._details.set(id,Date.now());
+        return this._byId.get(id)||row;
+      }
       try {
         const { body } = await getJson(`${DATA_BASE}/data/shows/${encodeURIComponent(encodeURIComponent(id))}.json`, 8000);
         if(body.id!==id)throw new Error('Title identity mismatch');
@@ -806,14 +812,14 @@
     }
     async details(_type, id) {
       const raw = await this.show(id);
-      const canonical=raw.id,cached=store.get('title:'+canonical,null);
+      const canonical=raw.id,cached=store.get('title:'+canonical,null),nativeWco=/^sp:wco:s:[a-z0-9][a-z0-9-]{0,159}$/.test(raw.id)&&window.Capacitor?.Plugins?.WcoSource;
       if(raw.kind==='series'&&Date.now()-(Number(this._details.get(canonical))||0)>120000)this._details.delete(canonical);
       if(!this._details.has(canonical)&&cached&&Date.now()-cached.t<(raw.kind==='series'?120000:6*3600e3)){this._merge([cached.show],{snapshotAt:new Date(cached.t).toISOString()});this._reindex();if((cached.show.synopsis||cached.show.blurb)&&normalize(cached.show).poster&&(cached.show.kind!=='series'||cached.show.episodes?.length))this._details.set(canonical,cached.t);}
       if(!this._details.has(canonical)){
         this._titleRequests ||= new Map();
         if(!this._titleRequests.has(canonical)){
           const refresh=(async()=>{
-            try{const {body}=await getJson(`${DATA_BASE}/data/shows/${encodeURIComponent(encodeURIComponent(canonical))}.json`,6000);if(body.id!==canonical)throw new Error('Title identity mismatch');this._merge([body],{snapshotAt:this._catalog.generatedAt||this._bundleAt||'1970-01-01'});this._reindex();window.dispatchEvent(new CustomEvent('flixer:title',{detail:{id:canonical}}));}catch{}
+            if(!nativeWco)try{const {body}=await getJson(`${DATA_BASE}/data/shows/${encodeURIComponent(encodeURIComponent(canonical))}.json`,6000);if(body.id!==canonical)throw new Error('Title identity mismatch');this._merge([body],{snapshotAt:this._catalog.generatedAt||this._bundleAt||'1970-01-01'});this._reindex();window.dispatchEvent(new CustomEvent('flixer:title',{detail:{id:canonical}}));}catch{}
             const current=this._byId.get(canonical)||raw;
             if(this.liveEnabled&&(current.kind==='series'||!(current.synopsis||current.blurb)||!normalize(current).poster||Date.now()-Date.parse(this._catalog.generatedAt||0)>6*3600e3)){
               const fresh=await live.details(canonical,[current.sourceUrl,...(current.offerings||[]).map(o=>o.sourceUrl)],{fresh:current.kind==='series'});
@@ -821,9 +827,9 @@
             }
             this._reindex();const completed=this._byId.get(canonical)||raw;
             store.set('title:'+canonical,{t:Date.now(),show:completed});
-            if((completed.synopsis||completed.blurb)&&normalize(completed).poster&&(completed.kind!=='series'||completed.episodes?.length))this._details.set(canonical,Date.now());
+            if(nativeWco||(completed.synopsis||completed.blurb)&&normalize(completed).poster&&(completed.kind!=='series'||completed.episodes?.length))this._details.set(canonical,Date.now());
             
-          })().catch(e=>console.warn('[flixer] title metadata unavailable:',e.message)).finally(()=>{this._titleRequests.delete(canonical);window.dispatchEvent(new CustomEvent('flixer:title',{detail:{id:canonical}}));});
+          })().catch(e=>{if(nativeWco)this._details.set(canonical,Date.now());console.warn('[flixer] title metadata unavailable:',e.message);}).finally(()=>{this._titleRequests.delete(canonical);window.dispatchEvent(new CustomEvent('flixer:title',{detail:{id:canonical}}));});
           this._titleRequests.set(canonical,refresh);
         }
         const pending=this._titleRequests.get(canonical);
@@ -849,8 +855,8 @@
         }
         if (guide) episodes.forEach(e => { const g = e.season>0 && guide.get(e.season + ":" + e.n); if (g) { if (g.still) e.still = g.still; if (g.date) e.date = g.date; if (g.runtime) e.runtime = g.runtime; if (g.overview) e.overview = g.overview; if (g.title && /^episode \d+$/i.test(e.title)) e.title = g.title; } });
       }
-      const seasonNums = [...new Set(episodes.map(e => e.season))].sort((a, b) => a - b);
-      const sourceNames={animegg:'AnimeGG',megacartoons:'MegaCartoons',myasiantv:'MyAsianTV',yoturkish:'YoTurkish'};
+      const seasonNums = [...new Set(episodes.map(e => e.season))].sort((a, b) => (a <= 0) - (b <= 0) || a - b); // numbered seasons first, source lists last
+      const sourceNames={animegg:'AnimeGG',megacartoons:'MegaCartoons',myasiantv:'MyAsianTV',yoturkish:'YoTurkish',wco:'Watch Cartoon Online'};
       const seasons = seasonNums.map(n => ({ season_number: n, name: n<=0?`Source episodes - ${sourceNames[episodes.find(e=>e.season===n)?.sourceProvider]||'Original numbering'}`:"Season " + n, episode_count: episodes.filter(e => e.season === n).length }));
       return Object.assign(item, {
         tagline: "",
@@ -932,21 +938,25 @@
       const terms = norm(q).split(/\s+/).filter(Boolean);
       if(!terms.length)return {items:[],totalPages:1};
       const hit = value => {const text=norm(value);return terms.every(term=>text.includes(term));};
-      await this.catalog(); await this._indexReady;
+      await this.catalog(); if(!API_BASE||!this.liveEnabled)await this._indexReady;
       const local = (await this.all()).filter(i => hit(i.title) || (i.alt && hit(i.alt)) || i.altTitles.some(hit)).sort(byWeight).slice(0, 60);
       if (onLocal) onLocal({ items:local, totalPages:1,pending:this.liveEnabled?1:0 });
       if (!this.liveEnabled) return { items: local, totalPages: 1 };
       if(API_BASE){
         this._searchProviders ||= getJson(`${API_BASE}/api/search?providers=1`,3000).then(({body})=>body.providers).catch(()=>null);
-        const names=await this._searchProviders||['myflixer','fmovies','hdtoday','streamtunisie','kirmalk','ahwaktv','egydead','tuniflix','cinetimes','cimatn','animegg','megacartoons','toontales','myasiantv','multimovies','yoturkish','frenchstream','dessinanime'];
+        const names=[...new Set([...(await this._searchProviders||['myflixer','fmovies','hdtoday','streamtunisie','kirmalk','ahwaktv','egydead','tuniflix','cinetimes','cimatn','animegg','megacartoons','toontales','myasiantv','multimovies','yoturkish','frenchstream','dessinanime']),...(window.Capacitor?.Plugins?.WcoSource?['wco']:[])])];
         if(signal?.aborted)return {items:local,totalPages:1};
-        const ids=new Set(local.map(i=>i.id));let pending=names.length;
+        const ids=new Set(local.map(i=>i.id));let pending=names.length+1;
         const result=()=>({items:[...new Map([...ids].map(id=>{const item=normalize(this._byId.get(id)||{});return [item.id,item];})).values()].filter(i=>i.id),totalPages:1,pending});
-        await Promise.allSettled(names.map(async provider=>{try{
-          const {body}=await getJson(`${API_BASE}/api/search?${new URLSearchParams({q,provider})}`,12000,signal);
+        const saved=Promise.resolve(this._indexReady).then(async()=>{
+          if(signal?.aborted)return;const rows=await this.all();if(signal?.aborted)return;
+          rows.filter(i=>hit(i.title)||(i.alt&&hit(i.alt))||i.altTitles.some(hit)).sort(byWeight).slice(0,60).forEach(i=>ids.add(i.id));
+        }).finally(()=>{pending--;if(!signal?.aborted&&onLocal)onLocal(result());});
+        await Promise.allSettled([...names.map(async provider=>{try{
+          const {body}=provider==='wco'&&window.Capacitor?.Plugins?.WcoSource?{body:{items:await window.FlixerWcoSource.search(q)}}:await getJson(`${API_BASE}/api/search?${new URLSearchParams({q,provider})}`,12000,signal);
           if(signal?.aborted)return;
           const rows=body.items||[];this._merge(rows);for(const row of rows)ids.add((this._byId.get(row.id)||row).id);
-        }finally{pending--;if(!signal?.aborted&&onLocal)onLocal(result());}}));
+        }finally{pending--;if(!signal?.aborted&&onLocal)onLocal(result());}}),saved]);
         this._reindex();return result();
       }
       const liveHits = await Promise.race([
@@ -962,12 +972,6 @@
     /* ----- Playback sources (unchanged contract) ----- */
     async stream(id, sourceUrl, show = {}, { signal,onSources,fresh=false } = {}) {
       const toAbsolute = url => !url ? null : (/^https?:\/\//.test(url) ? url : API_BASE + url);
-      try {
-        const params = new URLSearchParams({id});
-        if(window.FlixerBrowser?.hasNativeVideo?.())params.set('transport','direct');
-        if(fresh)params.set('fresh','1');
-        if (show.id) params.set('showId',show.id);
-        [show.sourceUrl, ...(show.offerings || []).map(o => o.sourceUrl)].filter(Boolean).forEach(source => params.append('source',source));
         const normalizeServers=data=>{
         const servers = [];
         (Array.isArray(data.servers) ? data.servers : []).forEach((s, idx) => {
@@ -982,6 +986,25 @@
         if (!servers.length && data.embedUrl) servers.push({ id: 0, name: "Player 1", type: "embed", embedUrl: toAbsolute(data.embedUrl) });
         return servers;
         };
+      const wco=/^sp:wco:e:[a-z0-9][a-z0-9-]{0,159}:([a-z0-9][a-z0-9-]{0,159})$/.exec(id);
+      if(wco&&window.Capacitor?.Plugins?.WcoSource){
+        if(signal?.aborted)throw new DOMException('Aborted','AbortError');
+        if(fresh)window.FlixerWcoSource?.clearCache?.();
+        const mode=/-english-(subbed|dubbed)$/.exec(wco[1]);
+        const alternatives=show.episodes?.find(e=>e.id===id)?.offerings||[];
+        if(onSources&&alternatives.some(o=>o.provider&&o.provider!=='wco')){
+          const params=new URLSearchParams({id,transport:'direct'});if(show.id)params.set('showId',show.id);if(fresh)params.set('fresh','1');
+          [show.sourceUrl,...(show.offerings||[]).map(o=>o.sourceUrl)].filter(Boolean).forEach(source=>params.append('source',source));
+          getJson(`${API_BASE}/api/stream?${params}`,20000,signal).then(({body})=>{if(!signal?.aborted)onSources(normalizeServers(body).filter(s=>s.provider!=='wco'));}).catch(()=>{});
+        }
+        return {servers:[{id:'wco:public',provider:'wco',name:'Watch Cartoon Online',type:'wco',embedUrl:'https://www.wcostream.tv/'+wco[1],captureMedia:false,...(mode?{audioMode:mode[1]==='subbed'?'sub':'dub'}:{})}],via:'device'};
+      }
+      try {
+        const params = new URLSearchParams({id});
+        if(window.FlixerBrowser?.hasNativeVideo?.())params.set('transport','direct');
+        if(fresh)params.set('fresh','1');
+        if (show.id) params.set('showId',show.id);
+        [show.sourceUrl, ...(show.offerings || []).map(o => o.sourceUrl)].filter(Boolean).forEach(source => params.append('source',source));
         const full=getJson(`${API_BASE}/api/stream?${params}`,20000,signal).then(({body})=>normalizeServers(body));
         let servers;
         if(onSources&&!/^sp:frenchstream:/.test(show.id||'')&&(show.tmdbId||show.offerings?.some(o=>o.provider==='fmovies')||/^fm:/.test(id))){
