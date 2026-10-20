@@ -6,6 +6,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {readJsonFile} from '../server/src/json-files.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const product = process.env.APP_PRODUCT || 'flixer';
@@ -39,7 +40,7 @@ if (!exported) {
 fs.copyFileSync(dataOut,path.join(root,'server',`deployment-${product}.json`));
 if(product==='flixer'){
   run('node',[path.join(root,'scripts/pack-titles.js')],{env:{...process.env,DATA_DIR:serverData}});
-  const providers=JSON.parse(fs.readFileSync(path.join(serverData,'providers-flixer.json'),'utf8'));
+  const providers=readJsonFile(path.join(serverData,'providers-flixer.json'));
   fs.writeFileSync(path.join(root,'server/deployment-dessinanime.json'),JSON.stringify((providers.items||[]).filter(row=>/^sp:dessinanime:/.test(row.id))));
   fs.writeFileSync(path.join(root,'server/deployment-arabic.json'),JSON.stringify((providers.items||[]).filter(row=>/^sp:(?:cimafu|cimatn|tuniflix|streamtunisie|kirmalk|ahwaktv|egydead|cinetimes):/.test(row.id))));
 }

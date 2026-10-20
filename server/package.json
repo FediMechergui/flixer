@@ -10,6 +10,7 @@
     "rebuild": "node src/cli.js rebuild"
   },
   "dependencies": {
+    "@streamparser/json": "0.0.22",
     "cheerio": "^1.2.0",
     "express": "^5.1.0",
     "json5": "^2.2.3",
