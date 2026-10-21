@@ -5,7 +5,7 @@
  function sourceUrl(server){try{const u=new URL(server.embedUrl);return server.provider==='wco'&&server.type==='wco'&&u.origin===origin&&!u.username&&!u.password&&!u.search&&!u.hash&&/^\/[a-z0-9][a-z0-9-]{0,159}$/.test(u.pathname)?u.href:null}catch{return null}}
  function configuration(data){
   try{
-   const u=new URL(data.server);if(!['https://neptun.wcostream.com','https://cdn.wcostream.com','https://ndisk.wcostream.com'].includes(u.origin)||!['','/'].includes(u.pathname)||u.search||u.hash||u.username||u.password)return [];
+   const u=new URL(data.server);if(!['https://neptun.wcostream.com','https://cdn.wcostream.com','https://ndisk.wcostream.com','https://lb.wcostream.com'].includes(u.origin)||!['','/'].includes(u.pathname)||u.search||u.hash||u.username||u.password)return [];
    return [['hd','HD'],['enc','SD'],['fhd','FHD']].flatMap(([key,label])=>{
     const token=data[key];if(typeof token!=='string'||!token||token.length>2000||/[\s\x00-\x1f]/.test(token))return [];
     const url=new URL('/getvid',u);url.searchParams.set('evid',token);
@@ -18,8 +18,9 @@
   const url=sourceUrl(server),plugin=window.Capacitor?.Plugins?.WcoSource;if(!url||!plugin?.resolve)return [];
   let old=cache.get(url);
   if(!old||Date.now()>old.expires){
-   old={expires:Date.now()+120000,promise:plugin.resolve({url}).then(r=>configuration(r.configuration)).catch(()=>[])};cache.set(url,old);
-   const entry=old;old.promise.then(rows=>{if(!rows.length&&cache.get(url)===entry)cache.delete(url)});if(cache.size>40)cache.delete(cache.keys().next().value);
+   old={expires:Date.now()+120000,promise:plugin.resolve({url}).then(r=>configuration(r.configuration))};cache.set(url,old);
+   const entry=old,remove=()=>{if(cache.get(url)===entry)cache.delete(url)};
+   old.promise.then(rows=>{if(!rows.length)remove()},remove);if(cache.size>40)cache.delete(cache.keys().next().value);
   }
   const rows=await old.promise;
   return rows.map(row=>({...server,id:server.id+':'+row.key,name:'Watch Cartoon Online · '+row.label,type:'mp4',embedUrl:null,streamUrl:row.url,rawStreamUrl:row.url,subtitles:row.subtitles,sourceEmbedUrl:url,deviceResolved:true,headers:{'User-Agent':agent}}));
@@ -71,5 +72,10 @@
   }
   return [...items.values()];
  }
- window.FlixerWcoSource={supports:server=>Boolean(sourceUrl(server)),configuration,resolve,details,search,clearCache:()=>cache.clear(),cancel:()=>window.Capacitor?.Plugins?.WcoSource?.cancel?.()};
+ function failureMessage(error){
+  if(error?.code==='WCO_CAPACITY')return 'Watch Cartoon Online servers are at capacity. Try another source or retry later.';
+  if(error?.code==='WCO_TIMEOUT')return 'Watch Cartoon Online did not respond in time. Try another source or retry later.';
+  return 'Watch Cartoon Online is unavailable. Try another source or retry later.';
+ }
+ window.FlixerWcoSource={supports:server=>Boolean(sourceUrl(server)),configuration,resolve,details,search,failureMessage,clearCache:()=>cache.clear(),cancel:()=>window.Capacitor?.Plugins?.WcoSource?.cancel?.()};
 })();

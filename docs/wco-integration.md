@@ -1,4 +1,4 @@
-# WCO public series integration — 20 October 2026
+# WCO public series integration
 
 WCO cartoon/anime series now use device-side search, source metadata and native
 MP4 playback. Dahsha's documentary catalogue is unaffected. The movie directory
@@ -22,7 +22,9 @@ returned 403; the real publisher-frame request returned 200. Its sample media
 returned 404 when fetched with a different User-Agent, and 206 video/mp4 when
 the same honest `Flixer (Android)` identity was retained. Both
 `neptun.wcostream.com`, the legacy anime `cdn.wcostream.com` and subbed-anime
-`ndisk.wcostream.com` were observed in published configuration. Other origins
+`ndisk.wcostream.com` were observed in published configuration. On 21 October,
+Gravity Falls published `lb.wcostream.com`; that exact load-balancer origin is
+also supported after native playback verification. Other origins
 are rejected. Individual redirect destinations stay within the source's normal
 media delivery flow; the app does not invent a replacement media host.
 
@@ -36,6 +38,17 @@ modify response data, disable TLS, remove playback timers or evaluate downloaded
 JavaScript on the server. The publisher's ordinary Close button is used only
 after its own countdown enables it. Resolution times out after 35 seconds;
 cancellation, superseding a request and leaving the app destroy the WebView.
+The publisher's `/inc/embed/full-capacity.html` terminal page reports a typed
+capacity failure immediately instead of waiting for the 35-second watchdog.
+The app preserves that reason while trying other matched sources, displays it
+if all choices fail, and removes the resolving indicator. Timeouts have their
+own message. Failed requests are not cached, so an explicit retry requests new
+configuration. No capacity cookie, redirect or access restriction is changed.
+Device requests prioritize playback, then selected-title details, then search.
+A late background search receives a busy result while details/playback are
+opening instead of destroying their source view. New requests of the same kind
+still supersede old ones. This prevents a cached search hit from opening a
+permanently empty episode guide when its live search completes later.
 
 The resolver validates the published server and quality tokens, preserves the
 User-Agent, and passes fresh HD/SD/FHD choices to the existing inline Media3
@@ -73,6 +86,27 @@ No claim is made that every archive entry or account-only title is playable.
 
 ## Verification
 
+- 21 October, version 1.6.20: Gravity Falls S1E1 initially returned published
+  SD configuration from `lb.wcostream.com`, which the older three-origin
+  validator rejected. With that exact host supported, the native content clock
+  advanced from 0.719 to 3.552 seconds, with duration 1,268.837 seconds.
+  Fresh component checks also played Scooby-Doo S1E1 and subtitled Haikyuu S1E1.
+  All three stayed inline; Close removed the native surface and left no source
+  WebViews. These are short playback proofs, not full-episode completion tests.
+- An emulator regression check started Gravity Falls details and background
+  search together: search returned `WCO_BUSY`, while details completed normally
+  with 48 source entries in about 3.7 seconds, rather than being superseded.
+- In the full application, opening a cached Gravity Falls search result loaded
+  the source guide and selected the real first episode. The first playback
+  attempt timed out and displayed the timeout message without a stuck spinner.
+  Refresh servers then played the episode (0.113 to 2.995 seconds; duration
+  1,268.837 seconds). Close returned to the title page with all 48 source entries
+  retained. Upstream response time remains variable; this is not an assurance
+  that every initial attempt succeeds.
+- 188 Node tests pass, including capacity handling, fresh retries, failover to
+  other providers, cancelled requests and escaped failure messages. Android
+  unit tests, release lint and signed debug/release builds pass; lint reports
+  zero errors and 25 existing warnings.
 - Android API 35 emulator: Scooby-Doo S1E1 SD, HD and FHD played natively; duration
   1,313.344 seconds. A sustained SD check advanced from 1.049 to 336.608 seconds
   and closed normally at 337.639 seconds, without a playback error.

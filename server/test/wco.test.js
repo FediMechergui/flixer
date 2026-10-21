@@ -53,6 +53,48 @@ test('WCO publishes a native resolver descriptor rather than a fabricated stream
 
 const helper=fs.readFileSync(new URL('../../client-terrarium/js/wco-source.js',import.meta.url),'utf8');
 function client(resolve){const window={Capacitor:{Plugins:{WcoSource:{resolve}}}};vm.runInNewContext(helper,{window,URL,Map,Set,Date});return window.FlixerWcoSource;}
+
+test('WCO source failures retain their reason and a retry requests fresh configuration',async()=>{
+ let calls=0;const capacity=Object.assign(Error('source response'),{code:'WCO_CAPACITY'});
+ const wco=client(async()=>{if(++calls===1)throw capacity;return {configuration:{server:'https://cdn.wcostream.com',enc:'fresh'}};});
+ const source={provider:'wco',type:'wco',id:'x',embedUrl:origin+'/episode'};
+ await assert.rejects(wco.resolve(source),error=>error===capacity);
+ assert.match(wco.failureMessage(capacity),/at capacity/);
+ assert.match(wco.failureMessage({code:'WCO_TIMEOUT'}),/did not respond in time/);
+ assert.equal(wco.failureMessage({code:'unknown',message:'<untrusted source HTML>'}).includes('<'),false);
+ assert.equal((await wco.resolve(source)).length,1);assert.equal(calls,2);
+});
+
+test('the publisher capacity page reports a terminal failure without altering its gate or requesting media',()=>{
+ const script=fs.readFileSync(new URL('../../mobile/android/app/src/main/assets/wco-source.js',import.meta.url),'utf8'),messages=[];
+ vm.runInNewContext(script,{location:{hostname:'embed.wcostream.com',pathname:'/inc/embed/full-capacity.html'},window:{},FlixerWcoResult:{postMessage:m=>messages.push(JSON.parse(m))}});
+ assert.deepEqual(messages,[{error:'WCO_CAPACITY'}]);
+});
+
+test('WCO failures try another source, keep the reason when exhausted and ignore cancelled requests',async()=>{
+ const player=fs.readFileSync(new URL('../../client-terrarium/js/player.js',import.meta.url),'utf8');
+ const loadCode=player.slice(player.indexOf('    function load('),player.indexOf('\n    async function loadHls('));
+ const failoverCode=player.slice(player.indexOf('    function failover('),player.indexOf('\n    function resetHgSources('));
+ for(const mode of ['alternative','exhausted','cancelled','destroyed']){
+  let reject,failed=0;const pending=new Promise((_,r)=>reject=r),played=[];
+  const servers=[{provider:'wco',type:'wco',id:'wco',name:'WCO',embedUrl:origin+'/episode'},...(mode==='alternative'?[{provider:'other',id:'other',name:'Other',type:'mp4',streamUrl:'https://media.example/video.mp4'}]:[])];
+  const st={generation:0,destroyed:false,attempted:new Set(),sourceErrors:new Map(),idx:0},notice={hidden:true};
+  const context=vm.createContext({st,servers,notice,root:{},$:()=>({}),renderBar:()=>{},teardownMedia:()=>st.generation++,showNotice:()=>notice.hidden=false,showError:()=>failed++,openDirectPlayer:s=>played.push(s.id),clearTimeout:()=>{},setTimeout:fn=>{fn();return 1},window:{FlixerBrowser:{hasNativeVideo:()=>true,hasNativePlayer:()=>true},FlixerWcoSource:{supports:()=>true,resolve:()=>pending,failureMessage:()=> 'WCO is at capacity'}}});
+  vm.runInContext(loadCode+failoverCode+';globalThis.start=load;',context);context.start(0);
+  if(mode==='cancelled')st.generation++;if(mode==='destroyed')st.destroyed=true;
+  reject(Object.assign(Error('capacity'),{code:'WCO_CAPACITY'}));await new Promise(r=>setImmediate(r));
+  assert.deepEqual(played,mode==='alternative'?['other']:[]);assert.equal(failed,mode==='exhausted'?1:0);
+  assert.equal(st.sourceErrors.has('wco'),['alternative','exhausted'].includes(mode));
+ }
+});
+
+test('the final player error stops the resolving notice and escapes provider failure text',()=>{
+ const player=fs.readFileSync(new URL('../../client-terrarium/js/player.js',import.meta.url),'utf8'),start=player.indexOf('    function showError('),end=player.indexOf('\n    /* Fullscreen:',start);
+ const st={sourceErrors:new Map([['wco','WCO at capacity <unsafe>']])},stage={innerHTML:''},notice={hidden:false};
+ const context=vm.createContext({st,stage,notice,opts:{},servers:[],teardownMedia:()=>{},clearTimeout:()=>{},esc:s=>s.replace(/</g,'&lt;').replace(/>/g,'&gt;'),$:()=>null});
+ vm.runInContext(player.slice(start,end)+';showError();',context);
+ assert.equal(notice.hidden,true);assert.match(stage.innerHTML,/WCO at capacity &lt;unsafe&gt;/);assert.ok(!stage.innerHTML.includes('<unsafe>'));
+});
 test('WCO public configuration keeps published qualities and the same honest User-Agent',async()=>{
  let calls=0;const wco=client(async()=>{calls++;return {configuration:{server:'https://neptun.wcostream.com',hd:'actual-hd',enc:'actual-sd',fhd:'actual-fhd'}};});
  const source={provider:'wco',type:'wco',id:'wco:public',embedUrl:origin+'/example-season-1-episode-1',audioModes:['sub']};const rows=await wco.resolve(source);
@@ -60,12 +102,13 @@ test('WCO public configuration keeps published qualities and the same honest Use
  assert.ok(fs.readFileSync(new URL('../../mobile/android/app/src/main/java/app/flixer/stream/WcoSourcePlugin.java',import.meta.url),'utf8').includes('USER_AGENT="'+rows[0].headers['User-Agent']+'"'));
  assert.equal(wco.configuration({server:'https://cdn.wcostream.com',enc:'actual-sd'}).length,1,'the published legacy anime CDN is supported');
  assert.equal(wco.configuration({server:'https://ndisk.wcostream.com',enc:'actual-sub'}).length,1,'the published subbed-anime server is supported');
+ assert.equal(wco.configuration({server:'https://lb.wcostream.com',enc:'actual-sd'}).length,1,'the published load balancer is supported without inventing another host');
  const captioned=wco.configuration({server:'https://ndisk.wcostream.com',enc:'actual-video',sub:'actual-captions'});assert.equal(captioned[0].subtitles[0].mimeType,'text/vtt');assert.equal(new URL(captioned[0].subtitles[0].url).searchParams.get('evid'),'actual-captions');
  await wco.resolve(source);assert.equal(calls,1);wco.clearCache();await wco.resolve(source);assert.equal(calls,2);
 });
 test('WCO configuration never turns source-provided arbitrary URLs into native requests',async()=>{
  let calls=0;const wco=client(async()=>{calls++;return {configuration:{server:'http://127.0.0.1',enc:'x'}};});
- for(const server of ['https://evil.test','http://neptun.wcostream.com','https://user@neptun.wcostream.com','https://neptun.wcostream.com:444','https://neptun.wcostream.com/path'])assert.equal(wco.configuration({server,enc:'x'}).length,0);
+ for(const server of ['https://evil.test','http://neptun.wcostream.com','https://user@neptun.wcostream.com','https://neptun.wcostream.com:444','https://neptun.wcostream.com/path','https://lb.wcostream.com.attacker.test'])assert.equal(wco.configuration({server,enc:'x'}).length,0);
  assert.equal(wco.configuration({server:'https://neptun.wcostream.com',enc:'a\r\nb'}).length,0);
  assert.equal((await wco.resolve({provider:'wco',type:'wco',embedUrl:'https://evil.test/episode'})).length,0);assert.equal(calls,0);
  const source={provider:'wco',type:'wco',id:'x',embedUrl:origin+'/episode'};assert.equal((await wco.resolve(source)).length,0);assert.equal((await wco.resolve(source)).length,0);assert.equal(calls,2,'denials are not cached as a playable result');

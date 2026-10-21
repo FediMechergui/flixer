@@ -10,6 +10,11 @@
   return;
  }
  if(location.hostname!=='embed.wcostream.com'||window.__flixerWcoPage)return;
+ // Report the publisher's terminal capacity page; keep its access restriction
+ // intact and let the app try a different provider instead of waiting 35s.
+ if(location.pathname==='/inc/embed/full-capacity.html'){
+  send({error:'WCO_CAPACITY'});return;
+ }
  const open=XMLHttpRequest.prototype.open;
  XMLHttpRequest.prototype.open=function(method,url,...rest){
   let u;try{u=new URL(url,location.href)}catch{}

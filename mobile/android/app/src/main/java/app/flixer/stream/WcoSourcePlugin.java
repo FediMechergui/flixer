@@ -25,6 +25,7 @@ public class WcoSourcePlugin extends Plugin {
     private WebView source;
     private FrameLayout surface;
     private PluginCall pending;
+    private int pendingPriority;
     private android.os.Handler watchdog=new android.os.Handler(android.os.Looper.getMainLooper());
     public static final String USER_AGENT="Flixer (Android)";
 
@@ -44,9 +45,14 @@ public class WcoSourcePlugin extends Plugin {
         try{start(call,"https://www.wcostream.tv/search",true,("catara="+java.net.URLEncoder.encode(query,"UTF-8")+"&konuara=series").getBytes("UTF-8"));}catch(java.io.UnsupportedEncodingException e){call.reject("Invalid WCO search");}
     }
     private void start(PluginCall call,String url,boolean page,byte[] post){getActivity().runOnUiThread(()->{
+        // A late search response must not close the source view that is opening
+        // the selected title or video. Foreground work can preempt discovery;
+        // a newer request of the same kind can still replace its predecessor.
+        int priority=page?(post==null?1:0):2;
+        if(pending!=null&&priority<pendingPriority){call.reject("WCO foreground request in progress","WCO_BUSY");return;}
         if(pending!=null)finish(pending,null,"WCO request superseded");
         if(!WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)||!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)){call.reject("Update Android System WebView to resolve this source");return;}
-        pending=call;WebView web=new WebView(getActivity());source=web;
+        pending=call;pendingPriority=priority;WebView web=new WebView(getActivity());source=web;
         WebSettings settings=web.getSettings();settings.setJavaScriptEnabled(true);settings.setDomStorageEnabled(true);settings.setAllowFileAccess(false);settings.setAllowContentAccess(false);settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);settings.setSupportMultipleWindows(true);settings.setJavaScriptCanOpenWindowsAutomatically(false);settings.setUserAgentString(USER_AGENT);
         android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(web,true);
         surface=new FrameLayout(getActivity());surface.setAlpha(0);surface.setImportantForAccessibility(android.view.View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);surface.addView(web,new FrameLayout.LayoutParams(412,600));getActivity().addContentView(surface,new ViewGroup.LayoutParams(1,1));
@@ -55,7 +61,10 @@ public class WcoSourcePlugin extends Plugin {
             if(pending!=call||message.getData()==null||message.getData().length()>2000000)return;
             try{JSObject data=new JSObject(message.getData());
                 if(page&&main&&"www.wcostream.tv".equals(origin.getHost())&&data.has("html")){finish(call,data,null);}
-                else if(!page&&"embed.wcostream.com".equals(origin.getHost())&&data.has("configuration")){finish(call,data,null);}
+                else if(!page&&"embed.wcostream.com".equals(origin.getHost())){
+                    if("WCO_CAPACITY".equals(data.optString("error")))finish(call,null,"WCO servers are at capacity. Try another source or retry later.","WCO_CAPACITY");
+                    else if(data.has("configuration"))finish(call,data,null);
+                }
             }catch(Exception ignored){}
         });
         String script;
@@ -80,13 +89,16 @@ public class WcoSourcePlugin extends Plugin {
             @Override public boolean onJsPrompt(WebView v,String target,String message,String value,android.webkit.JsPromptResult result){result.cancel();return true;}
             @Override public void onPermissionRequest(android.webkit.PermissionRequest request){request.deny();}
         });
-        watchdog.postDelayed(()->finish(call,null,"WCO source timed out"),35000);if(post==null)web.loadUrl(url);else web.postUrl(url,post);
+        watchdog.postDelayed(()->finish(call,null,"WCO source timed out","WCO_TIMEOUT"),35000);if(post==null)web.loadUrl(url);else web.postUrl(url,post);
     });}
     private void finish(PluginCall call,JSObject result,String error){
+        finish(call,result,error,null);
+    }
+    private void finish(PluginCall call,JSObject result,String error,String code){
         if(pending!=call)return;pending=null;watchdog.removeCallbacksAndMessages(null);
         if(source!=null){source.stopLoading();if(source.getParent() instanceof ViewGroup)((ViewGroup)source.getParent()).removeView(source);source.destroy();source=null;}
         if(surface!=null){if(surface.getParent() instanceof ViewGroup)((ViewGroup)surface.getParent()).removeView(surface);surface=null;}
-        if(error!=null)call.reject(error);else call.resolve(result);
+        if(error!=null)call.reject(error,code);else call.resolve(result);
     }
     @PluginMethod public void cancel(PluginCall call){getActivity().runOnUiThread(()->{if(pending!=null)finish(pending,null,"WCO request cancelled");call.resolve();});}
     @Override protected void handleOnDestroy(){if(pending!=null)finish(pending,null,"WCO request cancelled");}

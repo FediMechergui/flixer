@@ -58,7 +58,7 @@
 
   function mount(container, opts) {
     const servers = publicServers(opts.servers);
-    const st = { idx: initialIndex(servers), hls: null, destroyed: false, noticeTimer: null, switchTimer: null, startupTimer: null, generation: 0, recoveryTried:false, recovering:false, attempted: new Set(), hgAttempted:new Set() };
+    const st = { idx: initialIndex(servers), hls: null, destroyed: false, noticeTimer: null, switchTimer: null, startupTimer: null, generation: 0, recoveryTried:false, recovering:false, attempted: new Set(), hgAttempted:new Set(), sourceErrors:new Map() };
 
     container.innerHTML = `<div class="player" tabindex="-1">
       <div class="player__bar">
@@ -158,7 +158,7 @@
 
     function load(i, automatic = false) {
       if (st.destroyed) return;
-      if (!automatic) st.attempted.clear();
+      if (!automatic) {st.attempted.clear();st.sourceErrors.clear();}
       st.attempted.add(i);
       st.idx = i;st.recovering=false;
       $('[data-browser-player]',root).hidden=!window.FlixerBrowser?.hasNativePlayer?.()||servers[i]?.provider==='dessinanime'||!['embed','browser'].includes(servers[i]?.type);
@@ -175,7 +175,7 @@
           if(!choices.length)return failover();
           st.attempted=new Set([...st.attempted].map(index=>index>i?index+choices.length-1:index));
           servers.splice(i,1,...choices);load(i,true);
-        }).catch(()=>{if(!st.destroyed&&st.generation===generation)failover();});return;
+        }).catch(error=>{if(!st.destroyed&&st.generation===generation){notice.hidden=true;st.sourceErrors.set('wco',window.FlixerWcoSource.failureMessage(error));failover();}});return;
       }
       const hgSource=s.sourceEmbedUrl||s.embedUrl;
       if(window.FlixerBrowser?.hasNativeVideo?.()&&window.FlixerHgSource?.supports(s)&&!st.hgAttempted.has(hgSource)){
@@ -284,17 +284,18 @@
 
     function showError() {
       teardownMedia();
+      notice.hidden=true;clearTimeout(st.noticeTimer);
       if(opts.onDiscover&&!st.recoveryTried){
         st.recoveryTried=true;st.recovering=true;const generation=st.generation;let timer;
         stage.innerHTML='<div class="player__loading"><span class="spinner"></span><strong>Checking other sources</strong><span>Looking for another player for this episode.</span></div>';
         Promise.race([Promise.resolve().then(()=>opts.onDiscover()),new Promise(resolve=>{timer=setTimeout(()=>resolve(null),9000);})]).then(fresh=>{
           if(st.destroyed||generation!==st.generation)return;
           const alternatives=publicServers(fresh?.servers).filter(s=>!servers.some(old=>(old.streamUrl||old.embedUrl||old.videoId||old.id)===(s.streamUrl||s.embedUrl||s.videoId||s.id)));
-          if(alternatives.length){servers.push(...alternatives);load(servers.length-alternatives.length);}else showError();
+          if(alternatives.length){servers.push(...alternatives);load(servers.length-alternatives.length,true);}else showError();
         }).catch(()=>{if(!st.destroyed&&generation===st.generation)showError();}).finally(()=>clearTimeout(timer));return;
       }
       stage.innerHTML = `<div class="player__error">
-        <strong>No player is available right now</strong><p>Try a fresh server list or choose another source. You can close this player at any time.</p>
+        <strong>No player is available right now</strong>${[...st.sourceErrors.values()].map(message=>`<p>${esc(message)}</p>`).join('')}<p>Try a fresh server list or choose another source. You can close this player at any time.</p>
         <div class="player__error-actions">
           ${servers.length||opts.onRetry ? `<button type="button" class="btn btn--primary btn--sm" data-retry>Refresh servers</button>` : ""}
           ${opts.onDiscover?`<button class="btn btn--outline btn--sm" data-discover-players>Find other sources</button>`:""}
