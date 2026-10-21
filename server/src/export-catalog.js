@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
+import {writeJsonFile} from './json-files.js';
 
 function replaceGenerated(source,destination){
   for(let attempt=0;;attempt++){
@@ -66,15 +67,15 @@ export function writeCatalog(outDir, catalog, product, {titleFiles=true}={}) {
     }
     for (const lang of ['', '.ar', '.en']) {
       const section = product === 'dahsha' && lang ? { ...lean, lang: lang.slice(1), shows: lean.shows.filter(s => s.lang === lang.slice(1)) } : lean;
-      fs.writeFileSync(path.join(stage, `catalog${lang}.json`), JSON.stringify(section));
+      writeJsonFile(path.join(stage, `catalog${lang}.json`), section);
     }
     if(product==='flixer') {
       const index={...lean,lite:true,shows:lean.shows.map(({episodes,seasons,versions,offerings,blurb,...show})=>({...show,aliasIds:(offerings||[]).map(o=>o.id).filter(id=>id!==show.id),firstEpisodeId:episodes?.[0]?.id}))};
-      fs.writeFileSync(path.join(stage,'index.json'),JSON.stringify(index));
+      writeJsonFile(path.join(stage,'index.json'),index);
       const updated=show=>[show.latestEpisode?show.providerUpdatedAt:null,show.latestAt,show.publishedAt].filter(Boolean).sort().pop() || '';
       const recent=[...index.shows].sort((a,b)=>updated(b).localeCompare(updated(a)));
       const summaries=new Map(lean.shows.map(s=>[s.id,s.blurb]));
-      fs.writeFileSync(path.join(stage,'bootstrap.json'),JSON.stringify({...index,shows:recent.slice(0,600).map(s=>({...s,blurb:summaries.get(s.id)||''}))}));
+      writeJsonFile(path.join(stage,'bootstrap.json'),{...index,shows:recent.slice(0,600).map(s=>({...s,blurb:summaries.get(s.id)||''}))});
     }
     for (const show of titleFiles?payload.shows:[]) {
       writeTitle(show);

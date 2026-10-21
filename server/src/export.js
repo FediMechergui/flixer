@@ -19,7 +19,7 @@ try {
     const { readJson, writeJson } = await import('./store.js');
     const file=path.join(root,'client/public/data-flixer/catalog.json');
     const fs=await import('node:fs');
-    const previous=readJson('flixer-catalog.json',fs.existsSync(file)?JSON.parse(fs.readFileSync(file,'utf8')):null);
+    const previous=readJson('flixer-catalog.json',()=>fs.existsSync(file)?JSON.parse(fs.readFileSync(file,'utf8')):null);
     if(args.includes('--cached') && previous) catalog=previous;
     else {
       const fresh=await fetchFullCatalog();

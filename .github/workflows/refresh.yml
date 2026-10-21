@@ -14,6 +14,10 @@ on:
         description: 'Restart the complete provider crawl'
         type: boolean
         default: false
+      latest_only:
+        description: 'Refresh current releases without the historical crawl'
+        type: boolean
+        default: false
 
 concurrency:
   group: refresh
@@ -28,6 +32,7 @@ jobs:
     timeout-minutes: 120
     env:
       APP_PRODUCT: flixer
+      FLIXER_PACKED_EXPORT: ${{ (secrets.VERCEL_TOKEN != '' || secrets.VERCEL_DEPLOY_HOOK != '') && '1' || '0' }}
       GH_TOKEN: ${{ github.token }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -46,7 +51,7 @@ jobs:
       - name: Apply reviewed Arabic source identities
         run: node scripts/import-reviewed-sources.js
       - name: Continue complete Arabic catalogue traversal and sample playback routes
-        if: github.event_name != 'schedule' || github.event.schedule == '17 */2 * * *'
+        if: (github.event_name != 'schedule' && !inputs.latest_only) || github.event.schedule == '17 */2 * * *'
         run: node scripts/audit-arabic.js --crawl --pages 180 --samples 1
       - name: Preserve Arabic source coverage report
         if: always()
@@ -56,15 +61,15 @@ jobs:
           path: artifacts/arabic-audit.json
           if-no-files-found: ignore
       - name: Fill missing metadata from provider pages
-        if: github.event_name != 'schedule' || github.event.schedule == '17 */2 * * *'
+        if: (github.event_name != 'schedule' && !inputs.latest_only) || github.event.schedule == '17 */2 * * *'
         run: node scripts/fill-provider-metadata.js --limit 200
       - name: Resolve cached HDToday identities through verified alternate metadata
-        if: github.event_name != 'schedule' || github.event.schedule == '17 */2 * * *'
+        if: (github.event_name != 'schedule' && !inputs.latest_only) || github.event.schedule == '17 */2 * * *'
         run: node scripts/fill-provider-metadata.js --provider hdtoday --limit 120
       - name: Refresh Flixer providers
         id: refresh
         run: |
-          if [ "${{ github.event_name }}" = schedule ] && [ "${{ github.event.schedule }}" != '17 */2 * * *' ]; then
+          if [ "${{ inputs.latest_only }}" = true ] || { [ "${{ github.event_name }}" = schedule ] && [ "${{ github.event.schedule }}" != '17 */2 * * *' ]; }; then
             node scripts/refresh-providers.js --product flixer --latest-only --pages 0 --matches 0 --services 0
           else
             node scripts/refresh-providers.js --product flixer --pages 180 --matches 100 ${{ inputs.full && '--full' || '' }}

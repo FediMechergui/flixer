@@ -4,8 +4,11 @@ import { getTitleDetails } from './myflixer.js';
 import { searchHdtoday } from './hdtoday.js';
 import { safeRemoteFetch } from './stream-security.js';
 
-export async function resolveProviderMatches(base,product,{limit=150,log=console.log}={}) {
-  const cache=readJson(`providers-${product}.json`,{items:[]});
+export async function resolveProviderMatches(base,product,{limit=150,log=console.log,cache}={}) {
+  // Latest-only refreshes disable identity work. Do not load and merge the
+  // entire archive merely to construct a queue that will never run.
+  if(limit<=0)return {};
+  cache??=readJson(`providers-${product}.json`,{items:[]});
   const identities=readJson(`provider-identities-${product}.json`,{});
   const enriched={...base,shows:base.shows.map(s=>({...s,...identities[s.id]?.metadata}))};
   const {report}=mergeLibrary(enriched,cache.items,{product,aliases:readJson(`provider-aliases-${product}.json`,{})});

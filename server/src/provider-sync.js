@@ -14,8 +14,7 @@ const filename=product=>`providers-${product}.json`;
 export function providerCache(product) {
   return readJson(filename(product),{version:1,items:[],queue:[],completed:false,lastRefreshAt:null,errors:{}});
 }
-export function mergeCachedProviders(base, product) {
-  const cache=providerCache(product);
+export function mergeCachedProviders(base, product, {cache=providerCache(product)}={}) {
   const aliases=readJson(`provider-aliases-${product}.json`,{});
   const identities=readJson(`provider-identities-${product}.json`,{});
   const enriched={...base,shows:(base.shows || []).map(s=>({...s,...identities[s.id]?.metadata}))};
