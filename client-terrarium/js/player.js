@@ -64,6 +64,7 @@
       <div class="player__bar">
         <div class="player__servers" id="pl-servers" role="group" aria-label="Playback sources"></div>
         <button type="button" class="btn btn--ghost btn--sm" data-browser-player>Play in app</button>
+        <button type="button" class="player__fs" data-refresh-sources aria-label="Refresh sources" title="Refresh sources">&#8635;</button>
         <button type="button" class="player__fs" data-close-player aria-label="Close player" title="Close player">&#215;</button>
         <button type="button" class="player__fs" data-fs aria-label="Fullscreen">${ICON.fs}</button>
       </div>
@@ -138,6 +139,22 @@
     }
 
     $('[data-browser-player]',root).addEventListener('click',openNativePlayer);
+    $('[data-refresh-sources]',root).hidden=!opts.onRetry;
+    $('[data-refresh-sources]',root).addEventListener('click',async event=>{
+      const button=event.currentTarget;if(button.disabled||!opts.onRetry)return;
+      button.disabled=true;button.setAttribute('aria-busy','true');const generation=st.generation;
+      resetHgSources();
+      try{
+        const fresh=publicServers((await opts.onRetry())?.servers);
+        if(st.destroyed||generation!==st.generation)return;
+        if(!fresh.length){showNotice('No fresh sources returned. Try again shortly.',true);return;}
+        if($('.player__error',stage)){servers.splice(0,servers.length,...fresh);st.recoveryTried=false;load(initialIndex(servers));return;}
+        const current=servers[st.idx],key=s=>s.streamUrl||s.embedUrl||s.videoId||s.id;
+        let index=fresh.findIndex(s=>key(s)===key(current));if(index<0){fresh.unshift(current);index=0;}
+        servers.splice(0,servers.length,...fresh);st.idx=index;st.attempted=new Set([index]);st.recoveryTried=false;renderBar();showNotice('Sources refreshed');
+      }catch{if(!st.destroyed)showNotice('Sources could not be refreshed. Try again shortly.',true)}
+      finally{button.disabled=false;button.removeAttribute('aria-busy');}
+    });
 
     async function openDirectPlayer(server){
       const generation=st.generation,current=()=>!st.destroyed&&st.generation===generation;
@@ -172,7 +189,7 @@
         window.FlixerWcoSource.resolve(s).then(choices=>{
           if(st.destroyed||st.generation!==generation)return;
           notice.hidden=true;
-          if(!choices.length)return failover();
+          if(!choices.length){st.sourceErrors.set('wco',window.FlixerWcoSource.failureMessage({code:'WCO_NO_MEDIA'}));return failover();}
           st.attempted=new Set([...st.attempted].map(index=>index>i?index+choices.length-1:index));
           servers.splice(i,1,...choices);load(i,true);
         }).catch(error=>{if(!st.destroyed&&st.generation===generation){notice.hidden=true;st.sourceErrors.set('wco',window.FlixerWcoSource.failureMessage(error));failover();}});return;

@@ -1,3 +1,4 @@
+import {ensureRuntime} from '../server/src/runtime-source.js';
 import { PRODUCT } from '../server/src/product.js';
 import { unifiedSearch,SEARCH_PROVIDERS } from '../server/src/library-service.js';
 
@@ -8,6 +9,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
+    await ensureRuntime();
     if(req.query.providers==='1')return res.status(200).json({providers:PRODUCT==='flixer'?SEARCH_PROVIDERS:['fmovies','hdtoday']});
     const q = typeof req.query.q === 'string' ? req.query.q : '';
     if (!q.trim()) return res.status(200).json({ items: [] });

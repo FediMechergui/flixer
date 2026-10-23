@@ -5,6 +5,7 @@ import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.ViewGroup;
+import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.LinearLayout;
@@ -62,6 +63,7 @@ public class DirectVideoPlugin extends Plugin {
             media.setAudioAttributes(new androidx.media3.common.AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build(),true);
             media.setHandleAudioBecomingNoisy(true);
             PlayerView view=new PlayerView(getActivity());view.setPlayer(media);view.setKeepScreenOn(true);view.setFullscreenButtonClickListener(expanded->surface.setFullscreen(expanded));surface.setFullscreenListener(view::setFullscreenButtonState);layout.addView(view,new LinearLayout.LayoutParams(-1,0,1));
+            view.setControllerVisibilityListener((PlayerView.ControllerVisibilityListener)visibility->surface.setControlsVisible(visibility==View.VISIBLE));
             Runnable timeout=()->{if(!played[0]&&dialog==surface){reason[0]="failed";error[0]="STARTUP_TIMEOUT";surface.dismiss();}};
             Runnable progress=new Runnable(){public void run(){if(dialog!=surface)return;JSObject state=new JSObject();state.put("session",session);state.put("position",media.getCurrentPosition()/1000.0);state.put("duration",Math.max(0,media.getDuration())/1000.0);state.put("playing",media.isPlaying());notifyListeners("progress",state);handler.postDelayed(this,2000);}};
             media.addListener(new Player.Listener(){

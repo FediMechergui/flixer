@@ -1,3 +1,4 @@
+import {ensureTitleRuntime,runtimeSavedTitle} from '../server/src/runtime-source.js';
 import { PRODUCT } from '../server/src/product.js';
 import { unifiedTitle } from '../server/src/library-service.js';
 
@@ -12,7 +13,9 @@ export default async function handler(req, res) {
   if (!id) return res.status(400).json({ error: 'Missing title ID' });
 
   try {
-    const details = await unifiedTitle(id, { source: req.query.source,fresh:req.query.fresh==='1' });
+    await ensureTitleRuntime();
+    const saved=PRODUCT==='flixer'?await runtimeSavedTitle(id):null;
+    const details = await unifiedTitle(id, { source: req.query.source,fresh:req.query.fresh==='1',catalog:saved?{product:PRODUCT,shows:[saved]}:undefined });
     if (!details) return res.status(404).json({ error: 'Title not found' });
     res.setHeader('Cache-Control', req.query.fresh==='1'?'no-store':details.kind==='series'?'public, s-maxage=120, stale-while-revalidate=120':'public, s-maxage=3600, stale-while-revalidate=86400');
     return res.status(200).json(details);

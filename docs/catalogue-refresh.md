@@ -1,5 +1,37 @@
 # Catalogue refresh
 
+## Data updates without deployments
+
+Scheduled refreshes publish catalogue data to the `catalogue-runtime` GitHub
+release. They never call Vercel deployment hooks or run `vercel deploy`.
+Automatic deployments on Git pushes are disabled in `vercel.json`; deploy
+application code explicitly when it changes.
+
+The deployed backend checks the small runtime manifest at most once per two
+minutes per active instance. It downloads the runtime index only when the
+manifest advances. Functions do not run an endless timer after returning a
+response. The independent collector continues every 15 minutes while the app
+is closed, with historical traversal every two hours.
+
+Each publication uses immutable, SHA-256-addressed gzip files. All changed files
+upload before the manifest advances. An invalid, incomplete or unavailable
+update retains the last complete runtime. Title/episode-owner buckets are
+downloaded on demand, with bounded parallelism, decompression and cache size.
+The publisher reuses unchanged files, paces uploads, retains the preceding
+manifest and retires unused older assets after a grace period.
+
+New APKs use `/api/catalogue` for bootstrap and version-pinned index parts below
+2 MB. Unchanged parts are reused on the device when the next publication
+arrives. The static bundle remains an offline fallback. Catalogue publication
+does not change the APK or require a Vercel build. Code changes still need an
+explicit backend deployment and a new APK when native/client code changes.
+
+```sh
+gh workflow run refresh.yml --ref main -f latest_only=true
+```
+
+## Earlier memory repair
+
 The workflow runs a current-release refresh every 15 minutes and resumes the
 historical traversal every two hours. Provider access errors preserve cached
 records; a partial upstream response does not mean the refresh process crashed.

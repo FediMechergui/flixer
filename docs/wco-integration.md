@@ -1,5 +1,13 @@
 # WCO public series integration
 
+23 October verification: fresh emulator playback passed for Gravity Falls S1E1,
+Scooby-Doo S1E1 and subtitled Haikyuu S1E1. The hidden resolver now observes
+ordinary fetch configuration responses as well as XHR responses and does not
+load poster images. Explicit source refresh clears resolver caches and updates
+alternatives while preserving a playing stream. Fullscreen native controls
+overlay the picture, hide after three seconds, and hide Android system bars;
+Back restores inline playback and the previous system-bar state.
+
 WCO cartoon/anime series now use device-side search, source metadata and native
 MP4 playback. Dahsha's documentary catalogue is unaffected. The movie directory
 is not imported by this adapter. Account-only releases are not granted access.

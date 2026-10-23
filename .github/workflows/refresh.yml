@@ -1,6 +1,6 @@
-# Refreshes the catalogue from YouTube, exports static data, redeploys the site to Vercel and
-# stores the metadata cache as a release asset so the next run is incremental.
-name: Refresh catalogue & deploy
+# Updates catalogue data independently of the deployed application.
+# Application code is deployed explicitly; scheduled refreshes never call deployment hooks.
+name: Refresh catalogue data
 
 on:
   schedule:
@@ -32,12 +32,8 @@ jobs:
     timeout-minutes: 120
     env:
       APP_PRODUCT: flixer
-      FLIXER_PACKED_EXPORT: ${{ (secrets.VERCEL_TOKEN != '' || secrets.VERCEL_DEPLOY_HOOK != '') && '1' || '0' }}
+      FLIXER_PACKED_EXPORT: '1'
       GH_TOKEN: ${{ github.token }}
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-      VERCEL_DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
       TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
     steps:
       - uses: actions/checkout@v4
@@ -74,25 +70,10 @@ jobs:
           else
             node scripts/refresh-providers.js --product flixer --pages 180 --matches 100 ${{ inputs.full && '--full' || '' }}
           fi
-      # "vercel build" runs the buildCommand from vercel.json (static build with the exported data);
-      # the prebuilt deploy then uploads the result, including the data files that git ignores.
-      - name: Build & deploy to Vercel
-        if: env.VERCEL_TOKEN != ''
-        run: |
-          npm install -g vercel@latest
-          vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
-          vercel build --prod --token "$VERCEL_TOKEN"
-          node scripts/prepare-deployment.js flixer
-          # --archive=tgz: one upload instead of ~13k files (the free plan caps file uploads at 5000/day)
-          vercel deploy --prebuilt --prod --yes --archive=tgz --token "$VERCEL_TOKEN"
-      - name: Build static output when no deployment service is configured
-        if: env.VERCEL_TOKEN == '' && env.VERCEL_DEPLOY_HOOK == ''
-        run: node scripts/product.js flixer build
       - name: Save data snapshot
         id: snapshot
         if: always()
         run: node scripts/snapshot.js save
-      - name: Deploy refreshed snapshot through the project hook
-        if: steps.refresh.outcome == 'success' && steps.snapshot.outcome == 'success' && env.VERCEL_TOKEN == '' && env.VERCEL_DEPLOY_HOOK != ''
-        timeout-minutes: 4
-        run: node scripts/deploy-snapshot.js
+      - name: Publish live catalogue data
+        if: steps.refresh.outcome == 'success' && steps.snapshot.outcome == 'success'
+        run: node scripts/publish-runtime.js

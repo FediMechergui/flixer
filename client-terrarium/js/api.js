@@ -298,6 +298,23 @@
     today() { return new Date().toISOString().slice(0, 10); }
     setSettings(s) { this.settings = s || {}; }
 
+    async _loadLiveIndex() {
+      if(!this._liveIndexRequest)this._liveIndexRequest=this._readLiveIndex().finally(()=>{this._liveIndexRequest=null;});
+      return this._liveIndexRequest;
+    }
+    async _readLiveIndex() {
+      const {body:manifest}=await getJson(`${API_BASE}/api/catalogue?part=manifest`,12000);
+      if(manifest.product!=='flixer'||!Array.isArray(manifest.indexParts)||!manifest.indexParts.length)throw Error('Invalid live catalogue manifest');
+      const shows=[],previous=this._liveIndexParts||new Map(),next=new Map();
+      for(let i=0;i<manifest.indexParts.length;i+=4){
+        const batch=manifest.indexParts.slice(i,i+4);
+        const parts=await Promise.all(batch.map(part=>previous.has(part.sha256)?Promise.resolve({body:previous.get(part.sha256)}):getJson(`${API_BASE}/api/catalogue?${new URLSearchParams({part:part.key,hash:part.sha256})}`,20000)));
+        for(let n=0;n<parts.length;n++){const body=parts[n].body;if(body.product!=='flixer'||body.generatedAt&&body.generatedAt!==manifest.generatedAt||!Array.isArray(body.shows))throw Error('Inconsistent live catalogue generation');next.set(batch[n].sha256,body);shows.push(...body.shows);}
+      }
+      if(shows.length!==manifest.count)throw Error('Incomplete live catalogue index');
+      this._liveIndexParts=next;
+      return {body:{product:'flixer',generatedAt:manifest.generatedAt,shows}};
+    }
     /* ----- index ----- */
     catalog() {
       if (this._catalog) return Promise.resolve(this._catalog);
@@ -318,7 +335,7 @@
           this._recentIds=new Set(store.get('recentIds',[]).filter(id=>this._byId.has(id)));
           this._universeData = new Map(); this._serviceLogos = new Map();
           const notify=()=>{this._reindex();window.dispatchEvent(new CustomEvent("flixer:catalog",{detail:{updated:true}}));};
-          this._indexReady = new Promise(resolve=>setTimeout(resolve,750)).then(()=>getJson(`${CFG.mobile ? "" : DATA_BASE}/data/index.json`,60000)).then(async({body})=>{
+          this._indexReady = new Promise(resolve=>setTimeout(resolve,750)).then(()=>this._loadLiveIndex().catch(()=>getJson(`${CFG.mobile ? "" : DATA_BASE}/data/index.json`,60000))).then(async({body})=>{
             if(body.product!=='flixer')throw new Error('Wrong product index');
             await this._mergeIndex(body.shows||[],body.generatedAt||this._bundleAt||'1970-01-01');if(Date.parse(body.generatedAt)>Date.parse(this._fullIndexAt||0))this._fullIndexAt=body.generatedAt;notify();
           }).catch(error=>console.warn('[flixer] full index unavailable:',error.message));
@@ -624,16 +641,16 @@
       if(!DATA_BASE||this._snapshotRequest||Date.now()-(this._lastSnapshotCheck||0)<SYNC_EVERY)return;
       this._lastSnapshotCheck=Date.now();
       this._snapshotRequest=(async()=>{
-        const {body:status}=await getJson(`${DATA_BASE}/data/status.json`,12000);
+        const {body:status}=await getJson(`${API_BASE}/api/catalogue?part=manifest`,12000);
         if(status.product!=='flixer'||!status.generatedAt)return;
         if(Date.parse(status.generatedAt)>Date.parse(this._catalog.generatedAt||0)){
-          const {body:home}=await getJson(`${DATA_BASE}/data/bootstrap.json?v=${encodeURIComponent(status.generatedAt)}`,12000);
+          const {body:home}=await getJson(`${API_BASE}/api/catalogue?${new URLSearchParams({part:"bootstrap",hash:status.bootstrap})}`,12000);
           if(home.product!=='flixer'||!Array.isArray(home.shows))throw new Error('Wrong product home feed');
           this._merge(home.shows,{snapshotAt:home.generatedAt||status.generatedAt,persist:false});this._catalog.generatedAt=home.generatedAt||status.generatedAt;
           store.set('homeSnapshot',home);this._reindex();window.dispatchEvent(new CustomEvent('flixer:catalog',{detail:{updated:true}}));
         }
         if(Date.parse(status.generatedAt)<=Date.parse(this._fullIndexAt||0))return;
-        const {body}=await getJson(`${DATA_BASE}/data/index.json?v=${encodeURIComponent(status.generatedAt)}`,60000);
+        const {body}=await this._loadLiveIndex();
         if(body.product!=='flixer'||!Array.isArray(body.shows))throw new Error('Wrong product index');
         await this._mergeIndex(body.shows,body.generatedAt||status.generatedAt);this._fullIndexAt=body.generatedAt||status.generatedAt;this._reindex();
         window.dispatchEvent(new CustomEvent('flixer:catalog',{detail:{updated:true}}));

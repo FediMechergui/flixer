@@ -15,13 +15,16 @@
  if(location.pathname==='/inc/embed/full-capacity.html'){
   send({error:'WCO_CAPACITY'});return;
  }
+ const configuration=data=>{if(data&&typeof data==='object')send({configuration:{server:data.server,cdn:data.cdn,enc:data.enc,hd:data.hd,fhd:data.fhd,sub:data.sub}})};
+ const endpoint=value=>{try{const u=new URL(value,location.href);return u.origin===location.origin&&u.pathname==='/inc/embed/getvidlink.php'}catch{return false}};
+ if(window.fetch){const fetch=window.fetch;window.fetch=function(input,options){const result=fetch.apply(this,arguments),method=options?.method||input?.method||'GET',url=typeof input==='string'||input instanceof URL?String(input):input?.url;if(String(method).toUpperCase()==='GET'&&endpoint(url))result.then(response=>{if(response.ok)response.clone().json().then(configuration).catch(()=>{})}).catch(()=>{});return result;};}
  const open=XMLHttpRequest.prototype.open;
  XMLHttpRequest.prototype.open=function(method,url,...rest){
   let u;try{u=new URL(url,location.href)}catch{}
   if(String(method).toUpperCase()==='GET'&&u?.origin===location.origin&&u.pathname==='/inc/embed/getvidlink.php'){
    this.addEventListener('load',()=>{if(this.status!==200)return;try{
     const data=this.responseType==='json'?this.response:JSON.parse(this.responseText);
-    if(data&&typeof data==='object')send({configuration:{server:data.server,cdn:data.cdn,enc:data.enc,hd:data.hd,fhd:data.fhd,sub:data.sub}});
+    configuration(data);
    }catch{}},{once:true});
   }
   return open.call(this,method,url,...rest);

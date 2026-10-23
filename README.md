@@ -73,12 +73,9 @@ available. See [specialist source contracts](docs/specialist-sources.md).
 
 `vercel.json` targets Flixer's own Vercel project and build output. Configure `STREAM_PROXY_SECRET` in Vercel for signed stream proxy URLs. Local development uses an ephemeral key.
 
-This repo's refresh workflow updates only Flixer and stores its cache in this repository's `data-snapshot` release. Android CI builds only Flixer. Scheduled Vercel deployment uses `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID` repository secrets. Android signing uses `ANDROID_KEYSTORE_B64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`. Without signing credentials CI produces an unsigned APK.
+This repo's refresh workflow updates only Flixer and publishes immutable catalogue data to its `catalogue-runtime` release. The deployed backend checks for a new version without creating a deployment; APKs fetch the changed index parts. The full incremental crawl cache remains in `data-snapshot`. See [catalogue refresh](docs/catalogue-refresh.md). Android CI builds only Flixer and uses `ANDROID_KEYSTORE_B64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`; without them it produces an unsigned APK.
 
-Alternatively, `VERCEL_DEPLOY_HOOK` triggers a source deployment after a successful
-snapshot refresh. This project hook is configured for Flixer's `main` branch and
-stored as a repository secret. That path does not need a general Vercel API token.
-
+Routine refreshes never call Vercel deployment hooks. Automatic Git deployments are disabled; deploy backend code explicitly when it changes.
 Read [Scraper behavior](docs/SCRAPERS.md) and [Provider integration](docs/FMOVIES.md) for parsing, matching, and playback details. Upstream streams and artwork may be unavailable; failed requests retain imported catalogue data.
 
 HDToday challenges GitHub's runner. Hosted refreshes retain its cached titles
@@ -121,7 +118,7 @@ Closing a native player updates only its own active playback attempt. Switching 
 
 The source selector sits below the picture with 44 px touch controls. After all advertised servers fail, one bounded alternate-source lookup runs automatically; manual server choices and closing the player cancel its UI changes. Fonts are bundled locally with their licenses.
 
-Vercel builds package full title records into 256 compressed hash buckets instead of uploading one file per title. `/data/shows/:id.json` keeps the existing APK URL contract through a cacheable saved-title endpoint, including uncertain editions and full source synopses. Known episode playback can load its verified parent record from the same packs without parsing the whole deployment catalogue. Bootstrap and catalogue indexes remain static. The deployment's legacy catalogue fallback contains index metadata; full details come from the saved-title endpoint. A refresh with a deployment hook skips the redundant local static build before triggering Vercel.
+Vercel builds package full title records into 256 compressed hash buckets instead of uploading one file per title. `/data/shows/:id.json` keeps the existing APK URL contract through a cacheable saved-title endpoint, including uncertain editions and full source synopses. Known episode playback can load its verified parent record from the same packs without parsing the whole deployment catalogue. The deployment bundle remains a fallback; the backend reads newer versioned catalogue and title data without a redeployment. New APKs fetch only changed index parts through `/api/catalogue`.
 
 
 ## Cima4u and Arabic coverage

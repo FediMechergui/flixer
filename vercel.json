@@ -128,9 +128,16 @@
       "includeFiles": "{server/deployment-flixer.json,server/deployment-titles/**}",
       "maxDuration": 60,
       "excludeFiles": "{server/data/**,client/public/**,client/dist*/**,client-terrarium/dist*/**,mobile/**,docs/**}"
+    },
+    "api/catalogue.js": {
+      "maxDuration": 60,
+      "excludeFiles": "{server/data/**,client/**,mobile/**,docs/**}"
     }
   },
   "env": {
     "APP_PRODUCT": "flixer"
+  },
+  "git": {
+    "deploymentEnabled": false
   }
 }

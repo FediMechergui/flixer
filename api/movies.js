@@ -1,3 +1,4 @@
+import {ensureRuntime} from '../server/src/runtime-source.js';
 import { libraryPage, readLibrary } from '../server/src/library-service.js';
 import { PRODUCT } from '../server/src/product.js';
 import { fetchMovies } from '../server/src/myflixer.js';
@@ -10,6 +11,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
+    await ensureRuntime();
     const page = Number(req.query.page || 1);
     const perPage = Number(req.query.perPage || 24);
     const category = req.query.category || req.query.genre || null;

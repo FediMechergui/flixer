@@ -73,6 +73,7 @@
   return [...items.values()];
  }
  function failureMessage(error){
+  if(error?.code==='WCO_NO_MEDIA')return 'Watch Cartoon Online did not return a playable public video. Refresh sources or choose another source.';
   if(error?.code==='WCO_CAPACITY')return 'Watch Cartoon Online servers are at capacity. Try another source or retry later.';
   if(error?.code==='WCO_TIMEOUT')return 'Watch Cartoon Online did not respond in time. Try another source or retry later.';
   return 'Watch Cartoon Online is unavailable. Try another source or retry later.';

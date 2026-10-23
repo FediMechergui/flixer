@@ -1,4 +1,4 @@
-import {readPackedTitle,readPackedEpisodeTitle} from './title-packs.js';
+import {runtimeTitle as readPackedTitle,runtimeEpisode as readPackedEpisodeTitle,runtimeLibrary} from './runtime-source.js';
 import {FRENCH_STREAM_ORIGIN,getFrenchDetails} from './french-providers.js';
 import { mergeCachedProviders } from './provider-sync.js';
 import fs from 'node:fs';
@@ -19,6 +19,7 @@ let liveResolver, loaded, loadedStamp;
 export const validPlaybackId = id => typeof id === 'string' && id.length <= 350 && (/^mf:[mse]:[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(id) || /^[\w-]{11}$/.test(id) || !!parseFmoviesId(id) || !!parseHdtodayId(id) || !!specialistUrl(id));
 export function setLiveLibrary(resolver) { liveResolver=resolver; }
 export function readLibrary() {
+  if(PRODUCT==='flixer'&&runtimeLibrary())return runtimeLibrary();
   const live=liveResolver?.();if(live)return live;
   const folder=PRODUCT==='dahsha'?'data':'data-flixer';
   const dist=PRODUCT==='dahsha'?'dist':'dist-flixer';
@@ -43,8 +44,8 @@ function lookup(catalog){
   }
   saved={shows:catalog.shows,size:catalog.shows?.length||0,titles};catalogueLookups.set(catalog,saved);return saved;
 }
-function locate(catalog,id){const row=lookup(catalog).titles.get(id)||null;return row&&catalog.packedTitles?readPackedTitle(row.id)||row:row;}
-function matchingCatalogue(catalog,rows,aliases,query=''){
+async function locate(catalog,id){const row=lookup(catalog).titles.get(id)||null;return row&&catalog.packedTitles?(await readPackedTitle(row.id))||row:row;}
+async function matchingCatalogue(catalog,rows,aliases,query=''){
   const ids=new Set(rows.flatMap(row=>[row.id,aliases[row.id]]).filter(Boolean));
   const titles=new Set(rows.flatMap(row=>[row.title,...(row.altTitles||[])].map(title=>`${row.kind}:${titleKey(title)}`)));
   const external=new Set(rows.flatMap(row=>[row.tmdbId?`${row.kind}:tmdb:${row.tmdbId}`:null,row.imdbId?`${row.kind}:imdb:${row.imdbId}`:null].filter(Boolean)));
@@ -52,7 +53,7 @@ function matchingCatalogue(catalog,rows,aliases,query=''){
     || show.offerings?.some(o=>ids.has(o.id)) || show.versions?.some(v=>ids.has(v.id))
     || [show.title,...(show.altTitles||[])].some(title=>titles.has(`${show.kind}:${titleKey(title)}`) || query && matchesSearch(title,query))
     || external.has(`${show.kind}:tmdb:${show.tmdbId}`) || external.has(`${show.kind}:imdb:${show.imdbId}`));
-  return {...catalog,shows:catalog.packedTitles?shows.map(s=>readPackedTitle(s.id)||s):shows};
+  return {...catalog,shows:catalog.packedTitles?await Promise.all(shows.map(async s=>(await readPackedTitle(s.id))||s)):shows};
 }
 function trustedSource(id,source) {
   if(typeof source!=='string')return null;
@@ -73,12 +74,12 @@ export async function unifiedTitle(id,{source, catalog, product=PRODUCT,fresh=fa
   if(catalog.product && catalog.product!==product)return null;
   if(product!=='flixer' && parseSpecialistId(id))return null;
   const sourceList=[...new Set((Array.isArray(source)?source:[source]).filter(s=>typeof s==='string' && s.length<1500))].slice(0,8);
-  const base=locate(catalog,id);
+  const base=await locate(catalog,id);
   if(product==='dahsha' && !base && /^mf:/.test(id))return null;
   if(!base && !/^mf:[ms]:[a-z0-9-]+$/i.test(id) && !parseFmoviesId(id) && !parseHdtodayId(id) && !(product==='flixer' && parseSpecialistId(id)?.type!=='e' && specialistUrl(id)))return null;
   const key=`${product}:${catalog.generatedAt || ''}:${id}:${fresh}:${JSON.stringify(sourceList)}`;
   const entry=hydrated.get(key);
-  if(entry && Date.now()-entry.at<3*60e3)return entry.promise;
+  if(!fresh && entry && Date.now()-entry.at<3*60e3)return entry.promise;
   const promise=(async()=>{
     let result=base?{...base,synopsis:base.synopsis||base.blurb||'',episodes:base.episodes||[],offerings:showOfferings(base)}:null;
     if(result?.kind==='film' && !result.episodes.length && /^(mf:m:|fm:m:|hd:m:)/.test(result.id)){
@@ -199,7 +200,7 @@ export async function unifiedSearch(query,{product=PRODUCT,catalog=readLibrary()
   }));
   const rows=results.flatMap(r=>r.status==='fulfilled'?r.value:[]);
   const aliases=readJson(`provider-aliases-${product}.json`,{});
-  const context=matchingCatalogue(catalog,rows,aliases);
+  const context=await matchingCatalogue(catalog,rows,aliases);
   context.shows=[...new Map([...context.shows,...related.slice(0,60)].map(show=>[show.id,show])).values()];
   const {catalog:merged,report}=mergeLibrary(context,rows,{product,aliases});
   const ids=new Set(rows.map(r=>report.aliases[r.id]||r.id));
@@ -258,7 +259,7 @@ export async function discoverLibrary({kind='film',page=1,genre,year,collection=
   if(results.every(result=>result.status==='rejected')&&!pages.some(result=>result.items.length))throw new Error('All catalogue providers are temporarily unavailable');
   const rows=pages.flatMap(result=>result.items);
   const aliases=readJson(`provider-aliases-${product}.json`,{});
-  const {catalog:merged,report}=mergeLibrary(matchingCatalogue(catalog,rows,aliases),rows,{product,aliases});
+  const {catalog:merged,report}=mergeLibrary(await matchingCatalogue(catalog,rows,aliases),rows,{product,aliases});
   const ids=new Set(rows.map(row=>report.aliases[row.id]||row.id));
   for(const pending of report.pending)if(pending.candidates[0])ids.add(pending.candidates[0]);
   const items=merged.shows.filter(s=>ids.has(s.id)&&s.kind===kind&&matchesCollection(s,collection)&&(!year||Number(s.year)===Number(year))&&(!genre||documentary||s.tags?.includes(genre)));
@@ -266,10 +267,10 @@ export async function discoverLibrary({kind='film',page=1,genre,year,collection=
   return {items,page,totalPages:Math.max(page,...pages.map(result=>Number(result.totalPages)||page)),providers,providerErrors:results.map((r,i)=>r.status==='rejected'?{provider:providers[i].provider,error:r.reason.message}:null).filter(Boolean)};
 }
 export async function unifiedStream(id,{showId,source,prefix='/api/stream',catalog,product=PRODUCT,quick=false,fresh=false,transport='proxy',resolveTitle=unifiedTitle,resolveMyflixer=resolveMyflixerStream,resolveHdtoday=resolveHdtodayServers,resolveSpecialist=resolveSpecialistServers}={}) {
-  if(!catalog){const saved=product==='flixer'&&showId?readPackedTitle(showId):null;catalog=saved?{product,shows:[saved]}:product==='flixer'&&specialistUrl(showId||id)?{product,shows:[]}:readLibrary();}
+  if(!catalog){const saved=product==='flixer'&&showId?await readPackedTitle(showId):null;catalog=saved?{product,shows:[saved]}:product==='flixer'&&specialistUrl(showId||id)?{product,shows:[]}:readLibrary();}
   if(catalog.product && catalog.product!==product)return null;
-  let base=showId?locate(catalog,showId):catalog.packedTitles?readPackedEpisodeTitle(id):catalog.shows?.find(s=>s.episodes?.some(e=>e.id===id||e.offerings?.some(o=>o.id===id)));
-  if(!base && !showId && /^mf:m:/.test(id))base=locate(catalog,id);
+  let base=showId?await locate(catalog,showId):catalog.packedTitles?await readPackedEpisodeTitle(id):catalog.shows?.find(s=>s.episodes?.some(e=>e.id===id||e.offerings?.some(o=>o.id===id)));
+  if(!base && !showId && /^mf:m:/.test(id))base=await locate(catalog,id);
   const fm=parseFmoviesId(id),hd=parseHdtodayId(id);
   const targetId=showId||base?.id||(fm?`fm:${fm.kind==='film'?'m':'s'}:${fm.tmdbId}`:hd?`hd:${hd.kind==='film'?'m':'s'}:${hd.slug}`:id);
   // Imported episode coordinates already establish playback identity. Optional title

@@ -4,6 +4,8 @@ import android.graphics.Color;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.view.MotionEvent;
+import android.view.Gravity;
 import android.webkit.WebView;
 import android.widget.FrameLayout;
 import androidx.activity.OnBackPressedCallback;
@@ -22,6 +24,10 @@ final class NativePlayerSurface {
     private DismissListener listener;
     private FullscreenListener fullscreenListener;
     private boolean showing, fullscreen, keptScreenOn;
+    private boolean statusWasVisible=true, navigationWasVisible=true;
+    private int previousCutoutMode,previousBarsBehavior;
+    private final android.os.Handler controls=new android.os.Handler(android.os.Looper.getMainLooper());
+    private final Runnable hideControls=()->{if(toolbar!=null)toolbar.setVisibility(View.GONE);};
     private final OnBackPressedCallback back = new OnBackPressedCallback(true) {
         @Override public void handleOnBackPressed() {
             if (fullscreen) setFullscreen(false); else dismiss();
@@ -29,12 +35,14 @@ final class NativePlayerSurface {
     };
     NativePlayerSurface(BridgeActivity activity, WebView appWeb, JSObject bounds) {
         this.activity=activity; this.appWeb=appWeb; this.bounds=bounds;
-        host=new FrameLayout(activity); viewport=new FrameLayout(activity);
+        host=new FrameLayout(activity){@Override public boolean dispatchTouchEvent(MotionEvent event){boolean handled=super.dispatchTouchEvent(event);if(fullscreen&&event.getActionMasked()==MotionEvent.ACTION_UP)post(NativePlayerSurface.this::revealControls);return handled;}}; viewport=new FrameLayout(activity);
         viewport.setBackgroundColor(Color.BLACK);viewport.setContentDescription("Flixer playback surface");
         host.addView(viewport);
     }
-    void setContentView(View content) { this.content=content; viewport.addView(content,new FrameLayout.LayoutParams(-1,-1)); }
-    void setToolbar(View toolbar) { this.toolbar=toolbar; toolbar.setVisibility(View.GONE); }
+    void setContentView(View content) { this.content=content; viewport.addView(content,0,new FrameLayout.LayoutParams(-1,-1)); }
+    void setToolbar(View toolbar) { this.toolbar=toolbar;if(toolbar.getParent() instanceof ViewGroup)((ViewGroup)toolbar.getParent()).removeView(toolbar);toolbar.setBackgroundColor(0xB0000000);if(toolbar instanceof ViewGroup)for(int i=0;i<((ViewGroup)toolbar).getChildCount();i++){View child=((ViewGroup)toolbar).getChildAt(i);if(child instanceof android.widget.Button){android.widget.Button button=(android.widget.Button)child;button.setBackgroundColor(Color.TRANSPARENT);button.setTextColor(Color.WHITE);button.setAllCaps(false);}}viewport.addView(toolbar,new FrameLayout.LayoutParams(-1,-2,Gravity.TOP));toolbar.setVisibility(View.GONE); }
+    private void revealControls(){if(!fullscreen||toolbar==null)return;toolbar.setVisibility(View.VISIBLE);toolbar.bringToFront();controls.removeCallbacks(hideControls);controls.postDelayed(hideControls,3000);}
+    void setControlsVisible(boolean visible){if(!fullscreen)return;if(visible)revealControls();else{controls.removeCallbacks(hideControls);hideControls.run();}}
     void setOnDismissListener(DismissListener listener) { this.listener=listener; }
     void setFullscreenListener(FullscreenListener listener) { fullscreenListener=listener; }
     boolean isShowing() { return showing; }
@@ -50,18 +58,29 @@ final class NativePlayerSurface {
     }
     void updateBounds(JSObject bounds) { this.bounds=bounds; layout(); }
     void setFullscreen(boolean expanded) {
+        if(fullscreen==expanded)return;
+        androidx.core.view.WindowInsetsControllerCompat bars=androidx.core.view.WindowCompat.getInsetsController(activity.getWindow(),host);
+        if(expanded){
+            androidx.core.view.WindowInsetsCompat insets=androidx.core.view.ViewCompat.getRootWindowInsets(host);
+            if(insets!=null){statusWasVisible=insets.isVisible(androidx.core.view.WindowInsetsCompat.Type.statusBars());navigationWasVisible=insets.isVisible(androidx.core.view.WindowInsetsCompat.Type.navigationBars());}
+            previousBarsBehavior=bars.getSystemBarsBehavior();
+            bars.setSystemBarsBehavior(androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+            bars.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars());
+            if(android.os.Build.VERSION.SDK_INT>=28){previousCutoutMode=activity.getWindow().getAttributes().layoutInDisplayCutoutMode;WindowManager.LayoutParams attributes=activity.getWindow().getAttributes();attributes.layoutInDisplayCutoutMode=WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;activity.getWindow().setAttributes(attributes);}
+        }else{
+            controls.removeCallbacks(hideControls);hideControls.run();bars.setSystemBarsBehavior(previousBarsBehavior);
+            if(statusWasVisible)bars.show(androidx.core.view.WindowInsetsCompat.Type.statusBars());if(navigationWasVisible)bars.show(androidx.core.view.WindowInsetsCompat.Type.navigationBars());
+            if(android.os.Build.VERSION.SDK_INT>=28){WindowManager.LayoutParams attributes=activity.getWindow().getAttributes();attributes.layoutInDisplayCutoutMode=previousCutoutMode;activity.getWindow().setAttributes(attributes);}
+        }
         fullscreen=expanded;
         if(fullscreenListener!=null)fullscreenListener.changed(expanded);
-        if(toolbar!=null)toolbar.setVisibility(expanded?View.VISIBLE:View.GONE);
+        if(expanded)revealControls();
         layout();
     }
     private void layout() {
         if(!showing)return;
         androidx.core.view.WindowInsetsCompat insets=androidx.core.view.ViewCompat.getRootWindowInsets(host);
-        if(fullscreen&&insets!=null){
-            androidx.core.graphics.Insets safe=insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars()|androidx.core.view.WindowInsetsCompat.Type.displayCutout());
-            viewport.setPadding(safe.left,safe.top,safe.right,safe.bottom);
-        }else viewport.setPadding(0,0,0,0);
+        viewport.setPadding(0,0,0,0);
         FrameLayout.LayoutParams params;
         if(fullscreen)params=new FrameLayout.LayoutParams(-1,-1);
         else {
@@ -83,6 +102,7 @@ final class NativePlayerSurface {
     }
     void dismiss() {
         if(!showing)return;
+        if(fullscreen)setFullscreen(false);controls.removeCallbacksAndMessages(null);
         showing=false; back.remove();
         ((ViewGroup)host.getParent()).removeView(host);
         if(!keptScreenOn)activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
