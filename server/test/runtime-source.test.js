@@ -74,3 +74,10 @@ test('Android background sync uses publication data without crawling providers o
  assert.equal(await api.sync(),1);assert.equal(api._syncing,false);assert.equal(events.at(-1).detail.ok,true);
  api._refreshSnapshot=async()=>{throw Error('Publication unavailable')};await assert.rejects(api.sync(),/Publication unavailable/);assert.equal(events.at(-1).detail.ok,false);assert.equal(api._syncing,false);
 });
+
+test('live index retries a transient part failure and retains verified chunks across failed updates',async()=>{
+ const source=fs.readFileSync(new URL('../../client-terrarium/js/api.js',import.meta.url),'utf8'),start=source.indexOf('    async _loadLiveIndex()'),end=source.indexOf('    /* ----- index ----- */',start),calls=new Map();let broken=false;
+ const context=vm.createContext({API_BASE:'https://backend.example',URLSearchParams,Promise,setTimeout,Map,getJson:async url=>{const u=new URL(url),part=u.searchParams.get('part');if(part==='manifest')return {body:{product:'flixer',generatedAt:'new',count:2,indexParts:[{key:'index-0000',sha256:'one'},{key:'index-0001',sha256:'two'}]}};calls.set(part,(calls.get(part)||0)+1);if(part==='index-0001'&&(broken||calls.get(part)===1))throw Error('Temporary network failure');return {body:{product:'flixer',shows:[{id:part}]}};}});
+ vm.runInContext('globalThis.api=new(class{'+source.slice(start,end)+'})();',context);assert.equal((await context.api._loadLiveIndex()).body.shows.length,2);assert.equal(calls.get('index-0001'),2);
+ context.api._liveIndexParts.delete('two');broken=true;await assert.rejects(context.api._loadLiveIndex(),/network/);assert.equal(context.api._liveIndexParts.has('one'),true);broken=false;assert.equal((await context.api._loadLiveIndex()).body.shows.length,2);assert.equal(calls.get('index-0000'),1,'successful chunks must not download again after a failed update');
+});

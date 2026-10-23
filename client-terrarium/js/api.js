@@ -314,9 +314,17 @@
       const {body:manifest}=await getJson(`${API_BASE}/api/catalogue?part=manifest`,12000);
       if(manifest.product!=='flixer'||!Array.isArray(manifest.indexParts)||!manifest.indexParts.length)throw Error('Invalid live catalogue manifest');
       const shows=[],previous=this._liveIndexParts||new Map(),next=new Map();
+      this._liveIndexParts=previous;
+      const load=async part=>{
+        if(previous.has(part.sha256))return {body:previous.get(part.sha256)};
+        const request=()=>getJson(`${API_BASE}/api/catalogue?${new URLSearchParams({part:part.key,hash:part.sha256})}`,20000);
+        const response=await request().catch(async()=>{await new Promise(resolve=>setTimeout(resolve,200));return request();}),body=response.body;
+        if(body.product!=='flixer'||body.generatedAt&&body.generatedAt!==manifest.generatedAt||!Array.isArray(body.shows))throw Error('Inconsistent live catalogue generation');
+        previous.set(part.sha256,body);while(previous.size>512)previous.delete(previous.keys().next().value);return response;
+      };
       for(let i=0;i<manifest.indexParts.length;i+=4){
         const batch=manifest.indexParts.slice(i,i+4);
-        const parts=await Promise.all(batch.map(part=>previous.has(part.sha256)?Promise.resolve({body:previous.get(part.sha256)}):getJson(`${API_BASE}/api/catalogue?${new URLSearchParams({part:part.key,hash:part.sha256})}`,20000)));
+        const parts=await Promise.all(batch.map(load));
         for(let n=0;n<parts.length;n++){const body=parts[n].body;if(body.product!=='flixer'||body.generatedAt&&body.generatedAt!==manifest.generatedAt||!Array.isArray(body.shows))throw Error('Inconsistent live catalogue generation');next.set(batch[n].sha256,body);shows.push(...body.shows);}
       }
       if(shows.length!==manifest.count)throw Error('Incomplete live catalogue index');
