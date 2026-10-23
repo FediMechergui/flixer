@@ -622,6 +622,10 @@
       this._syncing = true;
       let added = 0;
       try {
+        if(window.FlixerCatalogueSource?.enabled()){
+          const before=this._catalog.shows.length;await this._refreshSnapshot();added=Math.max(0,this._catalog.shows.length-before);this._lastSync=Date.now();
+          window.dispatchEvent(new CustomEvent('flixer:sync',{detail:{ok:true,added,at:this._lastSync}}));return added;
+        }
         this._refreshSnapshot().catch(()=>{});
         const results = await Promise.allSettled(["film","series"].map(kind => getJson(`${API_BASE}/api/discover?kind=${kind}&latest=true&page=1`, 18000)));
         const recent = new Set(), groups=[]; let successful = false;

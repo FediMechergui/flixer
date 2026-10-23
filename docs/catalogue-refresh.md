@@ -33,6 +33,8 @@ Compressed files are hash checked before bounded decompression. Search and
 playback resolution still use the backend and device adapters as appropriate.
 The bundled index opens browsing immediately; the complete live index merges
 in the background and cannot replace newer cached home rows with older ones.
+Mobile background sync checks the publication rather than launching provider
+crawls on every phone. The scheduled collector supplies those updates.
 
 ```sh
 gh workflow run refresh.yml --ref main -f latest_only=true
