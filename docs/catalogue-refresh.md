@@ -20,6 +20,13 @@ downloaded on demand, with bounded parallelism, decompression and cache size.
 The publisher reuses unchanged files, paces uploads, retains the preceding
 manifest and retires unused older assets after a grace period.
 
+Before uploading, the publisher reserves room below GitHub's 1,000-assets per
+release limit. It protects files referenced by the current, previous and pending
+catalogues, then retires only unreferenced generated assets at least 20 minutes
+old when capacity is tight. Cleanup and uploads share a one-request-per-second
+pace. If protected/recent files leave insufficient room, publication fails
+without changing the live manifest. Other releases and APK files are untouched.
+
 New APKs use `/api/catalogue` for bootstrap and version-pinned index parts below
 2 MB. Unchanged parts are reused on the device when the next publication
 arrives. The static bundle remains an offline fallback. Catalogue publication

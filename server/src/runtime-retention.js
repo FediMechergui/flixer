@@ -1,0 +1,15 @@
+import {validateRuntimeManifest} from './runtime-source.js';
+
+// Only unreachable generated assets may be retired. Both published generations
+// and every file in the pending publication must survive capacity cleanup.
+export function planRuntimeCleanup({assets,manifests=[],incoming=[],now=Date.now(),limit=1000,headroom=100,minAgeMs=20*60*1000,reserveSlots=1}){
+ if(!Array.isArray(assets)||!Number.isSafeInteger(limit)||limit<1||!Number.isSafeInteger(headroom)||headroom<0||headroom>=limit||!Number.isSafeInteger(reserveSlots)||reserveSlots<0)throw Error('Invalid runtime retention settings');
+ const protectedNames=new Set(incoming.map(file=>file.name));
+ for(const manifest of manifests.filter(Boolean))for(const file of Object.values(validateRuntimeManifest(manifest).files))protectedNames.add(file.name);
+ const known=new Set(assets.map(asset=>asset.name)),newNames=new Set(incoming.filter(file=>!known.has(file.name)).map(file=>file.name));
+ let projected=assets.length+newNames.size+reserveSlots;
+ const candidates=assets.filter(asset=>/^(?:data-[a-f0-9]{64}\.json\.gz|manifest\.pending-\d+\.json)$/.test(asset.name)&&!protectedNames.has(asset.name)&&Number.isSafeInteger(asset.id)&&asset.id>0&&Number.isFinite(Date.parse(asset.created_at))&&now-Date.parse(asset.created_at)>=minAgeMs).sort((a,b)=>Date.parse(a.created_at)-Date.parse(b.created_at));
+ const remove=[];for(const asset of candidates){if(projected<=limit-headroom)break;remove.push(asset);projected--;}
+ if(projected>limit)throw Error('Runtime release has no safe upload capacity yet; retaining both published catalogues. Retry after the retention grace period.');
+ return {remove,projected,protectedNames};
+}
