@@ -33,7 +33,7 @@ export function createRuntimeSource({fetchImpl=fetch,now=Date.now,pollMs=120000,
  async function check(){
   if(checking)return checking;if(now()-checked<pollMs)return available;
   checked=now();checking=(async()=>{try{
-   const body=await boundedBody(await fetchImpl(root+'manifest.json',{signal:AbortSignal.timeout(5000),cache:'no-store'}),512*1024);
+   const body=await boundedBody(await fetchImpl(root+'manifest.json?v='+Math.floor(now()/pollMs),{signal:AbortSignal.timeout(5000),cache:'no-store'}),512*1024);
    const next=validateRuntimeManifest(JSON.parse(body.toString('utf8')));
    if(!available||Date.parse(next.generatedAt)>Date.parse(available.generatedAt))available=next;
   }catch(error){log('[runtime] Manifest unavailable; retaining last complete version: '+error.message)}return available})().finally(()=>checking=null);return checking;
