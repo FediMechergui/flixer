@@ -106,7 +106,7 @@
     },
     "api/saved-title.js": {
       "includeFiles": "server/deployment-titles/**",
-      "maxDuration": 15,
+      "maxDuration": 60,
       "excludeFiles": "{server/data/**,server/deployment-flixer.json,client/**,client-terrarium/**,mobile/**,docs/**}"
     },
     "api/search.js": {
