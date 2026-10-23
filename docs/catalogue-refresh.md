@@ -26,6 +26,12 @@ arrives. The static bundle remains an offline fallback. Catalogue publication
 does not change the APK or require a Vercel build. Code changes still need an
 explicit backend deployment and a new APK when native/client code changes.
 
+Android also reads these immutable files directly through its existing native
+HTTP transport. This keeps catalogue and saved-guide updates available while
+backend hosting is blocked and removes those data transfers from Vercel.
+Compressed files are hash checked before bounded decompression. Search and
+playback resolution still use the backend and device adapters as appropriate.
+
 ```sh
 gh workflow run refresh.yml --ref main -f latest_only=true
 ```

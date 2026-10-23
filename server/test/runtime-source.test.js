@@ -53,3 +53,16 @@ test('catalogue reordering and a new title leave unrelated published buckets unc
  const changed=Object.entries(before.files).filter(([key,file])=>/^(index|title|owner)-/.test(key)&&after.files[key]?.sha256!==file.sha256);
  assert.ok(changed.length<=2,'only the new title index and title buckets should change');assert.equal(after.count,301);
 });
+
+test('Android reads verified published data and guides without a backend deployment',async t=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'flixer-runtime-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));const manifest=await buildRuntimePublication(catalog('23',3),dir),calls=[];
+ const window={FLIXER_CONFIG:{mobile:true},Capacitor:{isNativePlatform:()=>true}},context=vm.createContext({window,crypto,Blob,TextEncoder,TextDecoder,Uint8Array,DecompressionStream,AbortController,setTimeout,clearTimeout,URL,fetch:async url=>{calls.push(url);const name=url.split('/').pop();return new Response(name==='manifest.json'?JSON.stringify(manifest):fs.readFileSync(path.join(dir,name)))}});
+ vm.runInContext(fs.readFileSync(new URL('../../client-terrarium/js/catalogue-source.js',import.meta.url),'utf8'),context);const source=window.FlixerCatalogueSource;
+ assert.equal(source.enabled(),true);const [a,b]=await Promise.all([source.get(),source.get()]);assert.equal(a.generatedAt,b.generatedAt);assert.equal(calls.length,1);
+ assert.equal((await source.get(manifest.indexParts[0])).shows.length,1);const title=await source.title('fm:s:22');assert.equal(title.episodes.length,3);assert.ok(calls.every(url=>url.startsWith('https://github.com/FediMechergui/flixer/releases/download/catalogue-runtime/')));
+ await assert.rejects(source.get('../private'),/Unknown/);await assert.rejects(source.get(manifest.indexParts[0],'../private'),/hash/);
+ const key=manifest.indexParts[0],hash=manifest.files[key].sha256;
+ context.fetch=async()=>new Response('corrupt');await assert.rejects(source.get(key,'f'.repeat(64)),/integrity/);
+ const bomb=gzipSync(JSON.stringify({text:'x'.repeat(3*1024*1024)})),bombHash=createHash('sha256').update(bomb).digest('hex');context.fetch=async()=>new Response(bomb);await assert.rejects(source.get(key,bombHash),/limit/);
+ assert.equal((await source.get(key,hash)).shows.length,1,'a failed asset must preserve verified cached data');
+});

@@ -42,6 +42,10 @@
   };
 
   async function getJson(url, ms = 12000, signal) {
+    if(window.FlixerCatalogueSource?.enabled()&&url.startsWith(`${API_BASE}/api/catalogue?`)){
+      const query=new URL(url).searchParams;
+      return {body:await window.FlixerCatalogueSource.get(query.get('part')||'manifest',query.get('hash')||undefined),headers:new Headers()};
+    }
     const ctrl = typeof AbortController === "function" ? new AbortController() : null;
     let rejectCancelled;
     const cancelled = new Promise((_, reject) => { rejectCancelled=reject; });
@@ -90,6 +94,10 @@
   }
 
   /* ----- raw show -> view item ----- */
+  async function savedTitle(id,ms){
+    if(window.FlixerCatalogueSource?.enabled())try{const body=await window.FlixerCatalogueSource.title(id);if(body)return {body};}catch(error){console.warn('[flixer] Published title unavailable:',error.message);}
+    return getJson(`${DATA_BASE}/data/shows/${encodeURIComponent(encodeURIComponent(id))}.json`,ms);
+  }
   function normalize(s) {
     const type = s.kind === "series" ? "tv" : "movie";
     const date = String([s.providerUpdatedAt,s.latestAt,s.publishedAt,s.firstSeenAt].filter(Boolean).sort().pop() || "").slice(0,10);
@@ -818,7 +826,7 @@
         return this._byId.get(id)||row;
       }
       try {
-        const { body } = await getJson(`${DATA_BASE}/data/shows/${encodeURIComponent(encodeURIComponent(id))}.json`, 8000);
+        const { body } = await savedTitle(id,8000);
         if(body.id!==id)throw new Error('Title identity mismatch');
         this._merge([body],{snapshotAt:this._catalog.generatedAt||this._bundleAt||'1970-01-01'}); this._reindex();
         return body;
@@ -836,7 +844,7 @@
         this._titleRequests ||= new Map();
         if(!this._titleRequests.has(canonical)){
           const refresh=(async()=>{
-            if(!nativeWco)try{const {body}=await getJson(`${DATA_BASE}/data/shows/${encodeURIComponent(encodeURIComponent(canonical))}.json`,6000);if(body.id!==canonical)throw new Error('Title identity mismatch');this._merge([body],{snapshotAt:this._catalog.generatedAt||this._bundleAt||'1970-01-01'});this._reindex();window.dispatchEvent(new CustomEvent('flixer:title',{detail:{id:canonical}}));}catch{}
+            if(!nativeWco)try{const {body}=await savedTitle(canonical,6000);if(body.id!==canonical)throw new Error('Title identity mismatch');this._merge([body],{snapshotAt:this._catalog.generatedAt||this._bundleAt||'1970-01-01'});this._reindex();window.dispatchEvent(new CustomEvent('flixer:title',{detail:{id:canonical}}));}catch{}
             const current=this._byId.get(canonical)||raw;
             if(this.liveEnabled&&(current.kind==='series'||!(current.synopsis||current.blurb)||!normalize(current).poster||Date.now()-Date.parse(this._catalog.generatedAt||0)>6*3600e3)){
               const fresh=await live.details(canonical,[current.sourceUrl,...(current.offerings||[]).map(o=>o.sourceUrl)],{fresh:current.kind==='series'});
