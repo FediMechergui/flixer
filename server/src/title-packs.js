@@ -12,8 +12,9 @@ export function writeTitlePacks(shows,dir=defaultDir,{bucketBits=8}={}){
  for(const show of shows)for(const row of [show,...(show.versions||[])]){const key=shard(row.id,bucketBits);if(!groups.has(key))groups.set(key,new Map());groups.get(key).set(row.id,row);
   for(const ep of row.episodes||[])for(const id of [ep.id,...(ep.offerings||[]).map(o=>o.id)]){if(typeof id!=='string')continue;const bucket=shard(id,bucketBits);if(!owners.has(bucket))owners.set(bucket,new Map());if(!owners.get(bucket).has(id))owners.get(bucket).set(id,{id:row.id});}
  }
- let bytes=0;for(const [key,rows]of groups){const body=gzipSync(JSON.stringify(Object.fromEntries(rows)),{level:6});fs.writeFileSync(path.join(dir,key+'.json.gz'),body);bytes+=body.length;}
- const ownerDir=path.join(dir,'owners');fs.mkdirSync(ownerDir,{recursive:true});for(const [key,rows]of owners)fs.writeFileSync(path.join(ownerDir,key+'.json.gz'),gzipSync(JSON.stringify(Object.fromEntries(rows)),{level:6}));
+ const ordered=rows=>Object.fromEntries([...rows].sort((a,b)=>a[0].localeCompare(b[0])));
+ let bytes=0;for(const [key,rows]of groups){const body=gzipSync(JSON.stringify(ordered(rows)),{level:6});fs.writeFileSync(path.join(dir,key+'.json.gz'),body);bytes+=body.length;}
+ const ownerDir=path.join(dir,'owners');fs.mkdirSync(ownerDir,{recursive:true});for(const [key,rows]of owners)fs.writeFileSync(path.join(ownerDir,key+'.json.gz'),gzipSync(JSON.stringify(ordered(rows)),{level:6}));
  return {files:groups.size,bytes};
 }
 export function createTitleReader(dir=defaultDir){

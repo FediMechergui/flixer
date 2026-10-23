@@ -11,14 +11,18 @@ export async function buildRuntimePublication(catalog,outDir){
  const lean=leanCatalog(catalog,'flixer');
  const runtime={...lean,packedTitles:true,shows:lean.shows.map(({episodes,...show})=>({...show,firstEpisodeId:episodes?.[0]?.id}))};
  const raw=path.join(outDir,'runtime.tmp.json'),gz=path.join(outDir,'runtime.tmp.gz');writeJsonFile(raw,runtime);await pipeline(fs.createReadStream(raw),createGzip({level:6}),fs.createWriteStream(gz));await retain('runtime',gz);fs.unlinkSync(raw);fs.unlinkSync(gz);
- const indexParts=[];let rows=[],bytes=0,group=0,section=0,position=0;
- const flush=async()=>{if(!rows.length)return;if(section>=8)throw Error('Catalogue index group exceeds part limit');const key='index-'+String(group*8+section++).padStart(4,'0');await small(key,{product:'flixer',shows:rows});indexParts.push(key);rows=[];bytes=0};
- const recent=[];
+ const indexParts=[],groups=new Map(),recent=[];
  for(const {episodes,seasons,versions,offerings,blurb,...show}of lean.shows){
-  if(position&&position%1000===0){await flush();group++;section=0;}position++;
-  const row={...show,aliasIds:(offerings||[]).map(o=>o.id).filter(id=>id!==show.id),firstEpisodeId:episodes?.[0]?.id};const size=Buffer.byteLength(JSON.stringify(row));if(size>1500000)throw Error('Catalogue index record exceeds part limit');if(bytes+size>1500000)await flush();rows.push(row);bytes+=size+1;recent.push({...row,blurb:blurb||''});
+  const row={...show,aliasIds:(offerings||[]).map(o=>o.id).filter(id=>id!==show.id),firstEpisodeId:episodes?.[0]?.id},group=createHash('sha256').update(row.id).digest()[0]&127;
+  if(!groups.has(group))groups.set(group,[]);groups.get(group).push(row);recent.push({...row,blurb:blurb||''});
  }
- await flush();recent.sort((a,b)=>String(b.providerUpdatedAt||b.latestAt||b.publishedAt||'').localeCompare(String(a.providerUpdatedAt||a.latestAt||a.publishedAt||'')));
+ // Hash membership and sorted rows keep a new release from shifting every part.
+ for(const [group,members]of [...groups].sort((a,b)=>a[0]-b[0])){
+  let rows=[],bytes=0,section=0;
+  const flush=async()=>{if(!rows.length)return;if(section>=4)throw Error('Catalogue index group exceeds part limit');const key='index-'+String(group*4+section++).padStart(4,'0');await small(key,{product:'flixer',shows:rows});indexParts.push(key);rows=[];bytes=0};
+  for(const row of members.sort((a,b)=>a.id.localeCompare(b.id))){const size=Buffer.byteLength(JSON.stringify(row));if(size>1500000)throw Error('Catalogue index record exceeds part limit');if(bytes+size>1500000)await flush();rows.push(row);bytes+=size+1;}await flush();
+ }
+ recent.sort((a,b)=>String(b.providerUpdatedAt||b.latestAt||b.publishedAt||'').localeCompare(String(a.providerUpdatedAt||a.latestAt||a.publishedAt||'')));
  await small('bootstrap',{product:'flixer',lite:true,generatedAt:catalog.generatedAt,stats:lean.stats,tags:lean.tags,shows:recent.slice(0,600)});
  const packs=fs.mkdtempSync(path.join(outDir,'packs-'));
  try{writeTitlePacks(catalog.shows,packs,{bucketBits:6});for(const name of fs.readdirSync(packs).filter(name=>/^[a-f0-9]{2}\.json\.gz$/.test(name)))await retain('title-'+name.slice(0,2),path.join(packs,name));for(const name of fs.readdirSync(path.join(packs,'owners')))await retain('owner-'+name.slice(0,2),path.join(packs,'owners',name))}finally{if(!path.resolve(packs).startsWith(outDir+path.sep))throw Error('Invalid runtime staging path');fs.rmSync(packs,{recursive:true,force:true})}

@@ -45,3 +45,11 @@ test('a new publication reuses unchanged mobile index chunks',async()=>{
  const context=vm.createContext({API_BASE:'https://backend.example',URLSearchParams,Promise,getJson:async url=>{const u=new URL(url);if(u.searchParams.get('part')==='manifest')return {body:{product:'flixer',generatedAt:generation,count:1,indexParts:[{key:'index-0000',sha256:'unchanged'}]}};parts++;return {body:{product:'flixer',shows:[{id:'retained'}]}};}});
  vm.runInContext('globalThis.api=new(class{'+source.slice(start,end)+'})();',context);await context.api._loadLiveIndex();generation='two';const updated=await context.api._loadLiveIndex();assert.equal(parts,1);assert.equal(updated.body.generatedAt,'two');assert.equal(updated.body.shows[0].id,'retained');
 });
+
+test('catalogue reordering and a new title leave unrelated published buckets unchanged',async t=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'flixer-runtime-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
+ const first=catalog('22');first.shows=Array.from({length:300},(_,i)=>({...first.shows[0],id:'fm:s:'+i,episodes:[],versions:[]}));
+ const before=await buildRuntimePublication(first,dir),after=await buildRuntimePublication({...first,generatedAt:'2026-10-23T12:00:00Z',shows:[{id:'fm:m:new',title:'New film',kind:'film',episodes:[]},...first.shows.toReversed()]},dir);
+ const changed=Object.entries(before.files).filter(([key,file])=>/^(index|title|owner)-/.test(key)&&after.files[key]?.sha256!==file.sha256);
+ assert.ok(changed.length<=2,'only the new title index and title buckets should change');assert.equal(after.count,301);
+});
