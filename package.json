@@ -23,5 +23,11 @@
     "refresh:providers": "node scripts/refresh-providers.js --product flixer",
     "refresh:providers:full": "node scripts/refresh-providers.js --product flixer --full",
     "build:mobile": "node scripts/product.js flixer mobile-web"
+  },
+  "dependencies": {
+    "@streamparser/json": "0.0.22",
+    "cheerio": "^1.2.0",
+    "json5": "^2.2.3",
+    "youtubei.js": "^15.0.1"
   }
 }

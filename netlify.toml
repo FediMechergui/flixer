@@ -1,5 +1,5 @@
 [build]
-  command = "npm ci --prefix server && node scripts/build-netlify.js"
+  command = "npm ci && npm ci --prefix server && node scripts/build-netlify.js"
   publish = "artifacts/netlify-public"
 
 [build.environment]
@@ -9,6 +9,7 @@
 [functions]
   directory = "netlify/functions"
   node_bundler = "esbuild"
+  external_node_modules = ["@streamparser/json", "cheerio", "json5", "youtubei.js"]
 
 [[redirects]]
   from = "/data/bootstrap.json"
