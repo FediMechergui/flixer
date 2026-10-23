@@ -9,6 +9,8 @@ canonical titles and 9,200 provider source records into immutable data packs,
 without a hosting deployment. Separate source/owner packs preserve Arabic,
 French-cartoon and official YouTube adapter metadata. The home endpoint reads
 the small bootstrap; provider-specific search skips full catalogue loading.
+Hosted collection browsing pages the combined publication instead of crawling
+and merging providers inside each app request.
 
 Live checks returned HTTP 200 for health, provider registration, home, catalogue
 manifest, encoded legacy saved-title URLs, FMovies search and stream choices,
@@ -24,7 +26,7 @@ the constrained emulator. Hosted APK builds now preserve all titles in roughly
 1 MB local parts, with four concurrent reads and complete-generation validation.
 The existing home revision guards also apply to this bundled index.
 
-Validation: 216 backend/client tests, Android unit tests, release lint and a
+Validation: 218 backend/client tests, Android unit tests, release lint and a
 signed Android build. The APK uses the existing signing certificate and points
 both API and data fallback URLs to Netlify. Older APKs need this update because
 their API address is compiled into the application.
@@ -35,3 +37,7 @@ The obsolete Flixer deploy-hook secret and local project link were removed.
 Vercel still reported the team's existing `fluidCpuDuration` fair-use block
 after deletion; no reset time was supplied. Migration does not erase historical
 team usage or automatically restore those other deployments.
+
+Fresh emulator checks were attempted, but device automation timed out under
+host memory pressure. Final device playback and latency measurements remain
+unverified; the APK build, signing, data integrity and automated tests passed.

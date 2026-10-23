@@ -228,9 +228,9 @@ export function libraryHome(catalog=readLibrary()) {
   ]};
   homeResults.set(catalog,{shows:catalog.shows,revision:catalog.generatedAt,size:catalog.shows?.length||0,value});return value;
 }
-export async function discoverLibrary({kind='film',page=1,genre,year,collection='',latest=false,product=PRODUCT,catalog=readLibrary(),fetchers}={}) {
+export async function discoverLibrary({kind='film',page=1,genre,year,collection='',latest=false,product=PRODUCT,catalog=readLibrary(),fetchers,cachedOnly=false}={}) {
   if(!['film','series'].includes(kind))throw new Error('Invalid catalogue kind');
-  page=Math.min(500,Math.max(1,Math.floor(Number(page)||1)));
+  page=Math.min(cachedOnly?100000:500,Math.max(1,Math.floor(Number(page)||1)));
   const documentary=product==='dahsha';
   const regional = !documentary && ({jdrama:{country:'JP'},cdrama:{country:'CN'},canadian:{country:'CA'},'french-canadian':{country:'CA',language:'fr'},'french-series':{language:'fr'},'youtube-shows':{},'one-pace':{},french:{language:'fr'},'french-originals':{language:'fr'},'french-cartoons':{language:'fr',genre:'animation'},'french-entertainment':{language:'fr'},arabic:{country:'EG'},egyptian:{country:'EG'},tunisian:{country:'TN'},plays:{},kdrama:{country:'KR'},indian:{country:'IN'},turkish:{country:'TR'},anime:{country:'JP',genre:'animation'},'anime-sub':{country:'JP',genre:'animation'},'anime-dub':{country:'JP',genre:'animation'},cartoons:{genre:'animation'},'classic-cartoons':{genre:'animation'}}[collection]);
   if(collection && !regional)throw new Error('Invalid collection');
@@ -238,6 +238,10 @@ export async function discoverLibrary({kind='film',page=1,genre,year,collection=
   if(collection==='plays' && kind==='series')return {items:[],page,totalPages:page,providers:[],providerErrors:[]};
   genre=regional?.genre || genre;
   latest=latest===true||latest==='true';
+  if(cachedOnly){
+    const rows=(catalog.shows||[]).filter(show=>show.kind===kind&&matchesCollection(show,collection)&&(!documentary||show.documentary===true||show.tags?.includes('documentary'))&&(!genre||show.tags?.includes(genre))&&(!year||Number(show.year)===Number(year))).sort((a,b)=>String(b.providerUpdatedAt||b.latestAt||b.publishedAt||'').localeCompare(String(a.providerUpdatedAt||a.latestAt||a.publishedAt||'')));
+    return {items:rows.slice((page-1)*24,page*24),page,total:rows.length,totalPages:Math.max(1,Math.ceil(rows.length/24)),providers:[],providerErrors:[],cached:true,generatedAt:catalog.generatedAt};
+  }
   const jobs=product==='flixer'?specialistJobs({kind,collection,latest}):[];
   const cachedPage=provider=>{
     const saved=(catalog.shows||[]).filter(show=>show.kind===kind&&showOfferings(show).some(o=>o.provider===provider)&&matchesCollection(show,collection)&&(!documentary||show.documentary===true||show.tags?.includes('documentary'))&&(!genre||show.tags?.includes(genre))&&(!year||Number(show.year)===Number(year))).sort((a,b)=>String(b.providerUpdatedAt||b.latestAt||b.publishedAt||'').localeCompare(String(a.providerUpdatedAt||a.latestAt||a.publishedAt||'')));

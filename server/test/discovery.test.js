@@ -1,6 +1,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { discoverLibrary } from '../src/library-service.js';
+
+test('hosted browsing pages the combined publication without starting provider crawls',async()=>{
+ let calls=0;const shows=Array.from({length:55},(_,n)=>({id:'source-'+n,kind:'series',title:'Series '+n,countries:['TN'],tags:['comedy'],providerUpdatedAt:'2026-10-'+String(1+n%20).padStart(2,'0')}));
+ shows.push({id:'foreign',kind:'series',title:'Other country',countries:['TR']},{id:'film',kind:'film',title:'Film',countries:['TN']});
+ const catalog={product:'flixer',generatedAt:'2026-10-23',shows},fetchers=[async()=>{calls++;throw Error('Must not crawl from the app request')}];
+ const first=await discoverLibrary({kind:'series',collection:'tunisian',catalog,fetchers,cachedOnly:true}),second=await discoverLibrary({kind:'series',collection:'tunisian',page:2,catalog,fetchers,cachedOnly:true});
+ assert.equal(calls,0);assert.equal(first.total,55);assert.equal(first.totalPages,3);assert.equal(first.items.length,24);assert.equal(first.generatedAt,catalog.generatedAt);assert.ok(!second.items.some(row=>first.items.some(previous=>previous.id===row.id)));
+ assert.equal((await discoverLibrary({kind:'series',collection:'tunisian',genre:'animation',catalog,cachedOnly:true})).items.length,0);
+});
+
+test('published catalogue pagination reaches titles beyond the upstream 500-page crawl cap',async()=>{
+ const shows=Array.from({length:12030},(_,n)=>({id:'film-'+n,kind:'film',title:'Film '+n}));const result=await discoverLibrary({kind:'film',page:501,catalog:{product:'flixer',shows},cachedOnly:true});
+ assert.equal(result.page,501);assert.equal(result.items[0].id,'film-12000');assert.equal(result.totalPages,502);
+});
 import { parseHdtodayList } from '../src/hdtoday.js';
 import { fmoviesServers } from '../src/fmovies.js';
 import { fetchFmoviesPage } from '../src/fmovies.js';
