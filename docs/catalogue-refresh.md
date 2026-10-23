@@ -31,6 +31,8 @@ HTTP transport. This keeps catalogue and saved-guide updates available while
 backend hosting is blocked and removes those data transfers from Vercel.
 Compressed files are hash checked before bounded decompression. Search and
 playback resolution still use the backend and device adapters as appropriate.
+The bundled index opens browsing immediately; the complete live index merges
+in the background and cannot replace newer cached home rows with older ones.
 
 ```sh
 gh workflow run refresh.yml --ref main -f latest_only=true

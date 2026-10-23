@@ -343,7 +343,8 @@
           this._recentIds=new Set(store.get('recentIds',[]).filter(id=>this._byId.has(id)));
           this._universeData = new Map(); this._serviceLogos = new Map();
           const notify=()=>{this._reindex();window.dispatchEvent(new CustomEvent("flixer:catalog",{detail:{updated:true}}));};
-          this._indexReady = new Promise(resolve=>setTimeout(resolve,750)).then(()=>this._loadLiveIndex().catch(()=>getJson(`${CFG.mobile ? "" : DATA_BASE}/data/index.json`,60000))).then(async({body})=>{
+          const initialIndex=()=>CFG.mobile?getJson('/data/index.json',60000).catch(()=>this._loadLiveIndex()):this._loadLiveIndex().catch(()=>getJson(`${DATA_BASE}/data/index.json`,60000));
+          this._indexReady = new Promise(resolve=>setTimeout(resolve,750)).then(initialIndex).then(async({body})=>{
             if(body.product!=='flixer')throw new Error('Wrong product index');
             await this._mergeIndex(body.shows||[],body.generatedAt||this._bundleAt||'1970-01-01');if(Date.parse(body.generatedAt)>Date.parse(this._fullIndexAt||0))this._fullIndexAt=body.generatedAt;notify();
           }).catch(error=>console.warn('[flixer] full index unavailable:',error.message));
