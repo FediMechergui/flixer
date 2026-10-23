@@ -1,4 +1,5 @@
 import {runtimeTitle as readPackedTitle,runtimeEpisode as readPackedEpisodeTitle,runtimeLibrary} from './runtime-source.js';
+import {hosted} from './hosting.js';
 import {FRENCH_STREAM_ORIGIN,getFrenchDetails} from './french-providers.js';
 import { mergeCachedProviders } from './provider-sync.js';
 import fs from 'node:fs';
@@ -23,15 +24,15 @@ export function readLibrary() {
   const live=liveResolver?.();if(live)return live;
   const folder=PRODUCT==='dahsha'?'data':'data-flixer';
   const dist=PRODUCT==='dahsha'?'dist':'dist-flixer';
-  const candidates=process.env.VERCEL?[path.join(root,`server/deployment-${PRODUCT}.json`)]:[
+  const candidates=hosted()?[path.join(root,`server/deployment-${PRODUCT}.json`)]:[
     ...(process.env.DATA_DIR?[path.join(DATA_DIR,PRODUCT==='dahsha'?'catalog.json':'flixer-catalog.json')]:[]),
     path.join(root,`client/public/${folder}/catalog.json`),path.join(root,`client/${dist}/data/catalog.json`),
   ];
   const file=candidates.find(f=>fs.existsSync(f));
   if(!file)return {product:PRODUCT,shows:[],tags:[],channels:[]};
   const providerFile=path.join(DATA_DIR,`providers-${PRODUCT}.json`);
-  const stamp=`${file}:${fs.statSync(file).mtimeMs}:${!process.env.VERCEL && fs.existsSync(providerFile)?fs.statSync(providerFile).mtimeMs:''}`;
-  if(stamp!==loadedStamp){loaded=JSON.parse(fs.readFileSync(file,'utf8'));if(!process.env.VERCEL)loaded=mergeCachedProviders(loaded,PRODUCT).catalog;loadedStamp=stamp;}
+  const stamp=`${file}:${fs.statSync(file).mtimeMs}:${!hosted() && fs.existsSync(providerFile)?fs.statSync(providerFile).mtimeMs:''}`;
+  if(stamp!==loadedStamp){loaded=JSON.parse(fs.readFileSync(file,'utf8'));if(!hosted())loaded=mergeCachedProviders(loaded,PRODUCT).catalog;loadedStamp=stamp;}
   return loaded;
 }
 const catalogueLookups=new WeakMap();
@@ -181,12 +182,12 @@ export async function unifiedTitle(id,{source, catalog, product=PRODUCT,fresh=fa
   try{return await promise;}catch(e){hydrated.delete(key);throw e;}
 }
 export const SEARCH_PROVIDERS=['myflixer','fmovies','hdtoday',...Object.keys(SPECIALISTS)];
-export async function unifiedSearch(query,{product=PRODUCT,catalog=readLibrary(),provider,fetchers,timeoutMs=10000}={}) {
+export async function unifiedSearch(query,{product=PRODUCT,catalog=readLibrary(),provider,fetchers,timeoutMs=10000,aliases:queryAliases=[]}={}) {
   const q=String(query||'').trim();if(!q)return [];
   if(provider&&!SEARCH_PROVIDERS.includes(provider))throw Error('Invalid search provider');
   const names=provider?[provider]:SEARCH_PROVIDERS;
   const related=catalog.shows.filter(show=>matchesSearch([show.title,...(show.altTitles||[])].join(' '),q));
-  const queries=[...new Set([q,...related.slice(0,1).flatMap(show=>[show.title,...(show.altTitles||[])])])].slice(0,3);
+  const queries=[...new Set([q,...queryAliases.filter(value=>typeof value==='string'&&value.trim()&&value.length<=120).slice(0,2),...related.slice(0,1).flatMap(show=>[show.title,...(show.altTitles||[])])])].slice(0,3);
   const requests=names.filter(name=>product==='flixer'||['fmovies','hdtoday'].includes(name)).map(name=>Promise.allSettled(queries.map(term=>Promise.resolve().then(()=>{
     if(fetchers?.[name])return fetchers[name](term);
     if(name==='myflixer')return searchContent(term);

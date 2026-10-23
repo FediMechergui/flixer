@@ -1,4 +1,6 @@
 import fs from 'node:fs';
+import {runtimeProviderSnapshot} from './runtime-source.js';
+import {hosted} from './hosting.js';
 import {load} from 'cheerio';
 import {safeRemoteFetch} from './stream-security.js';
 import {artworkUrl} from '../../shared/artwork.js';
@@ -26,7 +28,7 @@ export async function fetchDessinPage({page=1,cursor,kind='series',search,collec
 export function verifiedDessinAlias(row,candidate){const p=parseDessinId(row.id),hint=p&&Number(p.slug.split('-')[0]);return !!(p&&candidate.tmdbId===hint&&candidate.kind===row.kind&&row.year&&Number(candidate.year)===Number(row.year));}
 export async function getDessinDetails(id,{fresh=false}={}){
   const p=parseDessinId(id);if(!p||p.type==='e')throw Error('Invalid DessinAnime ID');
-  const saved=dessinSnapshot(id);
+  const saved=await dessinSnapshot(id);
   if(saved?.episodes?.length&&!fresh)return saved;
   try{return parseDessinPage(id,await request(dessinUrl(id)),saved);}catch(error){if(saved?.episodes?.length)return {...saved,providerErrors:[{provider:'dessinanime',error:error.message}]};}
   // Search is an anonymous public endpoint. Do not substitute a challenge page
@@ -80,7 +82,8 @@ export function parseDessinPage(id,html,existing){
  return existing?{...mergeShow(existing,row),sourceGuide:row.sourceGuide}:row;
 }
 let snapshotStamp='',snapshotRows=new Map();
-export function dessinSnapshot(id){
+export async function dessinSnapshot(id){
+ if(hosted())return runtimeProviderSnapshot(id);
  const p=parseDessinId(id);if(!p)return null;
  const deployment=new URL('../deployment-dessinanime.json',import.meta.url),local=new URL('../data/providers-flixer.json',import.meta.url),file=fs.existsSync(deployment)?deployment:local;
  if(!fs.existsSync(file))return null;const stamp=`${file}:${fs.statSync(file).mtimeMs}`;
@@ -96,7 +99,7 @@ export function dessinStreamServers(player,data){
 }
 export async function resolveDessinServers(id){
  const p=parseDessinId(id);if(!p||p.type==='s')return [];
- let row=dessinSnapshot(id),episode=row?.episodes?.find(e=>e.id===id);
+ let row=await dessinSnapshot(id),episode=row?.episodes?.find(e=>e.id===id);
  if(!episode?.cachedPlayers?.length){row=parseDessinPage(id,await request(dessinUrl(id)),row);episode=row.episodes.find(e=>e.id===id);}
  const players=dessinPlayers(episode?.cachedPlayers);if(!players.length)throw Error('No verified DessinAnime players for this episode');
  return players.map(player=>player.direct?{id:`dessinanime:${player.id}`,provider:'dessinanime',name:`DessinAnime - ${player.language} - ${player.name}`,type:'dessinanime',playerId:player.id,language:player.language,...(player.language==='VF'?{audioLanguages:['fr']}:{})}:{id:`dessinanime:${player.id}`,provider:'dessinanime',name:`DessinAnime - ${player.language} - ${player.name}`,type:'embed',embedUrl:player.url,sandbox:null});

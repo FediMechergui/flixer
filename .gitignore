@@ -20,6 +20,9 @@ server/data/*.tmp
 data-snapshot*.tar.gz
 build.log
 .vercel/
+.netlify/
+netlify/functions/*.zip
+netlify/functions/manifest.json
 .DS_Store
 *.log
 

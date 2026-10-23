@@ -81,3 +81,9 @@ test('live index retries a transient part failure and retains verified chunks ac
  vm.runInContext('globalThis.api=new(class{'+source.slice(start,end)+'})();',context);assert.equal((await context.api._loadLiveIndex()).body.shows.length,2);assert.equal(calls.get('index-0001'),2);
  context.api._liveIndexParts.delete('two');broken=true;await assert.rejects(context.api._loadLiveIndex(),/network/);assert.equal(context.api._liveIndexParts.has('one'),true);broken=false;assert.equal((await context.api._loadLiveIndex()).body.shows.length,2);assert.equal(calls.get('index-0000'),1,'successful chunks must not download again after a failed update');
 });
+
+test('provider packs preserve original French and Arabic episode players independently of merged identities',async t=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'flixer-source-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));const row={id:'sp:dessinanime:s:sample',title:'Dessin',kind:'series',episodes:[{id:'sp:dessinanime:e:sample:1:1',cachedPlayers:[{id:42,language:'VF',name:'Public player'}]}]};const manifest=await buildRuntimePublication(catalog('23'),dir,{providerRows:[row]});
+ validateRuntimeManifest(manifest);assert.ok(Object.keys(manifest.providerFiles).length>0);
+ const source=createRuntimeSource({fetchImpl:async url=>{const name=new URL(url).pathname.split('/').pop();return new Response(name==='manifest.json'?JSON.stringify(manifest):fs.readFileSync(path.join(dir,name)))}});await source.check();const found=await source.providerSnapshot(row.episodes[0].id);assert.equal(found.id,row.id);assert.equal(found.episodes[0].cachedPlayers[0].id,42);assert.equal(source.current(),null,'source playback metadata must not require the full catalogue');assert.equal(await source.providerSnapshot('sp:dessinanime:s:unknown'),null);
+});

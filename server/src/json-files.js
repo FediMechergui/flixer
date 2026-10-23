@@ -13,6 +13,12 @@ export function readJsonFile(file,{threshold=64*1024*1024,chunkSize=1024*1024}={
 }
 
 // Serialize catalogue arrays one title at a time, with bounded output buffers.
+export function readJsonItems(file,accept=()=>true){
+ const rows=[],parser=new JSONParser({paths:['$.items.*'],keepStack:false});parser.onValue=({value})=>{if(accept(value))rows.push(value)};
+ const fd=fs.openSync(file,'r'),buffer=Buffer.alloc(1024*1024),decoder=new StringDecoder('utf8');
+ try{let count;while((count=fs.readSync(fd,buffer,0,buffer.length,null))){const text=decoder.write(buffer.subarray(0,count));if(text)parser.write(text)}const tail=decoder.end();if(tail)parser.write(tail);if(!parser.isEnded)parser.end();return rows;}finally{fs.closeSync(fd)}
+}
+
 export function writeJsonFile(file,data){
  const fd=fs.openSync(file,'w');let parts=[],length=0;
  const flush=()=>{if(length){fs.writeFileSync(fd,parts.join(''));parts=[];length=0;}};

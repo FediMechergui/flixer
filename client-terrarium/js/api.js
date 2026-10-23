@@ -985,13 +985,16 @@
         const names=[...new Set([...(await this._searchProviders||['myflixer','fmovies','hdtoday','streamtunisie','kirmalk','ahwaktv','egydead','tuniflix','cinetimes','cimatn','animegg','megacartoons','toontales','myasiantv','multimovies','yoturkish','frenchstream','dessinanime']),...(window.Capacitor?.Plugins?.WcoSource?['wco']:[])])];
         if(signal?.aborted)return {items:local,totalPages:1};
         const ids=new Set(local.map(i=>i.id));let pending=names.length+1;
+        const exact=local.find(item=>[item.title,...(item.altTitles||[])].some(value=>norm(value)===norm(q)));
+        const aliases=[...new Set(exact?[exact.title,...(exact.altTitles||[])]:[])].filter(value=>value&&norm(value)!==norm(q)&&value.length<=120).slice(0,2);
         const result=()=>({items:[...new Map([...ids].map(id=>{const item=normalize(this._byId.get(id)||{});return [item.id,item];})).values()].filter(i=>i.id),totalPages:1,pending});
         const saved=Promise.resolve(this._indexReady).then(async()=>{
           if(signal?.aborted)return;const rows=await this.all();if(signal?.aborted)return;
           rows.filter(i=>hit(i.title)||(i.alt&&hit(i.alt))||i.altTitles.some(hit)).sort(byWeight).slice(0,60).forEach(i=>ids.add(i.id));
         }).finally(()=>{pending--;if(!signal?.aborted&&onLocal)onLocal(result());});
         await Promise.allSettled([...names.map(async provider=>{try{
-          const {body}=provider==='wco'&&window.Capacitor?.Plugins?.WcoSource?{body:{items:await window.FlixerWcoSource.search(q)}}:await getJson(`${API_BASE}/api/search?${new URLSearchParams({q,provider})}`,12000,signal);
+          const params=new URLSearchParams({q,provider});for(const alias of aliases)params.append('alias',alias);
+          const {body}=provider==='wco'&&window.Capacitor?.Plugins?.WcoSource?{body:{items:await window.FlixerWcoSource.search(q)}}:await getJson(`${API_BASE}/api/search?${params}`,12000,signal);
           if(signal?.aborted)return;
           const rows=body.items||[];this._merge(rows);for(const row of rows)ids.add((this._byId.get(row.id)||row).id);
         }finally{pending--;if(!signal?.aborted&&onLocal)onLocal(result());}}),saved]);

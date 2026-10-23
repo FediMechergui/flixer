@@ -12,7 +12,7 @@
     "refresh-data": "node scripts/refresh-providers.js --product flixer",
     "export": "node scripts/product.js flixer export",
     "build:static": "node scripts/product.js flixer build",
-    "publish": "vercel deploy --prod --yes --archive=tgz",
+    "publish": "npx netlify-cli deploy --prod --build",
     "snapshot:save": "node scripts/snapshot.js save",
     "snapshot:restore": "node scripts/snapshot.js restore",
     "dev:flixer": "node scripts/product.js flixer dev",

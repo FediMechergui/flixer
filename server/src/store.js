@@ -4,9 +4,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {readJsonFile,writeJsonFile} from './json-files.js';
+import {hosted} from './hosting.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-export const DATA_DIR = process.env.DATA_DIR || (process.env.VERCEL ? path.join(os.tmpdir(), `stream-library-${process.env.APP_PRODUCT || 'flixer'}`) : path.resolve(__dirname, '../data'));
+const sourceDirectory = path.dirname(fileURLToPath(import.meta.url));
+export const DATA_DIR = process.env.DATA_DIR || (hosted() ? path.join(os.tmpdir(), `stream-library-${process.env.APP_PRODUCT || 'flixer'}`) : path.resolve(sourceDirectory, '../data'));
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
 export function readJson(name, fallback) {

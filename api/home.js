@@ -1,4 +1,4 @@
-import {ensureRuntime} from '../server/src/runtime-source.js';
+import {ensureTitleRuntime,runtimeHome} from '../server/src/runtime-source.js';
 import { PRODUCT } from '../server/src/product.js';
 import { libraryHome } from '../server/src/library-service.js';
 
@@ -10,8 +10,9 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
-    await ensureRuntime();
-    const data = libraryHome();
+    await ensureTitleRuntime();
+    const snapshot=await runtimeHome();
+    const data = snapshot?libraryHome(snapshot):libraryHome();
     res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120');
     return res.status(200).json(data);
   } catch (err) {

@@ -3,9 +3,8 @@
 ## Data updates without deployments
 
 Scheduled refreshes publish catalogue data to the `catalogue-runtime` GitHub
-release. They never call Vercel deployment hooks or run `vercel deploy`.
-Automatic deployments on Git pushes are disabled in `vercel.json`; deploy
-application code explicitly when it changes.
+release. They never call hosting deployment hooks. The Netlify API is deployed explicitly
+with `npm run publish` when backend code changes; data updates do not rebuild it.
 
 The deployed backend checks the small runtime manifest at most once per two
 minutes per active instance. It downloads the runtime index only when the
@@ -17,6 +16,9 @@ Each publication uses immutable, SHA-256-addressed gzip files. All changed files
 upload before the manifest advances. An invalid, incomplete or unavailable
 update retains the last complete runtime. Title/episode-owner buckets are
 downloaded on demand, with bounded parallelism, decompression and cache size.
+Optional provider source/episode-owner packs preserve Arabic, French cartoon
+and official YouTube adapter metadata without bundling a frozen server snapshot.
+Older APKs can ignore these additional manifest fields.
 The publisher reuses unchanged files, paces uploads, retains the preceding
 manifest and retires unused older assets after a grace period.
 
@@ -30,12 +32,12 @@ without changing the live manifest. Other releases and APK files are untouched.
 New APKs use `/api/catalogue` for bootstrap and version-pinned index parts below
 2 MB. Unchanged parts are reused on the device when the next publication
 arrives. The static bundle remains an offline fallback. Catalogue publication
-does not change the APK or require a Vercel build. Code changes still need an
+does not change the APK or require a hosting build. Code changes still need an
 explicit backend deployment and a new APK when native/client code changes.
 
 Android also reads these immutable files directly through its existing native
 HTTP transport. This keeps catalogue and saved-guide updates available while
-backend hosting is blocked and removes those data transfers from Vercel.
+backend hosting is blocked and removes those data transfers from the backend.
 Compressed files are hash checked before bounded decompression. Search and
 playback resolution still use the backend and device adapters as appropriate.
 The bundled index opens browsing immediately; the complete live index merges

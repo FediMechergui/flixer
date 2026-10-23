@@ -1,0 +1,28 @@
+[build]
+  command = "npm ci --prefix server && node scripts/build-netlify.js"
+  publish = "artifacts/netlify-public"
+
+[build.environment]
+  NODE_VERSION = "22"
+  APP_PRODUCT = "flixer"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+[[redirects]]
+  from = "/data/bootstrap.json"
+  to = "/api/catalogue?part=bootstrap"
+  status = 200
+
+[[headers]]
+  for = "/data/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Cache-Control = "public, max-age=3600"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

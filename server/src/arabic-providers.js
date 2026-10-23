@@ -3,6 +3,8 @@ import { load } from 'cheerio';
 import { safeRemoteFetch } from './stream-security.js';
 import JSON5 from 'json5';
 import fs from 'node:fs';
+import {runtimeProviderSnapshot} from './runtime-source.js';
+import {hosted} from './hosting.js';
 
 export const ARABIC_PROVIDERS={
   ...CIMAFU_PROVIDERS,
@@ -73,7 +75,8 @@ export function arabicIdFromUrl(value){
 }
 const cache=new Map();
 let savedStamp='',savedRows=new Map(),savedEpisodes=new Map();
-export function arabicSnapshot(id){
+export async function arabicSnapshot(id){
+  if(hosted())return runtimeProviderSnapshot(id);
   const deployment=new URL('../deployment-arabic.json',import.meta.url),local=new URL('../data/providers-flixer.json',import.meta.url);
   const file=!process.env.VERCEL&&fs.existsSync(local)?local:fs.existsSync(deployment)?deployment:local;if(!fs.existsSync(file))return null;
   const stamp=`${file}:${fs.statSync(file).mtimeMs}`;
@@ -202,7 +205,7 @@ export function parseArabicDetails(id,html){
 }
 const detailRequests=new Map();
 export async function getArabicDetails(id,{fresh=false}={}){
-  const saved=arabicSnapshot(id);
+  const saved=await arabicSnapshot(id);
   if(!fresh&&saved?.id===id&&saved.episodesComplete!==false&&(!parseArabicId(id).query||saved.poster?.custom)&&saved.metadataVersion>=(parseArabicId(id).provider==='tuniflix'?4:3)&&Date.now()-Date.parse(saved.detailsFetchedAt||0)<6*3600000)return saved;
   if(detailRequests.has(id))return detailRequests.get(id);
   const request=getLiveArabicDetails(id).catch(error=>{if(!fresh&&saved?.id===id)return {...saved,providerErrors:[{provider:parseArabicId(id).provider,error:error.message,cached:true}]};throw error;}).finally(()=>detailRequests.delete(id));
@@ -309,7 +312,7 @@ export async function cinetimesCommonsServers(html,{fetchJson=async url=>{
 }
 export async function resolveArabicServers(id,{fresh=false,transport}={}){
   if(parseCimafuId(id))return resolveCimafuServers(id,{fresh,transport});
-  const saved=arabicSnapshot(id),episode=saved?.episodes?.find(e=>e.id===id),stored=episode?.cachedPlayers;
+  const saved=await arabicSnapshot(id),episode=saved?.episodes?.find(e=>e.id===id),stored=episode?.cachedPlayers;
   if(!fresh&&stored?.length&&parseArabicId(id)?.provider!=='cimatn'){
     const validated=approvedPlayers(id,stored.map(s=>({url:s.embedUrl||(s.type==='youtube'?`https://www.youtube.com/embed/${s.videoId}`:'')})));
     const files=stored.filter(s=>s.type==='file'&&(pSafeCommons(s.streamUrl)||safeTunisianFile(s.streamUrl))||parseArabicId(id)?.provider==='streamtunisie'&&s.type==='hls'&&safeSourceHls(s.streamUrl));

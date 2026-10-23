@@ -1,8 +1,10 @@
 import {createHash} from 'node:crypto';
 import {gunzipSync} from 'node:zlib';
 import {readPackedTitle,readPackedEpisodeTitle} from './title-packs.js';
+import {hosted} from './hosting.js';
 
 export const RUNTIME_ROOT='https://github.com/FediMechergui/flixer/releases/download/catalogue-runtime/';
+export const runtimeAssets=value=>[...Object.values(value.files||{}),...Object.values(value.providerFiles||{})];
 const digest=body=>createHash('sha256').update(body).digest('hex');
 const bucket=(id,bits=8)=>(parseInt(digest(id).slice(0,2),16)&(255<<(8-bits))).toString(16).padStart(2,'0');
 export function validateRuntimeManifest(value){
@@ -10,6 +12,7 @@ export function validateRuntimeManifest(value){
  for(const [key,file]of Object.entries(value.files))if(!/^(?:runtime|bootstrap|services|universes|index-\d{4}|title-[a-f0-9]{2}|owner-[a-f0-9]{2})$/.test(key)||!/^[a-f0-9]{64}$/.test(file?.sha256)||file.name!=='data-'+file.sha256+'.json.gz'||!Number.isSafeInteger(file.bytes)||file.bytes<1||file.bytes>64*1024*1024)throw Error('Invalid runtime asset');
  if(!value.files.runtime||!value.files.bootstrap||value.indexParts.some(key=>!/^index-\d{4}$/.test(key)||!value.files[key]))throw Error('Incomplete runtime manifest');
  if(value.bucketBits!==undefined&&(!Number.isInteger(value.bucketBits)||value.bucketBits<4||value.bucketBits>8))throw Error('Invalid runtime bucket size');
+ if(value.providerFiles){if(Object.keys(value.providerFiles).length>512||!Number.isInteger(value.providerBucketBits)||value.providerBucketBits<4||value.providerBucketBits>8)throw Error('Invalid provider bucket size');for(const [key,file]of Object.entries(value.providerFiles))if(!/^(?:source|source-owner)-[a-f0-9]{2}$/.test(key)||!/^[a-f0-9]{64}$/.test(file?.sha256)||file.name!=='data-'+file.sha256+'.json.gz'||!Number.isSafeInteger(file.bytes)||file.bytes<1||file.bytes>64*1024*1024)throw Error('Invalid provider asset');}
  return value;
 }
 async function boundedBody(response,limit){
@@ -44,11 +47,13 @@ export function createRuntimeSource({fetchImpl=fetch,now=Date.now,pollMs=120000,
  }
  async function titleAt(id,target){if(typeof id!=='string'||!id||id.length>350)return null;const file=target?.files['title-'+bucket(id,target.bucketBits||8)];if(!file)return null;const rows=await jsonAsset(file.sha256,48*1024*1024);return Object.hasOwn(rows,id)?rows[id]:null}
  const title=id=>titleAt(id,manifest);
- return {refresh,check,current:()=>catalog,manifest:()=>available,readHash:jsonAsset,async part(key,sha){const file=available?.files[key];if(!file)throw Error('Unknown catalogue part');return jsonAsset(sha||file.sha256)},title,publishedTitle:id=>titleAt(id,available),async episode(id){const file=manifest?.files['owner-'+bucket(id,manifest.bucketBits||8)];if(!file)return null;const rows=await jsonAsset(file.sha256,16*1024*1024);return Object.hasOwn(rows,id)?title(rows[id].id):null}};
+ return {refresh,check,current:()=>catalog,manifest:()=>available,readHash:jsonAsset,async providerSnapshot(id){if(typeof id!=='string'||!id||id.length>350)return null;const target=available,bits=target?.providerBucketBits||4,files=target?.providerFiles;if(!files)return null;let owner=id;if(/^sp:[^:]+:e:/.test(id)){const file=files['source-owner-'+bucket(id,bits)];if(!file)return null;const rows=await jsonAsset(file.sha256,32*1024*1024);if(!Object.hasOwn(rows,id))return null;owner=rows[id].id;}const file=files['source-'+bucket(owner,bits)];if(!file)return null;const rows=await jsonAsset(file.sha256,96*1024*1024);return Object.hasOwn(rows,owner)?rows[owner]:null},async part(key,sha){const file=available?.files[key];if(!file)throw Error('Unknown catalogue part');return jsonAsset(sha||file.sha256)},title,publishedTitle:id=>titleAt(id,available),async episode(id){const file=manifest?.files['owner-'+bucket(id,manifest.bucketBits||8)];if(!file)return null;const rows=await jsonAsset(file.sha256,16*1024*1024);return Object.hasOwn(rows,id)?title(rows[id].id):null}};
 }
 export const runtimeSource=createRuntimeSource();
-export const ensureRuntime=()=>process.env.VERCEL&&process.env.APP_PRODUCT!=='dahsha'?runtimeSource.refresh():Promise.resolve(null);
-export const ensureTitleRuntime=()=>process.env.VERCEL&&process.env.APP_PRODUCT!=='dahsha'?runtimeSource.check():Promise.resolve(null);
+export const ensureRuntime=()=>hosted()&&process.env.APP_PRODUCT!=='dahsha'?runtimeSource.refresh():Promise.resolve(null);
+export const ensureTitleRuntime=()=>hosted()&&process.env.APP_PRODUCT!=='dahsha'?runtimeSource.check():Promise.resolve(null);
+export const runtimeHome=async()=>runtimeSource.manifest()?runtimeSource.part('bootstrap'):null;
+export const runtimeProviderSnapshot=async id=>hosted()?runtimeSource.providerSnapshot(id):null;
 export const runtimeLibrary=()=>runtimeSource.current();
 export const runtimeTitle=id=>runtimeSource.current()?runtimeSource.title(id):Promise.resolve(readPackedTitle(id));
 export const runtimeEpisode=id=>runtimeSource.current()?runtimeSource.episode(id):Promise.resolve(readPackedEpisodeTitle(id));

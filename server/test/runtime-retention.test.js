@@ -3,6 +3,12 @@ const now=Date.parse('2026-10-23T14:00:00Z'),name=n=>'data-'+n.toString(16).padS
 const manifest=n=>({format:1,product:'flixer',generatedAt:'2026-10-23T13:00:00Z',count:1,indexParts:['index-0000'],files:{runtime:file(n),bootstrap:file(n+1),'index-0000':file(n+2)}});
 const asset=(n,age=3600000)=>({id:n+1,name:name(n),created_at:new Date(now-age).toISOString()});
 
+test('capacity cleanup protects provider guides and owner packs in every retained manifest',()=>{
+ const source={...manifest(0),providerBucketBits:4,providerFiles:{'source-00':file(10),'source-owner-00':file(11)}};
+ const plan=planRuntimeCleanup({assets:Array.from({length:20},(_,n)=>asset(n)),manifests:[source],now,limit:20,headroom:10});
+ assert.ok(plan.remove.length>0);assert.ok(plan.remove.every(a=>![0,1,2,10,11].includes(a.id-1)));
+});
+
 test('a full release makes room before upload while retaining both published and incoming generations',()=>{
  const assets=Array.from({length:1000},(_,n)=>asset(n)),incoming=[file(1001),file(1001),file(1002)];const plan=planRuntimeCleanup({assets,manifests:[manifest(0),manifest(10),manifest(20)],incoming,now});
  assert.equal(plan.projected,900);assert.equal(plan.remove.length,103);assert.ok(plan.remove.every(a=>![0,1,2,10,11,12,20,21,22].includes(a.id-1)));assert.ok(!plan.remove.some(a=>a.name===name(1001)));

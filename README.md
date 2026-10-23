@@ -2,7 +2,7 @@
 
 Flixer covers movies and TV shows across all genres, with its own interface, universes, streaming services, and filters.
 
-- Android app backed by [hosted catalogue and API](https://flixer-mu.vercel.app)
+- Android app backed by the [Netlify API](https://flixer-api-fedimechergui.netlify.app/api/health)
 - Repository: [FediMechergui/flixer](https://github.com/FediMechergui/flixer)
 - Android downloads: [Releases](https://github.com/FediMechergui/flixer/releases)
 - Playback diagnostics: [device verification, recovered alternatives and missing files](docs/playback-verification-2026-10-20.md); [original 89-route HTTP investigation](docs/playback-failures-2026-10-20.md).
@@ -29,7 +29,7 @@ The repository defaults to **Flixer**. The default commands do not build or depl
 | `npm run export -- --cached` | Export the restored catalogue |
 | `npm run refresh:providers` | Incrementally refresh this app's providers |
 | `npm run test` | Validate providers, catalogue policy, and media handling |
-| `npm run publish` | Deploy this repository to its linked Vercel project |
+| `npm run publish` | Build and deploy the API to its linked Netlify site |
 
 ## Project layout
 
@@ -45,7 +45,7 @@ The repositories retain independent copies of the common provider infrastructure
 
 ```sh
 npm ci --prefix mobile
-npm run build:mobile -- --data-base https://flixer-mu.vercel.app
+npm run build:mobile -- --data-base https://flixer-api-fedimechergui.netlify.app --api-base https://flixer-api-fedimechergui.netlify.app
 npm run sync --prefix mobile
 ```
 
@@ -71,11 +71,11 @@ regional FMovies scans. Recently advertised episodes refresh independently of th
 historical crawl. This does not guarantee every upstream title or server is
 available. See [specialist source contracts](docs/specialist-sources.md).
 
-`vercel.json` targets Flixer's own Vercel project and build output. Configure `STREAM_PROXY_SECRET` in Vercel for signed stream proxy URLs. Local development uses an ephemeral key.
+`netlify.toml` deploys one shared API function and small service/universe metadata files. The Android app is the supported interface; this deployment does not publish a Flixer website. Run `npx netlify-cli login`, link the Flixer API site, then `npm run publish`. Video goes directly from the source to the device, keeping media traffic off the backend. Netlify does not need a stream-proxy secret.
 
 This repo's refresh workflow updates only Flixer and publishes immutable catalogue data to its `catalogue-runtime` release. The deployed backend checks for a new version without creating a deployment; APKs fetch the changed index parts. The full incremental crawl cache remains in `data-snapshot`. See [catalogue refresh](docs/catalogue-refresh.md). Android CI builds only Flixer and uses `ANDROID_KEYSTORE_B64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, and `ANDROID_KEY_PASSWORD`; without them it produces an unsigned APK.
 
-Routine refreshes never call Vercel deployment hooks. Automatic Git deployments are disabled; deploy backend code explicitly when it changes.
+Routine refreshes never create hosting deployments. Deploy backend code explicitly when it changes. The legacy Vercel configuration remains for compatibility checks with automatic Git deployment disabled.
 Read [Scraper behavior](docs/SCRAPERS.md) and [Provider integration](docs/FMOVIES.md) for parsing, matching, and playback details. Upstream streams and artwork may be unavailable; failed requests retain imported catalogue data.
 
 HDToday challenges GitHub's runner. Hosted refreshes retain its cached titles
@@ -101,11 +101,11 @@ The GitHub refresh workflow schedules latest-release passes every 15 minutes and
 
 J-drama, C-drama, French series, Canadian and French Canadian collections use verified country/language metadata across existing providers. Japanese animation is excluded from J-drama. French Canadian requires both Canadian origin and French original language.
 
-One Pace uses its official watch page and linked public Pixeldrain file lists. Each arc is a distinct series, separate from regular One Piece. Only actual numbered MP4 files that permit external playback become playable episodes; English sub/dub, quality and closed-caption variants stay separate server choices. Files restricted to the official One Pace embed, MKV-only entries, unavailable files and source quota errors are not converted into fake streams. Media downloads go directly to the source rather than through Vercel.
+One Pace uses its official watch page and linked public Pixeldrain file lists. Each arc is a distinct series, separate from regular One Piece. Only actual numbered MP4 files that permit external playback become playable episodes; English sub/dub, quality and closed-caption variants stay separate server choices. Files restricted to the official One Pace embed, MKV-only entries, unavailable files and source quota errors are not converted into fake streams. Media downloads go directly to the source rather than through the backend.
 
 Official YouTube shows are curated from GLITCH, Noob & Olydri, Muse Asia, Ani-One Asia, GUNDAM CHANNEL INTL and YOUKU English. Only sufficiently long, explicitly numbered episodes are imported. Trailers, clips, members-only entries and episode-range compilations are excluded. These channels are official sources, not a claim that every show is exclusive to YouTube. Regional restrictions still apply. `node scripts/import-official-shows.js` seeds their current catalogue and One Pace arcs; normal provider refreshes then continue traversal and episode checks.
 
-The Vercel backend serves requests on demand. Its request functions cannot run an indefinite background scraper. The independent GitHub workflow refreshes snapshots while the app continues using the latest successfully published catalogue. Latest-only passes preserve historical cursors and skip expensive metadata audits. Provider errors preserve existing titles and episodes. New provider domains require a reviewed adapter; the server does not automatically trust or execute unknown sources.
+The Netlify backend serves requests on demand. Its request functions cannot run an indefinite background scraper. The independent GitHub workflow refreshes snapshots while the app continues using the latest successfully published catalogue. Latest-only passes preserve historical cursors and skip expensive metadata audits. Provider errors preserve existing titles and episodes. New provider domains require a reviewed adapter; the server does not automatically trust or execute unknown sources.
 
 Further French/Canadian candidates are [TV5MONDEplus](https://www.tv5mondeplus.com/fr/series) and [TV5 Unis](https://www.tv5unis.ca/collections/un-film-par-jour). They are not advertised as integrated players: geographic availability and account requirements need validation before an adapter is enabled.
 
@@ -118,7 +118,7 @@ Closing a native player updates only its own active playback attempt. Switching 
 
 The source selector sits below the picture with 44 px touch controls. After all advertised servers fail, one bounded alternate-source lookup runs automatically; manual server choices and closing the player cancel its UI changes. Fonts are bundled locally with their licenses.
 
-Vercel builds package full title records into 256 compressed hash buckets instead of uploading one file per title. `/data/shows/:id.json` keeps the existing APK URL contract through a cacheable saved-title endpoint, including uncertain editions and full source synopses. Known episode playback can load its verified parent record from the same packs without parsing the whole deployment catalogue. The deployment bundle remains a fallback; the backend reads newer versioned catalogue and title data without a redeployment. New APKs fetch only changed index parts through `/api/catalogue`.
+The live data publisher packs full title records into compressed hash buckets instead of uploading one file per title. `/data/shows/:id.json` keeps the existing APK URL contract through a cacheable saved-title endpoint, including uncertain editions and full source synopses. Known episode playback can load its verified parent record from the same packs without parsing the whole deployment catalogue. The backend reads versioned catalogue and title data on demand without a redeployment. Provider-specific Arabic, French cartoon and official YouTube guides have separate source packs, preserving their cached player IDs. Home requests read the small bootstrap; provider-specific searches skip the full catalogue and use supplied aliases. New APKs fetch only changed index parts directly from the data release, with `/api/catalogue` as a fallback.
 
 
 ## Cima4u and Arabic coverage
