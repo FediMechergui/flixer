@@ -20,6 +20,19 @@ function fixture(shows, streams = {}, respond, options = {}) {
   return {api:new context.window.Api.FlixerApi(),requests,events};
 }
 
+test('small bundled index parts load completely while preserving a newer saved home title',async()=>{
+ const generation='2026-10-21',rows=[{id:'one',kind:'film',title:'Old title',aliasIds:['fm:m:1']},{id:'two',kind:'series',title:'Second title',countries:['TN'],collections:['tunisian']}];
+ const storage=new Map([['flixer:homeSnapshot',JSON.stringify({product:'flixer',generatedAt:'2026-10-23',shows:[{...rows[0],title:'Current title'}]})]]);
+ const {api,requests}=fixture([],{},null,{storage,generatedAt:generation,config:{mobile:true},fetchBody:url=>url==='/data/index.json'?{product:'flixer',generatedAt:generation,count:2,indexParts:['index-0000.json','index-0001.json']}:/^\/data\/index-000[01]\.json$/.test(url)?{product:'flixer',generatedAt:generation,shows:[rows[url.includes('0000')?0:1]]}:undefined});
+ await api.catalog();await api._indexReady;await api._metadataReady;
+ assert.equal(api._catalog.shows.length,2);assert.equal((await api.show('fm:m:1')).title,'Current title');assert.deepEqual(Array.from((await api.show('two')).collections),['tunisian']);assert.ok(requests.includes('/data/index-0001.json'));
+});
+
+test('a partial bundled generation never replaces the saved catalogue',async()=>{
+ const {api}=fixture([{id:'saved',kind:'film',title:'Saved title'}],{},null,{config:{mobile:true},fetchBody:url=>url==='/data/index.json'?{product:'flixer',generatedAt:'2026-10-23',count:2,indexParts:['index-0000.json']}:url==='/data/index-0000.json'?{product:'flixer',generatedAt:'2026-10-23',shows:[{id:'partial',kind:'film',title:'Partial'}]}:undefined});
+ await api.catalog();await api._indexReady;await api._metadataReady;assert.deepEqual(Array.from(api._catalog.shows,row=>row.id),['saved']);
+});
+
 test('an explicit app backend never falls back to Myflixer after a health-check failure',async()=>{
   const row={id:'sp:tuniflix:m:example',title:'A specialist film',kind:'film'};
   const {api,requests}=fixture([],{},null,{config:{apiBase:'https://backend.test'},fetchBody:url=>{if(url.includes('/api/genres')||url.includes('/data/shows/'))throw new Error('Unavailable');if(url.includes('/api/title?'))return row;}});

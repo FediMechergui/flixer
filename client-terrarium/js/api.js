@@ -331,6 +331,18 @@
       this._liveIndexParts=next;
       return {body:{product:'flixer',generatedAt:manifest.generatedAt,shows}};
     }
+    async _loadBundledIndex(){
+      const {body}=await getJson('/data/index.json',30000);
+      if(Array.isArray(body.shows))return {body};
+      if(body.product!=='flixer'||!Number.isSafeInteger(body.count)||body.count<1||!Array.isArray(body.indexParts)||!body.indexParts.length||body.indexParts.length>512||new Set(body.indexParts).size!==body.indexParts.length||body.indexParts.some(name=>!/^index-\d{4}\.json$/.test(name)))throw Error('Invalid bundled catalogue');
+      const shows=[];
+      for(let offset=0;offset<body.indexParts.length;offset+=4){
+        const parts=await Promise.all(body.indexParts.slice(offset,offset+4).map(name=>getJson('/data/'+name,30000)));
+        for(const {body:part}of parts){if(part.product!=='flixer'||part.generatedAt!==(body.generatedAt||null)||!Array.isArray(part.shows))throw Error('Inconsistent bundled catalogue');shows.push(...part.shows);}
+      }
+      if(shows.length!==body.count||new Set(shows.map(row=>row.id)).size!==body.count)throw Error('Incomplete bundled catalogue');
+      return {body:{...body,shows}};
+    }
     /* ----- index ----- */
     catalog() {
       if (this._catalog) return Promise.resolve(this._catalog);
@@ -351,7 +363,7 @@
           this._recentIds=new Set(store.get('recentIds',[]).filter(id=>this._byId.has(id)));
           this._universeData = new Map(); this._serviceLogos = new Map();
           const notify=()=>{this._reindex();window.dispatchEvent(new CustomEvent("flixer:catalog",{detail:{updated:true}}));};
-          const initialIndex=()=>CFG.mobile?getJson('/data/index.json',60000).catch(()=>this._loadLiveIndex()):this._loadLiveIndex().catch(()=>getJson(`${DATA_BASE}/data/index.json`,60000));
+          const initialIndex=()=>CFG.mobile?this._loadBundledIndex().catch(()=>this._loadLiveIndex()):this._loadLiveIndex().catch(()=>getJson(`${DATA_BASE}/data/index.json`,60000));
           this._indexReady = new Promise(resolve=>setTimeout(resolve,750)).then(initialIndex).then(async({body})=>{
             if(body.product!=='flixer')throw new Error('Wrong product index');
             await this._mergeIndex(body.shows||[],body.generatedAt||this._bundleAt||'1970-01-01');if(Date.parse(body.generatedAt)>Date.parse(this._fullIndexAt||0))this._fullIndexAt=body.generatedAt;notify();

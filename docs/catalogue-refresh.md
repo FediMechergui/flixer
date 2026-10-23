@@ -45,6 +45,13 @@ in the background and cannot replace newer cached home rows with older ones.
 Mobile background sync checks the publication rather than launching provider
 crawls on every phone. The scheduled collector supplies those updates.
 
+Hosted Android builds also split their bundled offline index into local parts
+of approximately 1 MB, loading at most four at once. The complete generation is
+validated before it merges into the catalogue. This avoids holding a roughly
+92 MB response and its decoded JSON string together in the mobile WebView.
+Missing parts retain the existing catalogue and try the live publication;
+older bundled index files remain readable.
+
 ```sh
 gh workflow run refresh.yml --ref main -f latest_only=true
 ```

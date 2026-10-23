@@ -1,4 +1,5 @@
 import { configureMobile } from './configure-mobile.js';
+import {writeMobileIndex} from './bundle-mobile-index.js';
 // Builds the Terrarium-based Flixer client (client-terrarium/) into a static folder.
 //   node scripts/build-terrarium.js [--out <dir>] [--data-base <url>] [--api-base <url>] [--mobile]
 // --mobile writes into mobile/www (the Capacitor webDir) and bundles the exported data unless
@@ -74,7 +75,8 @@ if (!dataBase) {
 }
 if(mobile && dataBase) {
   fs.mkdirSync(path.join(out,'data'),{recursive:true});
-  for(const name of ['bootstrap.json','index.json','universes.json','services.json']) if(fs.existsSync(path.join(dataDir,name))) fs.copyFileSync(path.join(dataDir,name),path.join(out,'data',name));
+  for(const name of ['bootstrap.json','universes.json','services.json']) if(fs.existsSync(path.join(dataDir,name))) fs.copyFileSync(path.join(dataDir,name),path.join(out,'data',name));
+  if(fs.existsSync(path.join(dataDir,'index.json')))console.log('[terrarium] mobile index',writeMobileIndex(path.join(dataDir,'index.json'),path.join(out,'data')));
 }
 fs.writeFileSync(path.join(out, 'config.js'), `window.FLIXER_CONFIG = ${JSON.stringify({ dataBase, apiBase, mobile, builtAt: new Date().toISOString() })};\n`);
 
