@@ -1,6 +1,6 @@
 # Android provider playback audit — 24 October 2026
 
-APKs 1.6.24, 1.6.22, 1.6.23, 1.6.25; 194/336 returned server choices tested across 68 title samples; 45 advancing-video confirmations.
+APKs 1.6.24, 1.6.22, 1.6.23, 1.6.25; 228/336 returned server choices tested across 68 title samples; 56 advancing-video confirmations.
 
 This checks the production player in an Android emulator. Each case has one server, so another source cannot silently satisfy its test. Playback requires the same visible content clock to advance by at least one second, reach three seconds and have a duration of at least two minutes. HTTP success, loaded frames and native “playing” signals alone are not confirmations. These are short playback samples, not full-film or every-episode validation.
 
@@ -8,19 +8,19 @@ The source provider identifies the catalogue sample. A returned alternative may 
 
 | Provider | Samples | Returned choices | Own-source choices | Tested | Played | Played from own source |
 |---|---:|---:|---:|---:|---:|---:|
-| myflixer | 2 | 38 | 19 | 19 | 2 | 2 |
-| fmovies | 3 | 36 | 9 | 19 | 2 | 0 |
-| hdtoday | 5 | 45 | 36 | 19 | 3 | 3 |
-| cimafu | 6 | 62 | 62 | 19 | 3 | 3 |
+| myflixer | 2 | 38 | 19 | 24 | 5 | 4 |
+| fmovies | 3 | 36 | 9 | 23 | 3 | 1 |
+| hdtoday | 5 | 45 | 36 | 24 | 3 | 3 |
+| cimafu | 6 | 62 | 62 | 24 | 4 | 4 |
 | streamtunisie | 2 | 2 | 2 | 2 | 2 | 2 |
-| kirmalk | 5 | 24 | 4 | 18 | 4 | 0 |
+| kirmalk | 5 | 24 | 4 | 23 | 5 | 0 |
 | ahwaktv | 2 | 8 | 8 | 8 | 3 | 3 |
-| egydead | 5 | 37 | 4 | 19 | 3 | 1 |
+| egydead | 5 | 37 | 4 | 24 | 5 | 1 |
 | tuniflix | 3 | 3 | 3 | 3 | 1 | 1 |
 | cinetimes | 1 | 1 | 1 | 1 | 1 | 1 |
 | cimatn | 6 | 5 | 5 | 5 | 1 | 1 |
 | frenchstream | 2 | 11 | 8 | 11 | 1 | 1 |
-| dessinanime | 6 | 32 | 3 | 19 | 6 | 0 |
+| dessinanime | 6 | 32 | 3 | 24 | 9 | 3 |
 | onepace | 4 | 0 | 0 | 0 | 0 | 0 |
 | youtubeoriginals | 3 | 9 | 2 | 9 | 1 | 1 |
 | wco | 4 | 4 | 4 | 4 | 4 | 4 |
@@ -89,9 +89,9 @@ The source provider identifies the catalogue sample. A returned alternative may 
 | 30 | cimafu / Tenzing | Cima4u - www.mp4upload.com - Arabic sub / www.mp4upload.com | 1.6.24 | no_advancing_video |  |
 | 31 | cimafu / Tenzing | Cima4u - bysesukior.com - Arabic sub / bysesukior.com | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
 | 32 | cimafu / Tenzing | Cima4u - mixdrop.top - Arabic sub / mixdrop.top | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
-| 33 | cimafu / Tenzing | Cima4u - hgcloud.to - Arabic sub / hgcloud.to | 1.6.25 | pending |  |
-| 34 | cimafu / Tenzing | Cima4u - playmogo.com - Arabic sub / playmogo.com | 1.6.25 | pending |  |
-| 35 | cimafu / Tenzing | Cima4u - voe.sx - Arabic sub / voe.sx | 1.6.25 | pending |  |
+| 33 | cimafu / Tenzing | Cima4u - hgcloud.to - Arabic sub / hgcloud.to | 1.6.25 | playback_confirmed | 0.4 → 4.5 s / 7533.7 s (media3) |
+| 34 | cimafu / Tenzing | Cima4u - playmogo.com - Arabic sub / playmogo.com | 1.6.25 | no_advancing_video |  |
+| 35 | cimafu / Tenzing | Cima4u - voe.sx - Arabic sub / voe.sx | 1.6.25 | verification_required | CONFIRM YOU ARE NOT A ROBOT Click the button I'm not a robot |
 | 36 | streamtunisie / ستارتاب | StreamTunisie - YouTube / www.youtube.com | 1.6.23 | playback_confirmed | 0.5 → 3.8 s / 150.1 s (webview) |
 | 37 | myflixer / The Diplomat | Myflixer · Soap2Cloud (HLS) / snowy-morning.soapsoap123.workers.dev | 1.6.25 | playback_confirmed | 0.3 → 4.3 s / 2648.9 s (media3) (earlier playback confirmed on 1.6.25) |
 | 38 | myflixer / The Diplomat | Myflixer · Player 2 / balance.medmedia03.wiki | 1.6.23 | no_advancing_video |  |
@@ -105,16 +105,16 @@ The source provider identifies the catalogue sample. A returned alternative may 
 | 46 | myflixer / The Diplomat | French Stream · VF · netu / trakx.lol | 1.6.24 | no_advancing_video |  |
 | 47 | myflixer / The Diplomat | French Stream · VF · voe / trakx.lol | 1.6.25 | no_advancing_video |  |
 | 48 | myflixer / The Diplomat | French Stream · VOSTFR · uqload / uqload.vc | 1.6.25 | no_advancing_video |  |
-| 49 | myflixer / The Diplomat | French Stream · VOSTFR · voe / trakx.lol | 1.6.25 | pending |  |
-| 50 | myflixer / The Diplomat | MultiMovies - Cineverse / rozgarlelo.modiplay.xyz | 1.6.25 | pending |  |
+| 49 | myflixer / The Diplomat | French Stream · VOSTFR · voe / trakx.lol | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
+| 50 | myflixer / The Diplomat | MultiMovies - Cineverse / rozgarlelo.modiplay.xyz | 1.6.25 | playback_confirmed | 0.0 → 4.0 s / 3070.4 s (webview) |
 | 51 | myflixer / The Diplomat | MultiMovies - GD mirror / streams.iqsmartgames.com | 1.6.25 | pending |  |
 | 52 | myflixer / The Diplomat | MultiMovies - Vidrift / embed.vidrift.net | 1.6.25 | pending |  |
 | 53 | myflixer / The Diplomat | MultiMovies - VIDOUT / vidout.pages.dev | 1.6.25 | pending |  |
 | 54 | myflixer / The Diplomat | MultiMovies - Filmu / embed.filmu.in | 1.6.25 | pending |  |
 | 55 | myflixer / The Diplomat | MultiMovies - VidBolt / vidbolt.xyz | 1.6.25 | pending |  |
-| 56 | myflixer / The Diplomat | Myflixer · Soap2Cloud (HLS) / snowy-morning.soapsoap123.workers.dev | 1.6.25 | pending |  |
-| 57 | myflixer / The Diplomat | Myflixer · Player 2 / balance.medmedia03.wiki | 1.6.25 | pending |  |
-| 58 | myflixer / The Diplomat | Myflixer · Player 3 / vidfast.pro | 1.6.25 | pending |  |
+| 56 | myflixer / The Diplomat | Myflixer · Soap2Cloud (HLS) / snowy-morning.soapsoap123.workers.dev | 1.6.25 | playback_confirmed | 0.8 → 4.8 s / 2648.9 s (media3) |
+| 57 | myflixer / The Diplomat | Myflixer · Player 2 / balance.medmedia03.wiki | 1.6.25 | no_advancing_video |  |
+| 58 | myflixer / The Diplomat | Myflixer · Player 3 / vidfast.pro | 1.6.25 | playback_confirmed | 0.0 → 3.6 s / 2610.6 s (webview) |
 | 59 | myflixer / The Diplomat | Myflixer · Player 4 / embedmaster.link | 1.6.25 | pending |  |
 | 60 | myflixer / The Diplomat | Myflixer · Player 5 / multiembed.mov | 1.6.25 | pending |  |
 | 61 | myflixer / The Diplomat | Myflixer · Player 6 / moviesapi.to | 1.6.25 | pending |  |
@@ -125,8 +125,8 @@ The source provider identifies the catalogue sample. A returned alternative may 
 | 66 | myflixer / The Diplomat | VidFast / vidfast.pro | 1.6.25 | pending |  |
 | 67 | myflixer / The Diplomat | VidLink / vidlink.pro | 1.6.25 | pending |  |
 | 68 | streamtunisie / Arriere el godem 2 | StreamTunisie - YouTube / www.youtube.com | 1.6.23 | playback_confirmed | 0.0 → 3.2 s / 2255.4 s (webview) (earlier playback confirmed on 1.6.22) |
-| 69 | cimafu / المعلم | Cima4u - doodstream.com - Arabic sub / doodstream.com | 1.6.25 | pending |  |
-| 70 | cimafu / المعلم | Cima4u - doodstream.com - Arabic sub / doodstream.com | 1.6.25 | pending |  |
+| 69 | cimafu / المعلم | Cima4u - doodstream.com - Arabic sub / doodstream.com | 1.6.25 | no_advancing_video |  |
+| 70 | cimafu / المعلم | Cima4u - doodstream.com - Arabic sub / doodstream.com | 1.6.25 | no_advancing_video |  |
 | 71 | cimafu / المعلم | Cima4u - doodstream.com - Arabic sub / doodstream.com | 1.6.25 | pending |  |
 | 72 | cimafu / المعلم | Cima4u - bysetayico.com - Arabic sub / bysetayico.com | 1.6.25 | pending |  |
 | 73 | cimafu / المعلم | Cima4u - bysetayico.com - Arabic sub / bysetayico.com | 1.6.25 | pending |  |
@@ -247,11 +247,11 @@ The source provider identifies the catalogue sample. A returned alternative may 
 | 188 | egydead / المهايطية | Cima4u - mixdrop.ps / mixdrop.ps | 1.6.24 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
 | 189 | egydead / المهايطية | Cima4u - mixdrop.ps / mixdrop.ps | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
 | 190 | egydead / المهايطية | Cima4u - cybervynx.com / cybervynx.com | 1.6.25 | playback_confirmed | 0.1 → 4.1 s / 5901.2 s (media3) |
-| 191 | egydead / المهايطية | Cima4u - cybervynx.com / cybervynx.com | 1.6.25 | pending |  |
-| 192 | egydead / المهايطية | Cima4u - 1vid.xyz / 1vid.xyz | 1.6.25 | pending |  |
-| 193 | egydead / المهايطية | Cima4u - vidmoly.org / vidmoly.org | 1.6.25 | pending |  |
-| 194 | egydead / المهايطية | Cima4u - vidspeed.org / vidspeed.org | 1.6.25 | pending |  |
-| 195 | egydead / المهايطية | Cima4u - www.mp4upload.com / www.mp4upload.com | 1.6.25 | pending |  |
+| 191 | egydead / المهايطية | Cima4u - cybervynx.com / cybervynx.com | 1.6.25 | playback_confirmed | 0.3 → 4.4 s / 5901.2 s (media3) |
+| 192 | egydead / المهايطية | Cima4u - 1vid.xyz / 1vid.xyz | 1.6.25 | playback_confirmed | 1.6 → 3.5 s / 5901.3 s (webview) |
+| 193 | egydead / المهايطية | Cima4u - vidmoly.org / vidmoly.org | 1.6.25 | no_advancing_video |  |
+| 194 | egydead / المهايطية | Cima4u - vidspeed.org / vidspeed.org | 1.6.25 | no_advancing_video |  |
+| 195 | egydead / المهايطية | Cima4u - www.mp4upload.com / www.mp4upload.com | 1.6.25 | no_advancing_video |  |
 | 196 | egydead / المهايطية | Cima4u - bysesukior.com / bysesukior.com | 1.6.25 | pending |  |
 | 197 | egydead / المهايطية | Cima4u - voe.sx / voe.sx | 1.6.25 | pending |  |
 | 198 | kirmalk / صفحة بيضا الموسم 1 | Kirmalk - www.ok.ru / www.ok.ru | 1.6.23 | no_advancing_video |  |
@@ -265,10 +265,10 @@ The source provider identifies the catalogue sample. A returned alternative may 
 | 206 | fmovies / Dune: Part Two | Myflixer · Player 4 / embedmaster.link | 1.6.24 | no_advancing_video |  |
 | 207 | fmovies / Dune: Part Two | Myflixer · Player 5 / vidfast.pro | 1.6.25 | playback_confirmed | 0.1 → 3.4 s / 9948.0 s (webview) |
 | 208 | fmovies / Dune: Part Two | Myflixer · Player 6 / multiembed.mov | 1.6.25 | no_advancing_video |  |
-| 209 | fmovies / Dune: Part Two | Myflixer · Player 7 / moviesapi.to | 1.6.25 | pending |  |
-| 210 | fmovies / Dune: Part Two | FMovies · Embos / embos.top | 1.6.25 | pending |  |
-| 211 | fmovies / Dune: Part Two | FMovies · Vidcore / vidcore.net | 1.6.25 | pending |  |
-| 212 | fmovies / Dune: Part Two | FMovies · VidAPI / vidapi.xyz | 1.6.25 | pending |  |
+| 209 | fmovies / Dune: Part Two | Myflixer · Player 7 / moviesapi.to | 1.6.25 | no_advancing_video |  |
+| 210 | fmovies / Dune: Part Two | FMovies · Embos / embos.top | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
+| 211 | fmovies / Dune: Part Two | FMovies · Vidcore / vidcore.net | 1.6.25 | playback_confirmed | 1.3 → 3.1 s / 9948.0 s (webview) |
+| 212 | fmovies / Dune: Part Two | FMovies · VidAPI / vidapi.xyz | 1.6.25 | missing_video | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
 | 213 | fmovies / Dune: Part Two | French Stream · DEFAULT · vidzy / vidzy.cc | 1.6.25 | pending |  |
 | 214 | fmovies / Dune: Part Two | French Stream · VOSTFR · vidzy / vidzy.cc | 1.6.25 | pending |  |
 | 215 | fmovies / Dune: Part Two | French Stream · VF · vidzy / vidzy.cc | 1.6.25 | pending |  |
@@ -301,8 +301,8 @@ The source provider identifies the catalogue sample. A returned alternative may 
 | 242 | dessinanime / ‎Des Minions et des Monstres | French Stream · VOSTFR · dood / trakx.lol | 1.6.24 | no_advancing_video |  |
 | 243 | dessinanime / ‎Des Minions et des Monstres | French Stream · VF · dood / trakx.lol | 1.6.25 | no_advancing_video |  |
 | 244 | dessinanime / ‎Des Minions et des Monstres | French Stream · VF · dood / trakx.lol | 1.6.25 | no_advancing_video |  |
-| 245 | dessinanime / ‎Des Minions et des Monstres | French Stream · DEFAULT · voe / trakx.lol | 1.6.25 | pending |  |
-| 246 | dessinanime / ‎Des Minions et des Monstres | French Stream · VOSTFR · voe / trakx.lol | 1.6.25 | pending |  |
+| 245 | dessinanime / ‎Des Minions et des Monstres | French Stream · DEFAULT · voe / trakx.lol | 1.6.25 | no_advancing_video |  |
+| 246 | dessinanime / ‎Des Minions et des Monstres | French Stream · VOSTFR · voe / trakx.lol | 1.6.25 | no_advancing_video |  |
 | 247 | dessinanime / ‎Des Minions et des Monstres | French Stream · VF · voe / trakx.lol | 1.6.25 | pending |  |
 | 248 | dessinanime / ‎Des Minions et des Monstres | French Stream · VF · voe / trakx.lol | 1.6.25 | pending |  |
 | 249 | dessinanime / ‎Des Minions et des Monstres | FMovies · Embos / embos.top | 1.6.25 | pending |  |
@@ -327,11 +327,11 @@ The source provider identifies the catalogue sample. A returned alternative may 
 | 268 | hdtoday / a journey in my mother s footsteps | HDToday · vidsrc.fyi / vidsrc.fyi | 1.6.25 | no_advancing_video |  |
 | 269 | hdtoday / a journey in my mother s footsteps | HDToday · VIP / embed.vidsrc.si | 1.6.25 | no_advancing_video |  |
 | 270 | hdtoday / a journey in my mother s footsteps | HDToday · vidfast / vidfast.pro | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
-| 271 | hdtoday / a journey in my mother s footsteps | HDToday · vidup / vidup.to | 1.6.25 | pending |  |
-| 272 | hdtoday / a journey in my mother s footsteps | HDToday · vidrock / vidrock.net | 1.6.25 | pending |  |
-| 273 | hdtoday / a journey in my mother s footsteps | HDToday · vidnest / vidnest.fun | 1.6.25 | pending |  |
-| 274 | hdtoday / a journey in my mother s footsteps | HDToday · vidlink / vidlink.pro | 1.6.25 | pending |  |
-| 275 | hdtoday / a journey in my mother s footsteps | HDToday - Vidlove / player.vidlove.cc | 1.6.25 | pending |  |
+| 271 | hdtoday / a journey in my mother s footsteps | HDToday · vidup / vidup.to | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
+| 272 | hdtoday / a journey in my mother s footsteps | HDToday · vidrock / vidrock.net | 1.6.25 | no_advancing_video | 404 |
+| 273 | hdtoday / a journey in my mother s footsteps | HDToday · vidnest / vidnest.fun | 1.6.25 | no_advancing_video |  |
+| 274 | hdtoday / a journey in my mother s footsteps | HDToday · vidlink / vidlink.pro | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
+| 275 | hdtoday / a journey in my mother s footsteps | HDToday - Vidlove / player.vidlove.cc | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
 | 276 | hdtoday / a journey in my mother s footsteps | HDToday · multiembed / multiembed.mov | 1.6.25 | pending |  |
 | 277 | hdtoday / a journey in my mother s footsteps | HDToday · mappletv / mappletv.uk | 1.6.25 | pending |  |
 | 278 | hdtoday / a journey in my mother s footsteps | HDToday · moviesapi / moviesapi.to | 1.6.25 | pending |  |
@@ -360,12 +360,12 @@ The source provider identifies the catalogue sample. A returned alternative may 
 | 301 | kirmalk / الضيف | AhwakTV - hgcloud.to / hgcloud.to | 1.6.24 | playback_confirmed | 0.6 → 3.6 s / 5525.6 s (media3) |
 | 302 | kirmalk / الضيف | AhwakTV - playmogo.com / playmogo.com | 1.6.25 | no_advancing_video |  |
 | 303 | kirmalk / الضيف | Kirmalk - s1.hdup400.com / s1.hdup400.com | 1.6.25 | no_advancing_video |  |
-| 304 | kirmalk / ابن الحاج أحمد | AhwakTV - vkvideo.ru / vkvideo.ru | 1.6.25 | pending |  |
-| 305 | kirmalk / ابن الحاج أحمد | AhwakTV - ok.ru / ok.ru | 1.6.25 | pending |  |
-| 306 | kirmalk / ابن الحاج أحمد | AhwakTV - hgcloud.to / hgcloud.to | 1.6.25 | pending |  |
-| 307 | kirmalk / ابن الحاج أحمد | AhwakTV - uqload.vc / uqload.vc | 1.6.25 | pending |  |
+| 304 | kirmalk / ابن الحاج أحمد | AhwakTV - vkvideo.ru / vkvideo.ru | 1.6.25 | no_advancing_video |  |
+| 305 | kirmalk / ابن الحاج أحمد | AhwakTV - ok.ru / ok.ru | 1.6.25 | no_advancing_video |  |
+| 306 | kirmalk / ابن الحاج أحمد | AhwakTV - hgcloud.to / hgcloud.to | 1.6.25 | playback_confirmed | 0.9 → 3.7 s / 5786.8 s (media3) |
+| 307 | kirmalk / ابن الحاج أحمد | AhwakTV - uqload.vc / uqload.vc | 1.6.25 | no_advancing_video |  |
 | 308 | kirmalk / ابن الحاج أحمد | AhwakTV - playmogo.com / playmogo.com | 1.6.25 | pending |  |
-| 309 | kirmalk / ابن الحاج أحمد | Kirmalk - www.ok.ru / www.ok.ru | 1.6.25 | pending |  |
+| 309 | kirmalk / ابن الحاج أحمد | Kirmalk - www.ok.ru / www.ok.ru | 1.6.25 | no_advancing_video |  |
 | 310 | egydead / رهين | AhwakTV - hgcloud.to / hgcloud.to | 1.6.25 | pending |  |
 | 311 | egydead / رهين | French Stream · DEFAULT · vidzy / vidzy.cc | 1.6.25 | pending |  |
 | 312 | egydead / رهين | French Stream · VOSTFR · vidzy / vidzy.cc | 1.6.25 | pending |  |
@@ -377,9 +377,9 @@ The source provider identifies the catalogue sample. A returned alternative may 
 | 318 | egydead / رهين | French Stream · DEFAULT · voe / kokoflix.lol | 1.6.25 | pending |  |
 | 319 | egydead / رهين | French Stream · VOSTFR · voe / trakx.lol | 1.6.25 | pending |  |
 | 320 | egydead / رهين | French Stream · DEFAULT · filmoon / kokoflix.lol | 1.6.25 | pending |  |
-| 321 | dessinanime / Les Simpson | DessinAnime - VF - Panda / dessinanime | 1.6.25 | pending |  |
-| 322 | dessinanime / Les Simpson | DessinAnime - VF - Panda / dessinanime | 1.6.25 | pending |  |
-| 323 | dessinanime / Les Simpson | DessinAnime - MULTI - Lecteur / morencius.com | 1.6.25 | pending |  |
+| 321 | dessinanime / Les Simpson | DessinAnime - VF - Panda / dessinanime | 1.6.25 | playback_confirmed | 0.1 → 4.1 s / 1395.2 s (media3) |
+| 322 | dessinanime / Les Simpson | DessinAnime - VF - Panda / dessinanime | 1.6.25 | playback_confirmed | 0.9 → 5.0 s / 1336.5 s (media3) |
+| 323 | dessinanime / Les Simpson | DessinAnime - MULTI - Lecteur / morencius.com | 1.6.25 | playback_confirmed | 1.2 → 4.0 s / 1394.9 s (webview) |
 | 324 | dessinanime / Les Simpson | VidSrc / vidsrc.mov | 1.6.25 | pending |  |
 | 325 | dessinanime / Les Simpson | VidFast / vidfast.pro | 1.6.25 | pending |  |
 | 326 | dessinanime / Les Simpson | VidLink / vidlink.pro | 1.6.25 | pending |  |

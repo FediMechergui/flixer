@@ -20,6 +20,8 @@ The HLS workaround preserves legitimate initialization sections, encrypted playl
 
 The fragmented-MP4 control uses Apple's published developer example. It and a recovered Myflixer stream resumed at 60 seconds both produced advancing clocks on the updated Android player. [Apple streaming examples](https://developer.apple.com/streaming/examples/).
 
+All three returned DessinAnime player choices for the sampled Les Simpson episode produced advancing playback inside the app. The provider's public player API resolves its relay media on the device.
+
 ## Gaps remain explicit
 
 - Some CimaTN film posts do not have a matching published watch page. A visible post alone does not establish playable availability.
