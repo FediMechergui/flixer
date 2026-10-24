@@ -1,18 +1,18 @@
 {
-  "at": "2026-10-24T10:00:03.021Z",
+  "at": "2026-10-24T10:29:53.726Z",
   "appVersion": "1.6.25",
   "appVersions": [
     "1.6.24",
     "1.6.22",
-    "1.6.23",
-    "1.6.25"
+    "1.6.25",
+    "1.6.23"
   ],
   "scope": "Every returned server for the provider/type/language sample matrix, using the production player; not every catalogue episode.",
   "preparationComplete": true,
   "samples": 68,
   "total": 336,
-  "tested": 228,
-  "confirmed": 56,
+  "tested": 255,
+  "confirmed": 68,
   "previouslyConfirmed": 1,
   "providers": [
     {
@@ -20,9 +20,9 @@
       "samples": 2,
       "returned": 38,
       "sourceServers": 19,
-      "tested": 24,
-      "confirmed": 5,
-      "confirmedSource": 4,
+      "tested": 28,
+      "confirmed": 7,
+      "confirmedSource": 5,
       "lookupIssues": []
     },
     {
@@ -30,8 +30,8 @@
       "samples": 3,
       "returned": 36,
       "sourceServers": 9,
-      "tested": 23,
-      "confirmed": 3,
+      "tested": 28,
+      "confirmed": 4,
       "confirmedSource": 1,
       "lookupIssues": []
     },
@@ -40,7 +40,7 @@
       "samples": 5,
       "returned": 45,
       "sourceServers": 36,
-      "tested": 24,
+      "tested": 28,
       "confirmed": 3,
       "confirmedSource": 3,
       "lookupIssues": [
@@ -63,9 +63,9 @@
       "samples": 6,
       "returned": 62,
       "sourceServers": 62,
-      "tested": 24,
-      "confirmed": 4,
-      "confirmedSource": 4,
+      "tested": 29,
+      "confirmed": 6,
+      "confirmedSource": 6,
       "lookupIssues": []
     },
     {
@@ -83,7 +83,7 @@
       "samples": 5,
       "returned": 24,
       "sourceServers": 4,
-      "tested": 23,
+      "tested": 24,
       "confirmed": 5,
       "confirmedSource": 0,
       "lookupIssues": []
@@ -103,8 +103,8 @@
       "samples": 5,
       "returned": 37,
       "sourceServers": 4,
-      "tested": 24,
-      "confirmed": 5,
+      "tested": 28,
+      "confirmed": 8,
       "confirmedSource": 1,
       "lookupIssues": [
         {
@@ -199,8 +199,8 @@
       "returned": 11,
       "sourceServers": 8,
       "tested": 11,
-      "confirmed": 1,
-      "confirmedSource": 1,
+      "confirmed": 3,
+      "confirmedSource": 3,
       "lookupIssues": []
     },
     {
@@ -208,7 +208,7 @@
       "samples": 6,
       "returned": 32,
       "sourceServers": 3,
-      "tested": 24,
+      "tested": 28,
       "confirmed": 9,
       "confirmedSource": 3,
       "lookupIssues": [
@@ -361,8 +361,8 @@
       "returned": 2,
       "sourceServers": 2,
       "tested": 2,
-      "confirmed": 0,
-      "confirmedSource": 0,
+      "confirmed": 2,
+      "confirmedSource": 2,
       "lookupIssues": []
     },
     {
@@ -609,9 +609,10 @@
       "server": "Cima4u - doodstream.com - Arabic sub",
       "host": "doodstream.com",
       "type": "embed",
-      "appVersion": "1.6.22",
+      "appVersion": "1.6.25",
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
       "status": "no_advancing_video",
-      "ms": 36306,
+      "ms": 45103,
       "errors": [],
       "httpStatuses": []
     },
@@ -639,9 +640,10 @@
       "server": "Cima4u - doodstream.com - Arabic sub",
       "host": "doodstream.com",
       "type": "embed",
-      "appVersion": "1.6.22",
+      "appVersion": "1.6.25",
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
       "status": "no_advancing_video",
-      "ms": 35895,
+      "ms": 35816,
       "errors": [],
       "httpStatuses": []
     },
@@ -851,9 +853,16 @@
       "server": "Cima4u - vidmoly.org - Arabic sub",
       "host": "vidmoly.org",
       "type": "embed",
-      "appVersion": "1.6.24",
-      "status": "no_advancing_video",
-      "ms": 35727,
+      "appVersion": "1.6.25",
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
+      "status": "playback_confirmed",
+      "ms": 17951,
+      "proof": {
+        "start": 0,
+        "end": 3.414643,
+        "duration": 7533,
+        "transport": "webview"
+      },
       "errors": [],
       "httpStatuses": []
     },
@@ -881,9 +890,10 @@
       "server": "Cima4u - www.mp4upload.com - Arabic sub",
       "host": "www.mp4upload.com",
       "type": "embed",
-      "appVersion": "1.6.24",
+      "appVersion": "1.6.25",
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
       "status": "no_advancing_video",
-      "ms": 36717,
+      "ms": 36840,
       "errors": [],
       "httpStatuses": []
     },
@@ -956,8 +966,14 @@
       "type": "embed",
       "appVersion": "1.6.25",
       "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
-      "status": "no_advancing_video",
-      "ms": 36719,
+      "status": "playback_confirmed",
+      "ms": 29220,
+      "proof": {
+        "start": 0.640146,
+        "end": 3.945656,
+        "duration": 7533.666667,
+        "transport": "webview"
+      },
       "errors": [],
       "httpStatuses": []
     },
@@ -1043,9 +1059,10 @@
       "server": "Myflixer · Player 2",
       "host": "balance.medmedia03.wiki",
       "type": "embed",
-      "appVersion": "1.6.23",
+      "appVersion": "1.6.25",
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
       "status": "no_advancing_video",
-      "ms": 35708,
+      "ms": 36646,
       "errors": [],
       "httpStatuses": []
     },
@@ -1263,7 +1280,15 @@
       "host": "streams.iqsmartgames.com",
       "type": "embed",
       "appVersion": "1.6.25",
-      "status": "pending",
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
+      "status": "playback_confirmed",
+      "ms": 24038,
+      "proof": {
+        "start": 1.60128,
+        "end": 3.687905,
+        "duration": 3070.3590000000204,
+        "transport": "webview"
+      },
       "errors": [],
       "httpStatuses": []
     },
@@ -1357,7 +1382,7 @@
       "appVersion": "1.6.25",
       "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
       "status": "no_advancing_video",
-      "ms": 36377,
+      "ms": 36728,
       "errors": [],
       "httpStatuses": []
     },
@@ -1393,7 +1418,9 @@
       "host": "embedmaster.link",
       "type": "embed",
       "appVersion": "1.6.25",
-      "status": "pending",
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
+      "status": "no_advancing_video",
+      "ms": 36172,
       "errors": [],
       "httpStatuses": []
     },
@@ -1407,7 +1434,9 @@
       "host": "multiembed.mov",
       "type": "embed",
       "appVersion": "1.6.25",
-      "status": "pending",
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
+      "status": "no_advancing_video",
+      "ms": 36127,
       "errors": [],
       "httpStatuses": []
     },
@@ -1421,7 +1450,15 @@
       "host": "moviesapi.to",
       "type": "embed",
       "appVersion": "1.6.25",
-      "status": "pending",
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
+      "status": "playback_confirmed",
+      "ms": 14364,
+      "proof": {
+        "start": 0.886433,
+        "end": 4.551288,
+        "duration": 2993.7790000000023,
+        "transport": "webview"
+      },
       "errors": [],
       "httpStatuses": []
     },
@@ -1552,7 +1589,7 @@
       "appVersion": "1.6.25",
       "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
       "status": "no_advancing_video",
-      "ms": 37248,
+      "ms": 35563,
       "errors": [],
       "httpStatuses": []
     },
@@ -1568,7 +1605,7 @@
       "appVersion": "1.6.25",
       "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
       "status": "no_advancing_video",
-      "ms": 35914,
+      "ms": 38041,
       "errors": [],
       "httpStatuses": []
     },
@@ -1582,7 +1619,9 @@
       "host": "doodstream.com",
       "type": "embed",
       "appVersion": "1.6.25",
-      "status": "pending",
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
+      "status": "no_advancing_video",
+      "ms": 35729,
       "errors": [],
       "httpStatuses": []
     },
@@ -1596,8 +1635,12 @@
       "host": "bysetayico.com",
       "type": "embed",
       "appVersion": "1.6.25",
-      "status": "pending",
-      "errors": [],
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
+      "status": "player_error",
+      "ms": 6197,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
       "httpStatuses": []
     },
     {
@@ -1610,8 +1653,12 @@
       "host": "bysetayico.com",
       "type": "embed",
       "appVersion": "1.6.25",
-      "status": "pending",
-      "errors": [],
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
+      "status": "player_error",
+      "ms": 4712,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
       "httpStatuses": []
     },
     {
@@ -1624,8 +1671,12 @@
       "host": "mixdrop.ps",
       "type": "embed",
       "appVersion": "1.6.25",
-      "status": "pending",
-      "errors": [],
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
+      "status": "player_error",
+      "ms": 6411,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
       "httpStatuses": []
     },
     {
@@ -1638,8 +1689,12 @@
       "host": "mixdrop.ps",
       "type": "embed",
       "appVersion": "1.6.25",
-      "status": "pending",
-      "errors": [],
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
+      "status": "player_error",
+      "ms": 4684,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
       "httpStatuses": []
     },
     {
@@ -1982,9 +2037,10 @@
       "server": "AhwakTV - playmogo.com",
       "host": "playmogo.com",
       "type": "embed",
-      "appVersion": "1.6.23",
+      "appVersion": "1.6.25",
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
       "status": "no_advancing_video",
-      "ms": 35919,
+      "ms": 36288,
       "errors": [],
       "httpStatuses": []
     },
@@ -2100,9 +2156,16 @@
       "server": "French Stream · VF · dood",
       "host": "trakx.lol",
       "type": "embed",
-      "appVersion": "1.6.22",
-      "status": "no_advancing_video",
-      "ms": 36692,
+      "appVersion": "1.6.25",
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
+      "status": "playback_confirmed",
+      "ms": 24114,
+      "proof": {
+        "start": 1.744648,
+        "end": 3.503358,
+        "duration": 6151.103991,
+        "transport": "webview"
+      },
       "errors": [],
       "httpStatuses": []
     },
@@ -2160,9 +2223,16 @@
       "server": "French Stream · VF · uqload",
       "host": "uqload.vc",
       "type": "embed",
-      "appVersion": "1.6.23",
-      "status": "no_advancing_video",
-      "ms": 35685,
+      "appVersion": "1.6.25",
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
+      "status": "playback_confirmed",
+      "ms": 18800,
+      "proof": {
+        "start": 1.734381,
+        "end": 3.721326,
+        "duration": 2610.989,
+        "transport": "webview"
+      },
       "errors": [],
       "httpStatuses": []
     },
@@ -2293,9 +2363,16 @@
       "server": "MyAsianTV - English sub",
       "host": "zumivids.com",
       "type": "embed",
-      "appVersion": "1.6.22",
-      "status": "no_advancing_video",
-      "ms": 36637,
+      "appVersion": "1.6.25",
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
+      "status": "playback_confirmed",
+      "ms": 32548,
+      "proof": {
+        "start": 0,
+        "end": 3.191396,
+        "duration": 1441.541,
+        "transport": "webview"
+      },
       "errors": [],
       "httpStatuses": []
     },
@@ -2329,12 +2406,17 @@
       "server": "MyAsianTV - English sub",
       "host": "zumivids.com",
       "type": "embed",
-      "appVersion": "1.6.22",
-      "status": "verification_required",
-      "ms": 36021,
-      "errors": [
-        "Antispam\nI'm not a robot"
-      ],
+      "appVersion": "1.6.25",
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
+      "status": "playback_confirmed",
+      "ms": 21545,
+      "proof": {
+        "start": 0,
+        "end": 3.674659,
+        "duration": 4621.421,
+        "transport": "webview"
+      },
+      "errors": [],
       "httpStatuses": []
     },
     {
@@ -2553,9 +2635,10 @@
       "server": "MultiMovies - VIDOUT",
       "host": "vidout.pages.dev",
       "type": "embed",
-      "appVersion": "1.6.23",
+      "appVersion": "1.6.25",
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
       "status": "no_advancing_video",
-      "ms": 36863,
+      "ms": 35563,
       "errors": [],
       "httpStatuses": []
     },
@@ -2962,9 +3045,10 @@
       "server": "French Stream · VF · uqload",
       "host": "uqload.vc",
       "type": "embed",
-      "appVersion": "1.6.22",
+      "appVersion": "1.6.25",
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
       "status": "no_advancing_video",
-      "ms": 35661,
+      "ms": 36418,
       "errors": [],
       "httpStatuses": []
     },
@@ -3386,9 +3470,10 @@
       "server": "AhwakTV - playmogo.com",
       "host": "playmogo.com",
       "type": "embed",
-      "appVersion": "1.6.22",
+      "appVersion": "1.6.25",
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
       "status": "no_advancing_video",
-      "ms": 36381,
+      "ms": 35598,
       "errors": [],
       "httpStatuses": []
     },
@@ -3401,9 +3486,10 @@
       "server": "Cima4u - doodstream.com",
       "host": "doodstream.com",
       "type": "embed",
-      "appVersion": "1.6.22",
+      "appVersion": "1.6.25",
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
       "status": "no_advancing_video",
-      "ms": 36479,
+      "ms": 35364,
       "errors": [],
       "httpStatuses": []
     },
@@ -3416,9 +3502,10 @@
       "server": "Cima4u - doodstream.com",
       "host": "doodstream.com",
       "type": "embed",
-      "appVersion": "1.6.23",
+      "appVersion": "1.6.25",
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
       "status": "no_advancing_video",
-      "ms": 36200,
+      "ms": 35947,
       "errors": [],
       "httpStatuses": []
     },
@@ -3431,9 +3518,10 @@
       "server": "Cima4u - doodstream.com",
       "host": "doodstream.com",
       "type": "embed",
-      "appVersion": "1.6.23",
+      "appVersion": "1.6.25",
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
       "status": "no_advancing_video",
-      "ms": 35608,
+      "ms": 36617,
       "errors": [],
       "httpStatuses": []
     },
@@ -3634,8 +3722,14 @@
       "type": "embed",
       "appVersion": "1.6.25",
       "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
-      "status": "no_advancing_video",
-      "ms": 35984,
+      "status": "playback_confirmed",
+      "ms": 16152,
+      "proof": {
+        "start": 0.133333,
+        "end": 4.534465,
+        "duration": 5901.328,
+        "transport": "webview"
+      },
       "errors": [],
       "httpStatuses": []
     },
@@ -3651,7 +3745,7 @@
       "appVersion": "1.6.25",
       "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
       "status": "no_advancing_video",
-      "ms": 35543,
+      "ms": 35590,
       "errors": [],
       "httpStatuses": []
     },
@@ -3667,7 +3761,7 @@
       "appVersion": "1.6.25",
       "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
       "status": "no_advancing_video",
-      "ms": 35488,
+      "ms": 37197,
       "errors": [],
       "httpStatuses": []
     },
@@ -3681,8 +3775,12 @@
       "host": "bysesukior.com",
       "type": "embed",
       "appVersion": "1.6.25",
-      "status": "pending",
-      "errors": [],
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
+      "status": "player_error",
+      "ms": 6488,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
       "httpStatuses": []
     },
     {
@@ -3695,9 +3793,15 @@
       "host": "voe.sx",
       "type": "embed",
       "appVersion": "1.6.25",
-      "status": "pending",
-      "errors": [],
-      "httpStatuses": []
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
+      "status": "verification_required",
+      "ms": 35793,
+      "errors": [
+        "\n  \n\n  \n    \n      \n    \n    \n      \n        \n          \n            CONFIRM YOU ARE NOT A ROBOT\n            Click the button\n            \n              \n            \n            I'm not a robot\n          \n        \n      \n    \n  \n"
+      ],
+      "httpStatuses": [
+        403
+      ]
     },
     {
       "case": 198,
@@ -3825,9 +3929,10 @@
       "server": "Myflixer · Player 2",
       "host": "balance.medmedia03.wiki",
       "type": "embed",
-      "appVersion": "1.6.24",
+      "appVersion": "1.6.25",
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
       "status": "no_advancing_video",
-      "ms": 35745,
+      "ms": 35551,
       "errors": [],
       "httpStatuses": []
     },
@@ -3986,7 +4091,9 @@
       "host": "vidzy.cc",
       "type": "embed",
       "appVersion": "1.6.25",
-      "status": "pending",
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
+      "status": "no_advancing_video",
+      "ms": 35763,
       "errors": [],
       "httpStatuses": []
     },
@@ -4000,7 +4107,15 @@
       "host": "vidzy.cc",
       "type": "embed",
       "appVersion": "1.6.25",
-      "status": "pending",
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
+      "status": "playback_confirmed",
+      "ms": 29348,
+      "proof": {
+        "start": 1.697186,
+        "end": 3.444347,
+        "duration": 9947.02600000014,
+        "transport": "webview"
+      },
       "errors": [],
       "httpStatuses": []
     },
@@ -4014,7 +4129,9 @@
       "host": "vidzy.cc",
       "type": "embed",
       "appVersion": "1.6.25",
-      "status": "pending",
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
+      "status": "no_advancing_video",
+      "ms": 35484,
       "errors": [],
       "httpStatuses": []
     },
@@ -4028,7 +4145,9 @@
       "host": "vidzy.cc",
       "type": "embed",
       "appVersion": "1.6.25",
-      "status": "pending",
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
+      "status": "no_advancing_video",
+      "ms": 36633,
       "errors": [],
       "httpStatuses": []
     },
@@ -4042,8 +4161,12 @@
       "host": "uqload.vc",
       "type": "embed",
       "appVersion": "1.6.25",
-      "status": "pending",
-      "errors": [],
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
+      "status": "player_error",
+      "ms": 4763,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
       "httpStatuses": []
     },
     {
@@ -4299,9 +4422,10 @@
       "server": "Myflixer · Player 2",
       "host": "balance.medmedia03.wiki",
       "type": "embed",
-      "appVersion": "1.6.23",
+      "appVersion": "1.6.25",
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
       "status": "no_advancing_video",
-      "ms": 35779,
+      "ms": 36500,
       "errors": [],
       "httpStatuses": []
     },
@@ -4551,7 +4675,9 @@
       "host": "trakx.lol",
       "type": "embed",
       "appVersion": "1.6.25",
-      "status": "pending",
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
+      "status": "no_advancing_video",
+      "ms": 36232,
       "errors": [],
       "httpStatuses": []
     },
@@ -4565,7 +4691,9 @@
       "host": "trakx.lol",
       "type": "embed",
       "appVersion": "1.6.25",
-      "status": "pending",
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
+      "status": "no_advancing_video",
+      "ms": 36059,
       "errors": [],
       "httpStatuses": []
     },
@@ -4579,8 +4707,12 @@
       "host": "embos.top",
       "type": "embed",
       "appVersion": "1.6.25",
-      "status": "pending",
-      "errors": [],
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
+      "status": "player_error",
+      "ms": 5325,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
       "httpStatuses": []
     },
     {
@@ -4593,7 +4725,9 @@
       "host": "vidcore.net",
       "type": "embed",
       "appVersion": "1.6.25",
-      "status": "pending",
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
+      "status": "no_advancing_video",
+      "ms": 35777,
       "errors": [],
       "httpStatuses": []
     },
@@ -4794,10 +4928,13 @@
       "server": "HDToday · mappletv",
       "host": "mappletv.uk",
       "type": "embed",
-      "appVersion": "1.6.23",
-      "status": "no_advancing_video",
-      "ms": 36476,
-      "errors": [],
+      "appVersion": "1.6.25",
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
+      "status": "player_error",
+      "ms": 41287,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
       "httpStatuses": []
     },
     {
@@ -4917,7 +5054,7 @@
       "appVersion": "1.6.25",
       "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
       "status": "no_advancing_video",
-      "ms": 35661,
+      "ms": 36392,
       "errors": [],
       "httpStatuses": []
     },
@@ -5037,7 +5174,9 @@
       "host": "multiembed.mov",
       "type": "embed",
       "appVersion": "1.6.25",
-      "status": "pending",
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
+      "status": "no_advancing_video",
+      "ms": 36248,
       "errors": [],
       "httpStatuses": []
     },
@@ -5051,8 +5190,12 @@
       "host": "mappletv.uk",
       "type": "embed",
       "appVersion": "1.6.25",
-      "status": "pending",
-      "errors": [],
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
+      "status": "verification_required",
+      "ms": 36746,
+      "errors": [
+        "I'm not a robot\n\nCheck the box \"I'm not a robot\" to continue"
+      ],
       "httpStatuses": []
     },
     {
@@ -5065,7 +5208,9 @@
       "host": "moviesapi.to",
       "type": "embed",
       "appVersion": "1.6.25",
-      "status": "pending",
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
+      "status": "no_advancing_video",
+      "ms": 35817,
       "errors": [],
       "httpStatuses": []
     },
@@ -5121,8 +5266,12 @@
       "host": "vidsrc.mov",
       "type": "embed",
       "appVersion": "1.6.25",
-      "status": "pending",
-      "errors": [],
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
+      "status": "player_error",
+      "ms": 8163,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
       "httpStatuses": []
     },
     {
@@ -5418,9 +5567,9 @@
       "host": "playmogo.com",
       "type": "embed",
       "appVersion": "1.6.25",
-      "appSha256": "9e5f5e9313caedff45ce24a2b7180c7bea974af891b608684b30d5c26f798063",
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
       "status": "no_advancing_video",
-      "ms": 36262,
+      "ms": 35608,
       "errors": [],
       "httpStatuses": []
     },
@@ -5506,7 +5655,7 @@
       "appVersion": "1.6.25",
       "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
       "status": "no_advancing_video",
-      "ms": 35647,
+      "ms": 36311,
       "errors": [],
       "httpStatuses": []
     },
@@ -5520,7 +5669,9 @@
       "host": "playmogo.com",
       "type": "embed",
       "appVersion": "1.6.25",
-      "status": "pending",
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
+      "status": "no_advancing_video",
+      "ms": 36712,
       "errors": [],
       "httpStatuses": []
     },
@@ -5550,7 +5701,15 @@
       "host": "hgcloud.to",
       "type": "embed",
       "appVersion": "1.6.25",
-      "status": "pending",
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
+      "status": "playback_confirmed",
+      "ms": 14022,
+      "proof": {
+        "start": 0.998,
+        "end": 3.627,
+        "duration": 5212.75,
+        "transport": "media3"
+      },
       "errors": [],
       "httpStatuses": []
     },
@@ -5564,7 +5723,15 @@
       "host": "vidzy.cc",
       "type": "embed",
       "appVersion": "1.6.25",
-      "status": "pending",
+      "appSha256": "e459a238d69073e744c71b5cbb100b9e01e3b9dd16ef172835ea19725ee76c58",
+      "status": "playback_confirmed",
+      "ms": 20414,
+      "proof": {
+        "start": 1.27694,
+        "end": 3.051086,
+        "duration": 5212.757,
+        "transport": "webview"
+      },
       "errors": [],
       "httpStatuses": []
     },
