@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import { leanCatalog } from '../src/export-catalog.js';
 import { parseFmoviesList } from '../src/fmovies.js';
+import {auditServer} from '../../scripts/audit-server.js';
 
 function fixture(shows, streams = {}, respond, options = {}) {
   const requests=[];
@@ -60,6 +61,11 @@ test('saved fresh home feed and canonical provider aliases survive an older bund
 test('all known compatible Myflixer embeds receive the same player policy',async()=>{
   const {api}=fixture([],{servers:[{type:'embed',embedUrl:'https://multiembed.mov/?video_id=tt123'},{type:'embed',embedUrl:'https://balance.medmedia03.wiki/embed/movie/77'},{type:'embed',embedUrl:'https://unknown.test/player'}]});
   const {servers}=await api.stream('mf:m:example');assert.equal(servers[0].sandbox,null);assert.equal(servers[1].sandbox,null);assert.equal(servers[2].sandbox,undefined);
+});
+
+test('the Android audit applies the same YouTube descriptor conversion as the production data layer',async()=>{
+ const raw={id:'official',name:'Official channel',type:'youtube',provider:'youtube',videoId:'abcdefghijk'}, {api}=fixture([],{servers:[raw]});
+ const actual=(await api.stream('episode')).servers[0],audited=auditServer(raw);assert.equal(audited.embedUrl,actual.embedUrl);assert.equal(audited.sandbox,actual.sandbox);assert.equal(auditServer({...raw,videoId:'invalid'}).embedUrl,undefined);
 });
 
 test('a verified provider alias opens the canonical movie without duplicate title requests',async()=>{

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {parseArabicId,arabicId,arabicUrl,parseArabicList,parseArabicDetails,parseArabicServers,dataLiteral,collectArabicPages,cimaEpisodeEntries,ahwakPlaybackLink,cinetimesCommonsServers} from '../src/arabic-providers.js';
+import {parseArabicId,arabicId,arabicUrl,parseArabicList,parseArabicDetails,parseArabicServers,dataLiteral,collectArabicPages,cimaEpisodeEntries,ahwakPlaybackLink,cinetimesCommonsServers,egydeadWatchLink,resolveArabicServers} from '../src/arabic-providers.js';
 import {specialistUrl,specialistJobs} from '../src/specialist-providers.js';
 import {unifiedTitle,discoverLibrary} from '../src/library-service.js';
 import {mergeShow} from '../src/merge-library.js';
@@ -8,6 +8,20 @@ import {mergeShow} from '../src/merge-library.js';
 test('Tuniflix preserves the source release year and short alternate titles',()=>{
   const item=parseArabicDetails('sp:tuniflix:m:the-needle','<h1>الإبرة</h1><span class="Date">2023</span><div class="Description"><p>A long source synopsis about the film and its characters.</p><p>ibra</p><p>الابرة</p><p>https://unrelated.example/ad</p></div>');
   assert.equal(item.year,2023);assert.deepEqual(item.altTitles,['ibra','الابرة']);assert.match(item.synopsis,/source synopsis/);
+});
+
+test('EgyDead follows only the current title watch page and extracts its actual server',async()=>{
+ const url='https://tv10.egydead.live/egydead-watch-regression-film/',id=arabicId('egydead','m',url),detail='<div class="watchNow"><a href="watch/">Watch</a></div>',calls=[];
+ assert.equal(egydeadWatchLink(id,detail),url+'watch/');
+ for(const target of ['https://evil.test/egydead-watch-regression-film/watch/','/other-title/watch/',url+'watch/?token=x',url+'watch/#x','https://user@tv10.egydead.live/egydead-watch-regression-film/watch/'])assert.equal(egydeadWatchLink(id,`<div class="watchNow"><a href="${target}">Watch</a></div>`),null);
+ const servers=await resolveArabicServers(id,{fetchPage:async(target,options)=>{calls.push({target,view:!!options.view});return target===url?detail:'<ul class="serversList"><li data-link="https://q7v3k8m2p1.top/iframe/published-file">MegaMax</li></ul>'}});
+ assert.deepEqual(calls,[{target:url,view:false},{target:url+'watch/',view:false}]);assert.equal(servers[0].provider,'egydead');assert.equal(servers[0].embedUrl,'https://q7v3k8m2p1.top/iframe/published-file');
+});
+
+test('older EgyDead View forms remain supported when no watch link or inline player exists',async()=>{
+ const url='https://tv10.egydead.live/egydead-legacy-regression-film/',id=arabicId('egydead','m',url),calls=[];
+ const servers=await resolveArabicServers(id,{fetchPage:async(target,options)=>{calls.push(!!options.view);return options.view?'<ul class="serversList"><li data-link="https://hgcloud.to/e/legacy-public-file"></li></ul>':'<form method="post"><input name="View" value="1"></form>'}});
+ assert.deepEqual(calls,[false,true]);assert.equal(servers.length,1);
 });
 
 test('large source episode lists are fully traversed with bounded concurrency and visible failures',async()=>{

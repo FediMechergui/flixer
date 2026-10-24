@@ -310,7 +310,12 @@ export async function cinetimesCommonsServers(html,{fetchJson=async url=>{
   }
   return servers;
 }
-export async function resolveArabicServers(id,{fresh=false,transport}={}){
+export function egydeadWatchLink(id,html){
+ const p=parseArabicId(id);if(p?.provider!=='egydead'||p.type==='s')return null;const base=new URL(arabicUrl(id)),expected=base.pathname.replace(/\/$/,'')+'/watch/',$=load(html);
+ for(const el of $('.watchNow a[href]').toArray())try{const u=new URL($(el).attr('href'),base);if(u.origin===base.origin&&u.pathname===expected&&!u.search&&!u.hash&&!u.username&&!u.password&&u.port==='')return u.href;}catch{}
+ return null;
+}
+export async function resolveArabicServers(id,{fresh=false,transport,fetchPage=arabicPage}={}){
   if(parseCimafuId(id))return resolveCimafuServers(id,{fresh,transport});
   const saved=await arabicSnapshot(id),episode=saved?.episodes?.find(e=>e.id===id),stored=episode?.cachedPlayers;
   if(!fresh&&stored?.length&&parseArabicId(id)?.provider!=='cimatn'){
@@ -325,7 +330,12 @@ export async function resolveArabicServers(id,{fresh=false,transport}={}){
     if(data?.sourceUrl&&/^https:\/\/cimatnwatchingg\.blogspot\.com\/p\/[a-z0-9-]+\.html$/.test(data.sourceUrl))players.push({id:'cimatn:original-page',provider:'cimatn',name:'CimaTN - original player page',type:'browser',embedUrl:data.sourceUrl,sandbox:null});
     return players;
   }
-  const p=parseArabicId(id);if(!p||p.type==='s')return [];let html=await arabicPage(arabicUrl(id),{view:p.provider==='egydead',fresh});
+  const p=parseArabicId(id);if(!p||p.type==='s')return [];let html=await fetchPage(arabicUrl(id),{fresh});
+  if(p.provider==='egydead'){
+    const watch=egydeadWatchLink(id,html);
+    if(watch)html=await fetchPage(watch,{fresh});
+    else if(!parseArabicServers(id,html).length)html=await fetchPage(arabicUrl(id),{view:true,fresh});
+  }
   if(p.provider==='streamtunisie'&&p.type==='m'){
     const $=load(html),link=$('article a[href*="/watch-movie-"]').first().attr('href'),u=fixed(link,ARABIC_PROVIDERS[p.provider].origin);if(u&&/^\/watch-movie-[^/?]+\/$/.test(u.pathname))html=await arabicPage(u.href,{fresh});
   }
