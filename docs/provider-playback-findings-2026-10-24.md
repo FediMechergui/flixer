@@ -19,6 +19,7 @@ The signed 1.6.25 release also passed installation, cold activity launch, Movies
 | CimaTN film watch slugs were partial | Accept a unique published suffix match, preferring an exact match and rejecting ambiguity | Film player discovery plus ambiguity/origin regression tests |
 | Accessible Myflixer HLS media failed inside Media3 | Omit a redundant TS initialization map only after verifying media packets in the map and program tables in the first segment; handle the observed leading image header | Previously failing routes played; six Java policy tests; official fMP4 control and resume at 60 seconds |
 | Explicit error pages stayed open | Recognize observed missing/expired/unavailable and embedding-block pages and advance to another choice | Script regression tests and shorter device failures on the sampled removed pages |
+| Netlify's legacy bootstrap URL returned 404 | Dispatch `/data/bootstrap.json` directly to the bootstrap catalogue handler | Regression test plus deployed HTTP 200 and matching 600-title generation on both bootstrap URLs |
 
 The HLS workaround preserves legitimate initialization sections, encrypted playlists, byte-range layouts, discontinuities and changing maps. Probes are small device-to-source requests; media remains off the application backend. HLS distinguishes TS program-table initialization from fragmented-MP4 initialization, and initialization sections should not contain media samples. [RFC 8216, sections 3.1–3.3](https://www.rfc-editor.org/rfc/rfc8216#section-3.1).
 

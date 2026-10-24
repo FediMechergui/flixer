@@ -12,7 +12,9 @@
     "mainActivityColdStarts": true,
     "homeRendersTitlesAndArtwork": true,
     "moviesBrowseRenders": true,
-    "homeNavigationReturnsWithPopulatedRecentSection": true
+    "homeNavigationReturnsWithPopulatedRecentSection": true,
+    "liveCatalogueApiReturns200": true,
+    "legacyBootstrapReturns200WithMatchingGeneration": true
   },
   "notes": "Visual smoke checks use the signed release package. The native activity launch measurement does not measure completion of catalogue or image loading. Player route coverage and player control checks are recorded separately."
 }
