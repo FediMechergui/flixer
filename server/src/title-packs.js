@@ -8,10 +8,12 @@ const defaultDir=fileURLToPath(new URL('../deployment-titles/',import.meta.url))
 const shard=(id,bits=8)=>(parseInt(createHash('sha256').update(id).digest('hex').slice(0,2),16)&(255<<(8-bits))).toString(16).padStart(2,'0');
 export function writeTitlePacks(shows,dir=defaultDir,{bucketBits=8}={}){
  if(!Number.isInteger(bucketBits)||bucketBits<4||bucketBits>8)throw Error('Invalid title bucket size');
- fs.mkdirSync(dir,{recursive:true});const groups=new Map(),owners=new Map();
+ fs.mkdirSync(dir,{recursive:true});const groups=new Map(),owners=new Map(),aliases=new Map();
  for(const show of shows)for(const row of [show,...(show.versions||[])]){const key=shard(row.id,bucketBits);if(!groups.has(key))groups.set(key,new Map());groups.get(key).set(row.id,row);
+  for(const id of (row.offerings||[]).map(o=>o.id)){if(typeof id!=='string'||!id)continue;if(!aliases.has(id))aliases.set(id,row.id);else if(aliases.get(id)!==row.id)aliases.set(id,null);}
   for(const ep of row.episodes||[])for(const id of [ep.id,...(ep.offerings||[]).map(o=>o.id)]){if(typeof id!=='string')continue;const bucket=shard(id,bucketBits);if(!owners.has(bucket))owners.set(bucket,new Map());if(!owners.get(bucket).has(id))owners.get(bucket).set(id,{id:row.id});}
  }
+ for(const [id,owner]of aliases){if(!owner)continue;const bucket=shard(id,bucketBits);if(!owners.has(bucket))owners.set(bucket,new Map());if(!owners.get(bucket).has(id))owners.get(bucket).set(id,{id:owner});}
  const ordered=rows=>Object.fromEntries([...rows].sort((a,b)=>a[0].localeCompare(b[0])));
  let bytes=0;for(const [key,rows]of groups){const body=gzipSync(JSON.stringify(ordered(rows)),{level:6});fs.writeFileSync(path.join(dir,key+'.json.gz'),body);bytes+=body.length;}
  const ownerDir=path.join(dir,'owners');fs.mkdirSync(ownerDir,{recursive:true});for(const [key,rows]of owners)fs.writeFileSync(path.join(ownerDir,key+'.json.gz'),gzipSync(JSON.stringify(ordered(rows)),{level:6}));

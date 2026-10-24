@@ -87,3 +87,10 @@ test('provider packs preserve original French and Arabic episode players indepen
  validateRuntimeManifest(manifest);assert.ok(Object.keys(manifest.providerFiles).length>0);
  const source=createRuntimeSource({fetchImpl:async url=>{const name=new URL(url).pathname.split('/').pop();return new Response(name==='manifest.json'?JSON.stringify(manifest):fs.readFileSync(path.join(dir,name)))}});await source.check();const found=await source.providerSnapshot(row.episodes[0].id);assert.equal(found.id,row.id);assert.equal(found.episodes[0].cachedPlayers[0].id,42);assert.equal(source.current(),null,'source playback metadata must not require the full catalogue');assert.equal(await source.providerSnapshot('sp:dessinanime:s:unknown'),null);
 });
+
+test('a cold backend resolves provider title aliases and episode offerings without loading the full catalogue',async t=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'flixer-alias-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
+ const c=catalog('23');c.shows=[{id:'mf:s:canonical',title:'Canonical',kind:'series',offerings:[{provider:'dessinanime',id:'sp:dessinanime:s:source'}],episodes:[{id:'mf:e:episode',offerings:[{provider:'fmovies',id:'fm:e:23:1:1'}]}]}];
+ const manifest=await buildRuntimePublication(c,dir),source=createRuntimeSource({fetchImpl:async url=>{const name=new URL(url).pathname.split('/').pop();return new Response(name==='manifest.json'?JSON.stringify(manifest):fs.readFileSync(path.join(dir,name)))}});
+ await source.check();assert.equal((await source.publishedTitle('sp:dessinanime:s:source')).id,'mf:s:canonical');assert.equal((await source.publishedTitle('fm:e:23:1:1')).episodes.length,1);assert.equal(source.current(),null);assert.equal(await source.publishedTitle('sp:dessinanime:s:missing'),null);
+});
