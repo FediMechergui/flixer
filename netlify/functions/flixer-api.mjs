@@ -1,3 +1,3 @@
 import {handleNetlifyRequest} from '../../server/src/netlify-handler.js';
 export default handleNetlifyRequest;
-export const config={path:['/api/*','/data/shows/*']};
+export const config={path:['/api/*','/data/shows/*','/data/bootstrap.json']};

@@ -7,6 +7,7 @@ export function createNetlifyHandler(handlers=routes){return async request=>{
  if(!['GET','HEAD'].includes(request.method))return Response.json({error:'Method not allowed'},{status:405,headers});
  const query=Object.create(null);for(const [key,value]of url.searchParams){if(query[key]===undefined)query[key]=value;else query[key]=Array.isArray(query[key])?[...query[key],value]:[query[key],value];}
  let name=url.pathname.replace(/^\/api\//,'');
+ if(url.pathname==='/data/bootstrap.json'){name='catalogue';query.part='bootstrap';}
  if(url.pathname.startsWith('/data/shows/')){name='saved-title';query.id=url.pathname.slice('/data/shows/'.length).replace(/\.json$/,'');}
  if(name==='health')return Response.json({ok:true,service:'flixer-api',product:'flixer',hosting:'netlify',catalogue:'independent-publication',mediaTransport:'direct'},{headers});
  if(name==='stream'&&query.proxy==='1')return Response.json({error:'Video is delivered directly to the app. Resolve this source with transport=direct.'},{status:410,headers});

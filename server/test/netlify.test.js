@@ -16,6 +16,13 @@ test('Netlify handles preflight, HEAD, legacy saved-title paths and rejects medi
  assert.equal((await handler(new Request('https://flixer.example/api/stream?proxy=1&url=https://example.invalid'))).status,410);
 });
 
+test('the legacy bootstrap URL dispatches the bootstrap even when Netlify retains the original rewrite path',async()=>{
+ const seen=[],handler=createNetlifyHandler({catalogue:async(req,res)=>{seen.push(req.query.part);res.setHeader('Cache-Control','public, s-maxage=120');res.json({product:'flixer',shows:[{id:'sample'}]})}});
+ const response=await handler(new Request('https://flixer.example/data/bootstrap.json?part=runtime&part=index-0000'));
+ assert.equal(response.status,200);assert.equal((await response.json()).shows.length,1);assert.deepEqual(seen,['bootstrap']);assert.equal(response.headers.get('Netlify-Vary'),'query');
+ const head=await handler(new Request('https://flixer.example/data/bootstrap.json',{method:'HEAD'}));assert.equal(head.status,200);assert.equal(await head.text(),'');assert.deepEqual(seen,['bootstrap','bootstrap']);
+});
+
 test('provider searches retain supplied language aliases without loading the full saved library',async()=>{
  const queries=[],result=await unifiedSearch('Bab al Hara',{product:'flixer',provider:'fmovies',catalog:{product:'flixer',shows:[]},aliases:['باب الحارة','Bab al Hara'],fetchers:{fmovies:async q=>{queries.push(q);return [{id:'fm:s:123',kind:'series',title:'باب الحارة',year:2006,episodes:[]}]}}});
  assert.deepEqual(queries,['Bab al Hara','باب الحارة']);assert.ok(result.some(row=>row.title==='باب الحارة'));

@@ -11,11 +11,6 @@
   node_bundler = "esbuild"
   external_node_modules = ["@streamparser/json", "cheerio", "json5", "youtubei.js"]
 
-[[redirects]]
-  from = "/data/bootstrap.json"
-  to = "/api/catalogue?part=bootstrap"
-  status = 200
-
 [[headers]]
   for = "/data/*"
   [headers.values]
