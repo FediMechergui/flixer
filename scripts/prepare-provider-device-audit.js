@@ -9,9 +9,14 @@ const providers=['myflixer','fmovies','hdtoday',...Object.keys(SPECIALISTS)],sam
 const add=row=>{if(row?.id&&!samples.has(row.id))samples.set(row.id,row)};
 const provider=id=>id.startsWith('mf:')?'myflixer':id.startsWith('fm:')?'fmovies':id.startsWith('hd:')?'hdtoday':/^sp:([^:]+):/.exec(id)?.[1];
 for(const sample of previous?.samples||[])add(sample);
-const old=JSON.parse(fs.readFileSync('artifacts/provider-matrix-records.json','utf8'));
+const old=fs.existsSync('artifacts/provider-matrix-records.json')?JSON.parse(fs.readFileSync('artifacts/provider-matrix-records.json','utf8')):[];
 for(const row of old)add({id:row.id,provider:provider(row.id),title:row.title,kind:row.kind,episodeId:row.episodes?.[0]?.id});
 const index=JSON.parse(fs.readFileSync('client/public/data-flixer/index.json','utf8'));
+for(const id of opt('--include-id','').split(',').filter(Boolean)){
+ const row=index.shows.find(row=>row.id===id||(row.aliasIds||[]).includes(id));
+ if(!row||!providers.includes(provider(id)))throw Error('Requested source identity is not in the published catalogue');
+ add({id,provider:provider(id),title:row.title,kind:row.kind,episodeId:row.firstEpisodeId});
+}
 for(const row of index.shows){const p=provider(row.id);if(!providers.includes(p))continue;
  const needsType=![...samples.values()].some(s=>s.provider===p&&s.kind===row.kind);
  const channel=p==='youtubeoriginals'?/^sp:youtubeoriginals:s:([a-z]+)-/.exec(row.id)?.[1]:null;

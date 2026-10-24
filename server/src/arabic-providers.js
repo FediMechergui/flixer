@@ -385,9 +385,12 @@ export async function cimaWatchData(html,{fetchPage=arabicPage}={}){
   const more=await collectArabicPages(Array.from({length:Math.max(0,Math.ceil(total/150)-1)},(_,i)=>151+i*150),start=>fetchPage(`${base}&start-index=${start}`).then(JSON.parse));
   if(more.some(r=>r.status==='rejected'))throw new Error('CimaTN watch feed incomplete');
   const entries=[...(feed.feed?.entry||[]),...more.flatMap(r=>r.value.feed?.entry||[])];
-  const entry=entries.find(e=>e.link?.some(l=>{try{const u=new URL(l.href);return l.rel==='alternate'&&u.origin===origin&&!u.username&&!u.password&&!u.search&&!u.hash&&u.pathname===`/p/${slug}.html`;}catch{return false;}}));if(!entry)return null;
+  const candidates=new Map();
+  for(const entry of entries)for(const link of entry.link||[])try{const u=new URL(link.href);if(link.rel==='alternate'&&u.origin===origin&&!u.username&&!u.password&&!u.search&&!u.hash&&new RegExp(`^/p/${slug}(?:-[a-z0-9-]+)?\\.html$`).test(u.pathname))candidates.set(u.href,{entry,sourceUrl:u.href});}catch{}
+  const exact=candidates.get(`${origin}/p/${slug}.html`),match=exact||(candidates.size===1?[...candidates.values()][0]:null);if(!match)return null;
+  const {entry,sourceUrl}=match;
   const body=entry.content?.$t||'',series=dataLiteral(body,'seriesData');
-  return series?{...series,sourceUrl:entry.link.find(l=>l.rel==='alternate').href}:{servers:dataLiteral(body,'servers')||[],sourceUrl:entry.link.find(l=>l.rel==='alternate').href};
+  return series?{...series,sourceUrl}:{servers:dataLiteral(body,'servers')||[],sourceUrl};
 }
 async function getCimaDetails(id){
   const p=parseArabicId(id),html=await arabicPage(arabicUrl(id)),item=parseArabicDetails(id,html),data=await cimaWatchData(html);

@@ -12,3 +12,9 @@ test('compact numeric download keys cannot invalidate the separate playable epis
  const data=dataLiteral('const seriesData={availableEpisodes:1,episodes:{1:[{url:"https://www.youtube.com/embed/abcdefghijk"}]},downloadLinks:{1:"file-a",2:"file-b"},label:"Leave ,3: text intact"};','seriesData');
  assert.equal(data.episodes[1].length,1);assert.equal(data.downloadLinks[2],'file-b');assert.equal(data.label,'Leave ,3: text intact');assert.equal(dataLiteral('const seriesData={episodes:{1:process.exit()}};','seriesData'),null);
 });
+test('published partial film slugs resolve only an unambiguous page and prefer an exact match',async()=>{
+ const lookup=entries=>cimaWatchData("pageUrl.includes('film-hbiba')",{fetchPage:async()=>JSON.stringify({feed:{entry:entries}})});
+ const a=entry('film-hbiba-complet','const servers=[{url:"https://hgcloud.to/e/a"}];'),b=entry('film-hbiba-second','const servers=[];');
+ assert.equal((await lookup([a])).sourceUrl,'https://www.cimatn.com/p/film-hbiba-complet.html');assert.equal(await lookup([a,b]),null);
+ assert.equal((await lookup([a,b,entry('film-hbiba','const servers=[];')])).sourceUrl,'https://www.cimatn.com/p/film-hbiba.html');
+});
