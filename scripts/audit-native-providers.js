@@ -4,6 +4,7 @@ import fs from 'node:fs';import path from 'node:path';import {execFile} from 'no
 import {auditServer} from './audit-server.js';
 import {observeVideoClock} from './playback-proof.js';
 import {classifyPlayback} from './playback-outcome.js';
+import {playerSnapshot,canPressPlay} from './player-snapshot.js';
 const run=promisify(execFile),args=process.argv.slice(2),opt=(k,d)=>args.includes(k)?args[args.indexOf(k)+1]:d;
 const dir=path.resolve(opt('--out','artifacts/provider-device-audit-2026-10-24')),input=path.join(dir,'resolved.private.json'),output=path.join(dir,'device.private.json');
 const serial=opt('--serial','emulator-5558'),port=Number(opt('--port','9226')),seconds=Number(opt('--seconds','35')),pkg='app.flixer.stream.audit',adb=opt('--adb',path.join(process.env.LOCALAPPDATA||'','Android/Sdk/platform-tools/adb.exe'));
@@ -26,7 +27,7 @@ async function connect(page){const socket=new WebSocket(page.webSocketDebuggerUr
 async function app(restart=false){if(restart)await shell('shell','am','force-stop',pkg);await shell('shell','am','start','-n',pkg+'/app.flixer.stream.PlayerAuditActivity');
  for(let i=0;i<45;i++){try{const pid=await shell('shell','pidof',pkg);await shell('forward','tcp:'+port,'localabstract:webview_devtools_remote_'+pid);const page=(await pages()).find(p=>p.url.includes('/playback-audit.html'));if(page){const c=await connect(page);if(await c.evaluate('Boolean(window.FlixerPlayer&&window.FlixerBrowser&&window.Capacitor?.Plugins?.DirectVideo)'))return c;c.close()}}catch{}await pause(1000)}throw Error('Android audit bridge unavailable');
 }
-const snapshot=`(()=>{const visible=e=>{const b=e.getBoundingClientRect();return b.width>80&&b.height>40&&getComputedStyle(e).visibility!=='hidden'&&getComputedStyle(e).display!=='none'};const videos=[...document.querySelectorAll('video')].filter(visible).map((v,index)=>({index,time:v.currentTime,duration:Number.isFinite(v.duration)?v.duration:0,paused:v.paused,src:v.currentSrc,error:v.error?.code||null,ad:!!v.closest('.ytp-ad-showing,[class*=ad-container]')}));const play=[...document.querySelectorAll('button[aria-label],.vjs-big-play-button,.jw-icon-playback,.plyr__control--overlaid,.ytp-large-play-button')].find(e=>visible(e)&&(/play/i.test(e.getAttribute('aria-label')||'')||e.matches('.vjs-big-play-button,.jw-icon-playback,.plyr__control--overlaid,.ytp-large-play-button')));const v=[...document.querySelectorAll('video')].find(v=>visible(v)&&v.paused&&v.currentSrc),box=(play||v)?.getBoundingClientRect();return {url:location.href,text:(document.body?.innerText||'').slice(0,800),videos,play:box?{x:box.x+box.width/2,y:box.y+box.height/2}:null}})()`;
+const snapshot='('+playerSnapshot.toString()+')()';
 function observe(c,result){const contexts=new Map(),requests=new Map(),listener=({method,params:p})=>{
  if(method==='Runtime.executionContextCreated'&&p.context.auxData?.isDefault)contexts.set(p.context.id,p.context.auxData.frameId);
  if(method==='Runtime.executionContextDestroyed')contexts.delete(p.executionContextId);if(method==='Runtime.executionContextsCleared')contexts.clear();
@@ -54,7 +55,7 @@ while(true){if(fs.existsSync(path.join(dir,'pause'))){report.pausedAt=new Date()
    for(const {c,contexts}of surfaces.values())for(const [id,frame]of [...contexts].slice(0,8))try{const s=await c.evaluate(snapshot,id,2500);s.frame=frame;s.elapsedMs=Date.now()-start;
     if(!s.url.startsWith('https://localhost'))result.observations.push(s);
     for(const v of s.videos){const advancing=observeVideoClock(proof,frame,v);if(advancing){result.playbackConfirmed=true;result.proof=advancing}}
-    if(row.provider!=='wco'&&s.play&&clicks<3&&Date.now()-start>5000&&Date.now()-lastClick>8000&&!/verify.{0,40}human|captcha|checking your browser|premium/i.test(s.text)){
+    if(row.provider!=='wco'&&s.play&&clicks<3&&Date.now()-start>5000&&Date.now()-lastClick>8000&&canPressPlay(s.text)){
      const point={...s.play},tree=await c.send('Page.getFrameTree');if(frame!==tree.frameTree.frame.id){const owner=await c.send('DOM.getFrameOwner',{frameId:frame}),box=await c.send('DOM.getBoxModel',{backendNodeId:owner.backendNodeId});point.x+=box.model.content[0];point.y+=box.model.content[1]}
      await c.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[point]});await c.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});clicks++;lastClick=Date.now();
     }

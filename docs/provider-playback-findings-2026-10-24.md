@@ -31,3 +31,7 @@ All three returned DessinAnime player choices for the sampled Les Simpson episod
 - Android System UI and first-use fullscreen prompts interrupted initial control checks. Those interruptions were cleared before the passing control run; the audit guards against a system dialog covering subsequent interactions.
 
 The audit uses a debug-only entry point to isolate the real production player from catalogue loading. This entry point is excluded from release APKs. Per-route APK versions and available debug APK fingerprints distinguish baseline attempts from retests. Private checkpoints contain temporary source URLs; the published reports omit them.
+
+## Audit corrections
+
+Raw YouTube descriptors are normalized through the same conversion as the client; earlier incomplete-descriptor attempts are excluded. A counter that failed to accept clocks starting at zero was corrected, and saved observations were evaluated again against the advancing-clock rule. Standard small Play controls, including role-based buttons, are actionable independently of the minimum video size. Paused-source cases are retested with that correction; advertising, verification and premium prompts are excluded from automated interaction. The MyAsianTV samples played after ordinary Play taps. These interaction changes correct the test harness and do not require a different application APK.
