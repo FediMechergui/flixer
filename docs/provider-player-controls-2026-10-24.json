@@ -1,0 +1,67 @@
+{
+  "at": "2026-10-24T09:07:35.572Z",
+  "case": 100,
+  "appVersion": "1.6.24",
+  "checks": [
+    {
+      "name": "Content advances before exercising controls",
+      "pass": true,
+      "evidence": [
+        {
+          "position": 1.715,
+          "duration": 1108.227
+        },
+        {
+          "position": 3.729,
+          "duration": 1108.227
+        }
+      ]
+    },
+    {
+      "name": "Playback starts inline",
+      "pass": true,
+      "evidence": {
+        "x": 50,
+        "y": 529,
+        "width": 620,
+        "height": 349
+      }
+    },
+    {
+      "name": "Explicit fullscreen fills the display",
+      "pass": true,
+      "evidence": {
+        "x": 0,
+        "y": 0,
+        "width": 720,
+        "height": 1560
+      }
+    },
+    {
+      "name": "Fullscreen toolbar hides after the timeout",
+      "pass": true
+    },
+    {
+      "name": "First Back restores inline playback",
+      "pass": true,
+      "evidence": {
+        "x": 50,
+        "y": 529,
+        "width": 620,
+        "height": 349
+      }
+    },
+    {
+      "name": "Second Back closes the native surface",
+      "pass": true
+    },
+    {
+      "name": "Close returns to the title surface",
+      "pass": true
+    },
+    {
+      "name": "HTML Close dismisses native playback",
+      "pass": true
+    }
+  ]
+}
