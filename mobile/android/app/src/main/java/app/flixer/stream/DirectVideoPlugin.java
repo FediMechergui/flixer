@@ -19,6 +19,10 @@ import androidx.media3.datasource.DefaultHttpDataSource;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.DefaultLoadControl;
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
+import androidx.media3.exoplayer.source.MediaSource;
+import androidx.media3.exoplayer.source.MergingMediaSource;
+import androidx.media3.exoplayer.source.SingleSampleMediaSource;
+import androidx.media3.exoplayer.hls.HlsMediaSource;
 import androidx.media3.ui.PlayerView;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -87,7 +91,17 @@ public class DirectVideoPlugin extends Plugin {
             }catch(org.json.JSONException ignored){}
             item.setSubtitleConfigurations(subtitles);
             if("hls".equals(type))item.setMimeType(MimeTypes.APPLICATION_M3U8);else if("dash".equals(type))item.setMimeType(MimeTypes.APPLICATION_MPD);
-            media.setMediaItem(item.build());double position=call.getDouble("startAt",0.0);if(Double.isFinite(position)&&position>0)media.seekTo((long)(position*1000));media.prepare();media.play();
+            if("hls".equals(type)){
+                DefaultHttpDataSource.Factory probes=new DefaultHttpDataSource.Factory().setConnectTimeoutMs(3000).setReadTimeoutMs(3000).setAllowCrossProtocolRedirects(false).setDefaultRequestProperties(headers);
+                MediaSource source=new HlsMediaSource.Factory(http).setPlaylistParserFactory(new CompatibleHlsParserFactory(probes)).createMediaSource(item.build());
+                if(!subtitles.isEmpty()){
+                    java.util.List<MediaSource> tracksToMerge=new java.util.ArrayList<>();tracksToMerge.add(source);
+                    for(MediaItem.SubtitleConfiguration track:subtitles)tracksToMerge.add(new SingleSampleMediaSource.Factory(http).createMediaSource(track,C.TIME_UNSET));
+                    source=new MergingMediaSource(tracksToMerge.toArray(new MediaSource[0]));
+                }
+                media.setMediaSource(source);
+            }else media.setMediaItem(item.build());
+            double position=call.getDouble("startAt",0.0);if(Double.isFinite(position)&&position>0)media.seekTo((long)(position*1000));media.prepare();media.play();
             handler.postDelayed(timeout,45000);handler.post(progress);
         });
     }

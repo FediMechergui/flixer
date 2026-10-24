@@ -1,18 +1,18 @@
 {
-  "at": "2026-10-24T09:07:35.572Z",
+  "at": "2026-10-24T09:37:04.754Z",
   "case": 100,
-  "appVersion": "1.6.24",
+  "appVersion": "1.6.25",
   "checks": [
     {
       "name": "Content advances before exercising controls",
       "pass": true,
       "evidence": [
         {
-          "position": 1.715,
+          "position": 2.613,
           "duration": 1108.227
         },
         {
-          "position": 3.729,
+          "position": 4.618,
           "duration": 1108.227
         }
       ]

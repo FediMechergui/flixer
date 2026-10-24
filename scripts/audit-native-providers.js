@@ -38,8 +38,10 @@ function observe(c,result){const contexts=new Map(),requests=new Map(),listener=
 async function enable(c){for(const method of ['Runtime.enable','Page.enable','Network.enable'])await c.send(method)}
 
 let main=await app(),failures=0;const version=/versionName=([^\s]+)/.exec(await shell('shell','dumpsys','package',pkg))?.[1]||'unknown';report.appVersion=version;save();
+const installed=(await shell('shell','pm','path',pkg)).split('\n').map(line=>line.trim()).find(line=>/^package:\/data\/app\/[A-Za-z0-9_~/+=.-]+\/base\.apk$/.test(line));
+const appSha256=installed?/^[a-f0-9]{64}/i.exec(await shell('shell','sha256sum',installed.slice(8)))?.[0]:undefined;
 while(true){if(fs.existsSync(path.join(dir,'pause'))){report.pausedAt=new Date().toISOString();save();break}const matrix=JSON.parse(fs.readFileSync(input,'utf8')),counts=new Map();for(const done of report.cases)counts.set(done.provider,(counts.get(done.provider)||0)+1);const row=matrix.cases.filter(r=>(!selected.size||selected.has(r.case))&&!report.cases.some(done=>done.case===r.case)).sort((a,b)=>(counts.get(a.provider)||0)-(counts.get(b.provider)||0))[0];if(!row){if(matrix.complete)break;await pause(1500);continue}
- const result={case:row.case,provider:row.provider,serverProvider:row.serverProvider,title:row.title,titleId:row.titleId,kind:row.kind,serverId:row.id,host:row.host,type:row.type,appVersion:version,at:new Date().toISOString(),playbackConfirmed:false,observations:[],network:[],nativeResults:[]},proof=new Map(),surfaces=new Map();let start=Date.now(),clicks=0,lastClick=0,server=auditServer(row.server);
+ const result={case:row.case,provider:row.provider,serverProvider:row.serverProvider,title:row.title,titleId:row.titleId,kind:row.kind,serverId:row.id,host:row.host,type:row.type,appVersion:version,appSha256,at:new Date().toISOString(),playbackConfirmed:false,observations:[],network:[],nativeResults:[]},proof=new Map(),surfaces=new Map();let start=Date.now(),clicks=0,lastClick=0,server=auditServer(row.server);
  try{
   const focus=await shell('shell','dumpsys','window');
   if(/mCurrentFocus=.*(?:Not Responding|Application Error|ImmersiveModeConfirmation)/i.test(focus))throw Error('An emulator system dialog covers the app; playback interaction is not a valid source test');

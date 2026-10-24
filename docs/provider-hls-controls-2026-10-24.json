@@ -1,0 +1,28 @@
+{
+  "appVersion": "1.6.25",
+  "at": "2026-10-24T09:38:13.954Z",
+  "results": [
+    {
+      "name": "Apple official fragmented-MP4 HLS",
+      "startAt": 0,
+      "passed": true,
+      "proof": {
+        "start": 0,
+        "end": 4.745,
+        "duration": 600
+      },
+      "ms": 8255
+    },
+    {
+      "name": "Recovered Myflixer HLS resumes at 60 seconds",
+      "startAt": 60,
+      "passed": true,
+      "proof": {
+        "start": 60,
+        "end": 64.699,
+        "duration": 2648.88
+      },
+      "ms": 16361
+    }
+  ]
+}
