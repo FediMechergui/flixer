@@ -21,7 +21,10 @@ public final class PlayerAdBlock {
         });
     }
     public static String script(Context context){
-        try(java.io.InputStream input=context.getAssets().open("player-cleanup.js")){
+        return script(context,"player-cleanup.js");
+    }
+    public static String script(Context context,String asset){
+        try(java.io.InputStream input=context.getAssets().open(asset)){
             java.io.ByteArrayOutputStream out=new java.io.ByteArrayOutputStream();byte[] buffer=new byte[4096];int count;
             while((count=input.read(buffer))!=-1)out.write(buffer,0,count);return out.toString("UTF-8");
         }catch(java.io.IOException e){return "";}

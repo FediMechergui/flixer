@@ -5,14 +5,14 @@ import vm from 'node:vm';
 
 test('native player recognizes a late provider content error without treating loading as failure',()=>{
  const java=fs.readFileSync(new URL('../../mobile/android/app/src/main/java/app/flixer/stream/PlayerViewPlugin.java',import.meta.url),'utf8');
- const literal=/WebViewCompat\.addDocumentStartJavaScript\(web,("(?:\\.|[^"\\])*"),origins\)/.exec(java)?.[1];
- assert.ok(literal,'Exercise the actual Java-injected health script');
+ assert.ok(java.includes('WebViewCompat.addDocumentStartJavaScript(web,PlayerAdBlock.script(getContext(),"player-health.js"),origins)'),'Exercise the actual Java-injected health asset');
+ const script=fs.readFileSync(new URL('../../mobile/android/app/src/main/assets/player-health.js',import.meta.url),'utf8');
  const messages=[],events={},timers=[];let observer,disconnected=false;
  const document={body:{innerText:'Fetching your content...'},addEventListener:(type,fn)=>events[type]=fn};
  const context={document,HTMLVideoElement:class {},FlixerPlayback:{postMessage:m=>messages.push(m)},
   MutationObserver:class{constructor(fn){observer=fn;}observe(){}disconnect(){disconnected=true;}},
   setTimeout:(fn,ms)=>timers.push({fn,ms})};
- vm.runInNewContext(JSON.parse(literal),context);events.DOMContentLoaded();assert.deepEqual(messages,[]);
+ vm.runInNewContext(script,context);events.DOMContentLoaded();assert.deepEqual(messages,[]);
  // Many providers finish their content lookup after the old 15-second window.
  for(const timer of timers.filter(t=>t.ms<=31000))timer.fn();
  assert.equal(disconnected,false);document.body.innerText='(404)\nOOPS! SOMETHING WENT WRONG.\nPLEASE TRY LATER.';
