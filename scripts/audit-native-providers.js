@@ -3,6 +3,7 @@
 import fs from 'node:fs';import path from 'node:path';import {execFile} from 'node:child_process';import {promisify} from 'node:util';
 import {auditServer} from './audit-server.js';
 import {observeVideoClock} from './playback-proof.js';
+import {classifyPlayback} from './playback-outcome.js';
 const run=promisify(execFile),args=process.argv.slice(2),opt=(k,d)=>args.includes(k)?args[args.indexOf(k)+1]:d;
 const dir=path.resolve(opt('--out','artifacts/provider-device-audit-2026-10-24')),input=path.join(dir,'resolved.private.json'),output=path.join(dir,'device.private.json');
 const serial=opt('--serial','emulator-5558'),port=Number(opt('--port','9226')),seconds=Number(opt('--seconds','35')),pkg='app.flixer.stream.audit',adb=opt('--adb',path.join(process.env.LOCALAPPDATA||'','Android/Sdk/platform-tools/adb.exe'));
@@ -35,13 +36,7 @@ function observe(c,result){const contexts=new Map(),requests=new Map(),listener=
  };c.on(listener);contexts.dispose=()=>c.off(listener);return contexts;
 }
 async function enable(c){for(const method of ['Runtime.enable','Page.enable','Network.enable'])await c.send(method)}
-function classify(result){if(result.playbackConfirmed)return 'playback_confirmed';if(result.infrastructureError)return 'infrastructure_error';const text=[result.playerError,...result.nativeResults.map(r=>r.error||r.result?.error||''),...result.observations.map(s=>s.text)].join(' ');
- if(/verify.{0,40}human|captcha|checking your browser|verification required/i.test(text))return 'verification_required';
- if(/(?:file|video).{0,20}(?:not found|deleted|removed)|no video was found|video.{0,10}not available|error 404|404[\s—–-]*Page Not Found|couldn.t find this content/i.test(text))return 'missing_video';
- if(/premium.{0,12}(?:only|required)|members.only|redeem your code|subscription required/i.test(text))return 'restricted';
- if(result.network.some(n=>['Document','Media'].includes(n.type)&&[401,403,451].includes(n.status))||/HTTP (?:401|403|451)|Forbidden|Access denied/i.test(text))return 'access_denied';
- if(result.playerError||result.nativeResults.some(r=>r.error||r.result?.error||r.result?.reason==='failed'))return 'player_error';return 'no_advancing_video';
-}
+
 let main=await app(),failures=0;const version=/versionName=([^\s]+)/.exec(await shell('shell','dumpsys','package',pkg))?.[1]||'unknown';report.appVersion=version;save();
 while(true){if(fs.existsSync(path.join(dir,'pause'))){report.pausedAt=new Date().toISOString();save();break}const matrix=JSON.parse(fs.readFileSync(input,'utf8')),counts=new Map();for(const done of report.cases)counts.set(done.provider,(counts.get(done.provider)||0)+1);const row=matrix.cases.filter(r=>(!selected.size||selected.has(r.case))&&!report.cases.some(done=>done.case===r.case)).sort((a,b)=>(counts.get(a.provider)||0)-(counts.get(b.provider)||0))[0];if(!row){if(matrix.complete)break;await pause(1500);continue}
  const result={case:row.case,provider:row.provider,serverProvider:row.serverProvider,title:row.title,titleId:row.titleId,kind:row.kind,serverId:row.id,host:row.host,type:row.type,appVersion:version,at:new Date().toISOString(),playbackConfirmed:false,observations:[],network:[],nativeResults:[]},proof=new Map(),surfaces=new Map();let start=Date.now(),clicks=0,lastClick=0,server=auditServer(row.server);
@@ -69,7 +64,7 @@ while(true){if(fs.existsSync(path.join(dir,'pause'))){report.pausedAt=new Date()
   await main.evaluate('window.__auditPlayer?.destroy();true');await pause(300);const state=await main.evaluate('({native:window.__auditNativeResults,progress:window.__auditProgress})');result.nativeResults=state.native||result.nativeResults;
   result.nativeProgress=state.progress;failures=0;
  }catch(error){result.infrastructureError=error.message;failures++;try{main.close();main=await app(true)}catch(recovery){result.recoveryError=recovery.message;failures=3}}
- finally{for(const {c,contexts}of surfaces.values()){contexts.dispose();if(c!==main)c.close()}result.category=classify(result);result.ms=Date.now()-start;report.cases.push(result);save();console.log(JSON.stringify({case:row.case,provider:row.provider,host:row.host,category:result.category,ms:result.ms,done:report.cases.length,total:matrix.cases.length,preparationComplete:matrix.complete}));}
+ finally{for(const {c,contexts}of surfaces.values()){contexts.dispose();if(c!==main)c.close()}result.category=classifyPlayback(result);result.ms=Date.now()-start;report.cases.push(result);save();console.log(JSON.stringify({case:row.case,provider:row.provider,host:row.host,category:result.category,ms:result.ms,done:report.cases.length,total:matrix.cases.length,preparationComplete:matrix.complete}));}
  if(failures>=3)throw Error('Emulator repeatedly unavailable; checkpoint retained without treating these as source failures');
 }
 main.close();report.runEndedAt=new Date().toISOString();const finalMatrix=JSON.parse(fs.readFileSync(input,'utf8')),finished=finalMatrix.complete&&finalMatrix.cases.every(row=>report.cases.some(done=>done.case===row.case));if(finished)report.finishedAt=report.runEndedAt;save();console.log(JSON.stringify({finished,paused:!!report.pausedAt,cases:report.cases.length,confirmed:report.cases.filter(c=>c.playbackConfirmed).length}));

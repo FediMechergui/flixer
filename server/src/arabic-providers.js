@@ -353,6 +353,11 @@ export async function resolveArabicServers(id,{fresh=false,transport,fetchPage=a
 
 // Parse only an object/array literal, never execute source JavaScript. JSON5
 // accepts the public source's unquoted keys and single-quoted strings.
+function quoteNumericKeys(source){
+  // Protect strings/comments before quoting JS numeric property names, including
+  // compact download-link maps. JSON5 does not accept those names unquoted.
+  return source.replace(/("(?:\\[\s\S]|[^"\\])*"|'(?:\\[\s\S]|[^'\\])*'|\/\/[^\r\n]*|\/\*[\s\S]*?\*\/)|([{,]\s*)(\d+)(\s*:)/g,(whole,protectedText,prefix,key,suffix)=>protectedText||`${prefix}"${key}"${suffix}`);
+}
 export function dataLiteral(html,name){
   const match=new RegExp(`(?:const|let|var)\\s+${name}\\s*=\\s*([\\[{])`).exec(html);if(!match)return null;
   const start=match.index+match[0].length-1;let depth=0,quote=null,escape=false;
@@ -360,7 +365,7 @@ export function dataLiteral(html,name){
     const c=html[i];if(quote){if(escape)escape=false;else if(c==='\\')escape=true;else if(c===quote)quote=null;continue;}
     if(c==='"'||c==="'"){quote=c;continue;}
     if(c==='{'||c==='[')depth++;else if(c==='}'||c===']')depth--;
-    if(depth===0){try{return JSON5.parse(html.slice(start,i+1).replace(/^(\s*)(\d+)\s*:/gm,'$1"$2":'));}catch{return null;}}
+    if(depth===0){try{return JSON5.parse(quoteNumericKeys(html.slice(start,i+1)));}catch{return null;}}
   }return null;
 }
 function approvedPlayers(id,entries){
@@ -370,15 +375,17 @@ function approvedPlayers(id,entries){
 export function safeTunisianFile(value){try{const u=new URL(value);return u.protocol==='https:'&&u.hostname==='video.wixstatic.com'&&!u.username&&!u.password&&!u.port&&/^\/video\/[a-f0-9_]+\/(?:[0-9]+p\/)?mp4\/file\.mp4$/.test(u.pathname);}catch{return false;}}
 function pSafeCommons(value){try{const u=new URL(value);return u.protocol==='https:'&&u.hostname==='upload.wikimedia.org'&&!u.username&&!u.password&&!u.port&&/\.(?:webm|mp4)$/.test(u.pathname);}catch{return false;}}
 function safeSourceHls(value){try{const u=new URL(value);if(u.protocol!=='https:'||u.hostname!=='s2.savefiles.com'||u.username||u.password||u.port||!u.pathname.endsWith('.m3u8'))return false;const start=Number(u.searchParams.get('s')),duration=Number(u.searchParams.get('e'));return !start||!duration||(start+duration)*1000>Date.now();}catch{return false;}}
-async function cimaWatchData(html){
+export async function cimaWatchData(html,{fetchPage=arabicPage}={}){
   const slug=/const\s+watchPageSlug\s*=\s*["']([a-z0-9-]+)["']/.exec(html)?.[1]||/pageUrl\.includes\(["']([a-z0-9-]+)["']\)/.exec(html)?.[1];if(!slug)return null;
-  const base='https://cimatnwatchingg.blogspot.com/feeds/pages/default?alt=json&max-results=150';
-  const feed=JSON.parse(await arabicPage(base));
+  // CimaTN now publishes the watch pages on its own blog. The former
+  // cimatnwatchingg blog and its feed return 404 even when the title is live.
+  const origin=ARABIC_PROVIDERS.cimatn.origin,base=origin+'/feeds/pages/default?alt=json&max-results=150';
+  const feed=JSON.parse(await fetchPage(base));
   const total=Number(feed.feed?.openSearch$totalResults?.$t||0);
-  const more=await collectArabicPages(Array.from({length:Math.max(0,Math.ceil(total/150)-1)},(_,i)=>151+i*150),start=>arabicPage(`${base}&start-index=${start}`).then(JSON.parse));
+  const more=await collectArabicPages(Array.from({length:Math.max(0,Math.ceil(total/150)-1)},(_,i)=>151+i*150),start=>fetchPage(`${base}&start-index=${start}`).then(JSON.parse));
   if(more.some(r=>r.status==='rejected'))throw new Error('CimaTN watch feed incomplete');
   const entries=[...(feed.feed?.entry||[]),...more.flatMap(r=>r.value.feed?.entry||[])];
-  const entry=entries.find(e=>e.link?.some(l=>l.rel==='alternate'&&new URL(l.href).pathname===`/p/${slug}.html`));if(!entry)return null;
+  const entry=entries.find(e=>e.link?.some(l=>{try{const u=new URL(l.href);return l.rel==='alternate'&&u.origin===origin&&!u.username&&!u.password&&!u.search&&!u.hash&&u.pathname===`/p/${slug}.html`;}catch{return false;}}));if(!entry)return null;
   const body=entry.content?.$t||'',series=dataLiteral(body,'seriesData');
   return series?{...series,sourceUrl:entry.link.find(l=>l.rel==='alternate').href}:{servers:dataLiteral(body,'servers')||[],sourceUrl:entry.link.find(l=>l.rel==='alternate').href};
 }
