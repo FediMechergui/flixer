@@ -7,6 +7,12 @@ const dir=path.resolve(opt('--out','artifacts/provider-device-audit-2026-10-24')
 const serial=opt('--serial','emulator-5558'),port=Number(opt('--port','9226')),seconds=Number(opt('--seconds','35')),pkg='app.flixer.stream.audit',adb=opt('--adb',path.join(process.env.LOCALAPPDATA||'','Android/Sdk/platform-tools/adb.exe'));
 const selected=new Set(opt('--cases','').split(',').filter(Boolean).map(Number));
 const report=fs.existsSync(output)?JSON.parse(fs.readFileSync(output,'utf8')):{startedAt:new Date().toISOString(),serial,seconds,scope:'Every returned server for the provider/type/language sample matrix, using the production player; not every catalogue episode.',cases:[]};
+if(args.includes('--retest')){
+ if(!selected.size)throw Error('--retest requires explicit --cases');
+ report.previousAttempts=[...(report.previousAttempts||[]),...report.cases.filter(row=>selected.has(row.case))];
+ report.cases=report.cases.filter(row=>!selected.has(row.case));
+}
+delete report.finishedAt;delete report.pausedAt;
 const pause=ms=>new Promise(r=>setTimeout(r,ms)),save=()=>{fs.writeFileSync(output+'.tmp',JSON.stringify(report,null,2));fs.renameSync(output+'.tmp',output)};
 async function shell(...params){return(await run(adb,['-s',serial,...params],{timeout:20000,windowsHide:true,maxBuffer:1024*1024})).stdout.trim()}
 async function pages(){const r=await fetch('http://127.0.0.1:'+port+'/json',{signal:AbortSignal.timeout(5000)});return r.json()}
@@ -30,7 +36,7 @@ function observe(c,result){const contexts=new Map(),requests=new Map(),listener=
 async function enable(c){for(const method of ['Runtime.enable','Page.enable','Network.enable'])await c.send(method)}
 function classify(result){if(result.playbackConfirmed)return 'playback_confirmed';if(result.infrastructureError)return 'infrastructure_error';const text=[result.playerError,...result.nativeResults.map(r=>r.error||r.result?.error||''),...result.observations.map(s=>s.text)].join(' ');
  if(/verify.{0,40}human|captcha|checking your browser|verification required/i.test(text))return 'verification_required';
- if(/(?:file|video).{0,20}(?:not found|deleted|removed)|no video was found|video.{0,10}not available|error 404/i.test(text))return 'missing_video';
+ if(/(?:file|video).{0,20}(?:not found|deleted|removed)|no video was found|video.{0,10}not available|error 404|404[\s—–-]*Page Not Found|couldn.t find this content/i.test(text))return 'missing_video';
  if(/premium.{0,12}(?:only|required)|members.only|redeem your code|subscription required/i.test(text))return 'restricted';
  if(result.network.some(n=>['Document','Media'].includes(n.type)&&[401,403,451].includes(n.status))||/HTTP (?:401|403|451)|Forbidden|Access denied/i.test(text))return 'access_denied';
  if(result.playerError||result.nativeResults.some(r=>r.error||r.result?.error||r.result?.reason==='failed'))return 'player_error';return 'no_advancing_video';
@@ -63,4 +69,4 @@ while(true){if(fs.existsSync(path.join(dir,'pause'))){report.pausedAt=new Date()
  finally{for(const {c,contexts}of surfaces.values()){contexts.dispose();if(c!==main)c.close()}result.category=classify(result);result.ms=Date.now()-start;report.cases.push(result);save();console.log(JSON.stringify({case:row.case,provider:row.provider,host:row.host,category:result.category,ms:result.ms,done:report.cases.length,total:matrix.cases.length,preparationComplete:matrix.complete}));}
  if(failures>=3)throw Error('Emulator repeatedly unavailable; checkpoint retained without treating these as source failures');
 }
-main.close();report.finishedAt=new Date().toISOString();save();console.log(JSON.stringify({finished:true,cases:report.cases.length,confirmed:report.cases.filter(c=>c.playbackConfirmed).length}));
+main.close();report.runEndedAt=new Date().toISOString();const finalMatrix=JSON.parse(fs.readFileSync(input,'utf8')),finished=finalMatrix.complete&&finalMatrix.cases.every(row=>report.cases.some(done=>done.case===row.case));if(finished)report.finishedAt=report.runEndedAt;save();console.log(JSON.stringify({finished,paused:!!report.pausedAt,cases:report.cases.length,confirmed:report.cases.filter(c=>c.playbackConfirmed).length}));
