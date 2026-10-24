@@ -1,0 +1,18 @@
+{
+  "appVersion": "1.6.25",
+  "versionCode": 185,
+  "package": "app.flixer.stream",
+  "device": "Android 15 / API 35 emulator",
+  "checkedOn": "2026-10-24",
+  "timeZone": "Africa/Lagos",
+  "releaseSha256": "1a3a2103af1146d0820f89d509d4485437300de331f8c2df9820118eafd49705",
+  "nativeActivityLaunchMs": 2806,
+  "checks": {
+    "signedReleaseInstalls": true,
+    "mainActivityColdStarts": true,
+    "homeRendersTitlesAndArtwork": true,
+    "moviesBrowseRenders": true,
+    "homeNavigationReturnsWithPopulatedRecentSection": true
+  },
+  "notes": "Visual smoke checks use the signed release package. The native activity launch measurement does not measure completion of catalogue or image loading. Player route coverage and player control checks are recorded separately."
+}

@@ -4,6 +4,10 @@ See the [per-server results](provider-playback-audit-2026-10-24.md), [player con
 
 The matrix covers 22 catalogue providers and 68 sample titles. Each returned player is exercised separately in the production Android player. A successful alternative does not certify the original catalogue source. This is a sample of films, series, languages and player routes, rather than every episode in the catalogue.
 
+All 336 returned choices received a device outcome. The latest attempts confirmed playback on 93 choices; one additional choice has an earlier confirmation and a different latest outcome. Kirmalk, AnimeGG and YoTurkish had no own-source confirmation in these samples. One Pace returned no eligible in-app episode routes. The detailed report distinguishes player errors, unconfirmed advancement, removals, verification, country and embedding restrictions.
+
+The signed 1.6.25 release also passed installation, cold activity launch, Movies browsing and returning to a populated Home/Recently updated screen. See the [release smoke record](release-smoke-2026-10-24.json). This visual check does not establish an exact catalogue-loading time or prove every cache transition.
+
 ## Fixes supported by the investigation
 
 | Problem | Change | Verification |

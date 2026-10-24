@@ -1,6 +1,8 @@
 # Android provider playback audit — 24 October 2026
 
-APKs 1.6.24, 1.6.22, 1.6.25, 1.6.23; 255/336 returned server choices tested across 68 title samples; 68 advancing-video confirmations.
+Completed audit. APKs 1.6.24, 1.6.22, 1.6.25, 1.6.23; 336/336 returned server choices tested across 68 title samples; 93 advancing-video confirmations.
+
+Device observation window: 24 Oct 2026, 09:04 to 24 Oct 2026, 11:56 WAT.
 
 This checks the production player in an Android emulator. Each case has one server, so another source cannot silently satisfy its test. Playback requires the same visible content clock to advance by at least one second, reach three seconds and have a duration of at least two minutes. HTTP success, loaded frames and native “playing” signals alone are not confirmations. These are short playback samples, not full-film or every-episode validation.
 
@@ -8,19 +10,19 @@ The source provider identifies the catalogue sample. A returned alternative may 
 
 | Provider | Samples | Returned choices | Own-source choices | Tested | Played | Played from own source |
 |---|---:|---:|---:|---:|---:|---:|
-| myflixer | 2 | 38 | 19 | 28 | 7 | 5 |
-| fmovies | 3 | 36 | 9 | 28 | 4 | 1 |
-| hdtoday | 5 | 45 | 36 | 28 | 3 | 3 |
-| cimafu | 6 | 62 | 62 | 29 | 6 | 6 |
+| myflixer | 2 | 38 | 19 | 38 | 9 | 5 |
+| fmovies | 3 | 36 | 9 | 36 | 4 | 1 |
+| hdtoday | 5 | 45 | 36 | 45 | 8 | 8 |
+| cimafu | 6 | 62 | 62 | 62 | 22 | 22 |
 | streamtunisie | 2 | 2 | 2 | 2 | 2 | 2 |
 | kirmalk | 5 | 24 | 4 | 24 | 5 | 0 |
 | ahwaktv | 2 | 8 | 8 | 8 | 3 | 3 |
-| egydead | 5 | 37 | 4 | 28 | 8 | 1 |
+| egydead | 5 | 37 | 4 | 37 | 9 | 1 |
 | tuniflix | 3 | 3 | 3 | 3 | 1 | 1 |
 | cinetimes | 1 | 1 | 1 | 1 | 1 | 1 |
 | cimatn | 6 | 5 | 5 | 5 | 1 | 1 |
 | frenchstream | 2 | 11 | 8 | 11 | 3 | 3 |
-| dessinanime | 6 | 32 | 3 | 28 | 9 | 3 |
+| dessinanime | 6 | 32 | 3 | 32 | 10 | 3 |
 | onepace | 4 | 0 | 0 | 0 | 0 | 0 |
 | youtubeoriginals | 3 | 9 | 2 | 9 | 1 | 1 |
 | wco | 4 | 4 | 4 | 4 | 4 | 4 |
@@ -30,6 +32,23 @@ The source provider identifies the catalogue sample. A returned alternative may 
 | myasiantv | 2 | 2 | 2 | 2 | 2 | 2 |
 | multimovies | 2 | 12 | 12 | 12 | 6 | 6 |
 | yoturkish | 1 | 2 | 2 | 2 | 0 | 0 |
+
+## Outcomes
+
+| Outcome | Choices |
+|---|---:|
+| player_error | 106 |
+| no_advancing_video | 117 |
+| missing_video | 7 |
+| source_unavailable | 1 |
+| playback_confirmed | 93 |
+| verification_required | 6 |
+| embedding_restricted | 2 |
+| restricted | 1 |
+| region_restricted | 1 |
+| access_denied | 2 |
+
+1 additional choices have an earlier playback confirmation and a different latest outcome; see per-route evidence.
 
 ## Lookup and guide gaps
 
@@ -108,22 +127,22 @@ The source provider identifies the catalogue sample. A returned alternative may 
 | 49 | myflixer / The Diplomat | French Stream · VOSTFR · voe / trakx.lol | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
 | 50 | myflixer / The Diplomat | MultiMovies - Cineverse / rozgarlelo.modiplay.xyz | 1.6.25 | playback_confirmed | 0.0 → 4.0 s / 3070.4 s (webview) |
 | 51 | myflixer / The Diplomat | MultiMovies - GD mirror / streams.iqsmartgames.com | 1.6.25 | playback_confirmed | 1.6 → 3.7 s / 3070.4 s (webview) |
-| 52 | myflixer / The Diplomat | MultiMovies - Vidrift / embed.vidrift.net | 1.6.25 | pending |  |
-| 53 | myflixer / The Diplomat | MultiMovies - VIDOUT / vidout.pages.dev | 1.6.25 | pending |  |
-| 54 | myflixer / The Diplomat | MultiMovies - Filmu / embed.filmu.in | 1.6.25 | pending |  |
-| 55 | myflixer / The Diplomat | MultiMovies - VidBolt / vidbolt.xyz | 1.6.25 | pending |  |
+| 52 | myflixer / The Diplomat | MultiMovies - Vidrift / embed.vidrift.net | 1.6.25 | embedding_restricted | Remove sandboxing to enable playback. Visit vidrift.in for more info. |
+| 53 | myflixer / The Diplomat | MultiMovies - VIDOUT / vidout.pages.dev | 1.6.25 | playback_confirmed | 0.0 → 3.2 s / 2610.6 s (webview) |
+| 54 | myflixer / The Diplomat | MultiMovies - Filmu / embed.filmu.in | 1.6.25 | no_advancing_video |  |
+| 55 | myflixer / The Diplomat | MultiMovies - VidBolt / vidbolt.xyz | 1.6.25 | missing_video | 404 Page not found |
 | 56 | myflixer / The Diplomat | Myflixer · Soap2Cloud (HLS) / snowy-morning.soapsoap123.workers.dev | 1.6.25 | playback_confirmed | 0.8 → 4.8 s / 2648.9 s (media3) |
 | 57 | myflixer / The Diplomat | Myflixer · Player 2 / balance.medmedia03.wiki | 1.6.25 | no_advancing_video |  |
 | 58 | myflixer / The Diplomat | Myflixer · Player 3 / vidfast.pro | 1.6.25 | playback_confirmed | 0.0 → 3.6 s / 2610.6 s (webview) |
 | 59 | myflixer / The Diplomat | Myflixer · Player 4 / embedmaster.link | 1.6.25 | no_advancing_video |  |
 | 60 | myflixer / The Diplomat | Myflixer · Player 5 / multiembed.mov | 1.6.25 | no_advancing_video |  |
 | 61 | myflixer / The Diplomat | Myflixer · Player 6 / moviesapi.to | 1.6.25 | playback_confirmed | 0.9 → 4.6 s / 2993.8 s (webview) |
-| 62 | myflixer / The Diplomat | FMovies · Embos / embos.top | 1.6.25 | pending |  |
-| 63 | myflixer / The Diplomat | FMovies · Vidcore / vidcore.net | 1.6.25 | pending |  |
-| 64 | myflixer / The Diplomat | FMovies · VidAPI / vidapi.xyz | 1.6.25 | pending |  |
-| 65 | myflixer / The Diplomat | VidSrc / vidsrc.mov | 1.6.25 | pending |  |
-| 66 | myflixer / The Diplomat | VidFast / vidfast.pro | 1.6.25 | pending |  |
-| 67 | myflixer / The Diplomat | VidLink / vidlink.pro | 1.6.25 | pending |  |
+| 62 | myflixer / The Diplomat | FMovies · Embos / embos.top | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
+| 63 | myflixer / The Diplomat | FMovies · Vidcore / vidcore.net | 1.6.25 | no_advancing_video |  |
+| 64 | myflixer / The Diplomat | FMovies · VidAPI / vidapi.xyz | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
+| 65 | myflixer / The Diplomat | VidSrc / vidsrc.mov | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
+| 66 | myflixer / The Diplomat | VidFast / vidfast.pro | 1.6.25 | playback_confirmed | 3.3 → 4.8 s / 2610.6 s (webview) |
+| 67 | myflixer / The Diplomat | VidLink / vidlink.pro | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
 | 68 | streamtunisie / Arriere el godem 2 | StreamTunisie - YouTube / www.youtube.com | 1.6.23 | playback_confirmed | 0.0 → 3.2 s / 2255.4 s (webview) (earlier playback confirmed on 1.6.22) |
 | 69 | cimafu / المعلم | Cima4u - doodstream.com - Arabic sub / doodstream.com | 1.6.25 | no_advancing_video |  |
 | 70 | cimafu / المعلم | Cima4u - doodstream.com - Arabic sub / doodstream.com | 1.6.25 | no_advancing_video |  |
@@ -132,20 +151,20 @@ The source provider identifies the catalogue sample. A returned alternative may 
 | 73 | cimafu / المعلم | Cima4u - bysetayico.com - Arabic sub / bysetayico.com | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
 | 74 | cimafu / المعلم | Cima4u - mixdrop.ps - Arabic sub / mixdrop.ps | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
 | 75 | cimafu / المعلم | Cima4u - mixdrop.ps - Arabic sub / mixdrop.ps | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
-| 76 | cimafu / المعلم | Cima4u - mixdrop.ps - Arabic sub / mixdrop.ps | 1.6.25 | pending |  |
-| 77 | cimafu / المعلم | Cima4u - mixdrop.ps - Arabic sub / mixdrop.ps | 1.6.25 | pending |  |
-| 78 | cimafu / المعلم | Cima4u - mixdrop.ps - Arabic sub / mixdrop.ps | 1.6.25 | pending |  |
-| 79 | cimafu / المعلم | Cima4u - mixdrop.ps - Arabic sub / mixdrop.ps | 1.6.25 | pending |  |
-| 80 | cimafu / المعلم | Cima4u - cybervynx.com - Arabic sub / cybervynx.com | 1.6.25 | pending |  |
-| 81 | cimafu / المعلم | Cima4u - cybervynx.com - Arabic sub / cybervynx.com | 1.6.25 | pending |  |
-| 82 | cimafu / المعلم | Cima4u - 1vid.xyz - Arabic sub / 1vid.xyz | 1.6.25 | pending |  |
-| 83 | cimafu / المعلم | Cima4u - vidmoly.org - Arabic sub / vidmoly.org | 1.6.25 | pending |  |
-| 84 | cimafu / المعلم | Cima4u - vidspeed.org - Arabic sub / vidspeed.org | 1.6.25 | pending |  |
-| 85 | cimafu / المعلم | Cima4u - bysesukior.com - Arabic sub / bysesukior.com | 1.6.25 | pending |  |
-| 86 | cimafu / المعلم | Cima4u - mixdrop.top - Arabic sub / mixdrop.top | 1.6.25 | pending |  |
-| 87 | cimafu / المعلم | Cima4u - hgcloud.to - Arabic sub / hgcloud.to | 1.6.25 | pending |  |
-| 88 | cimafu / المعلم | Cima4u - playmogo.com - Arabic sub / playmogo.com | 1.6.25 | pending |  |
-| 89 | cimafu / المعلم | Cima4u - voe.sx - Arabic sub / voe.sx | 1.6.25 | pending |  |
+| 76 | cimafu / المعلم | Cima4u - mixdrop.ps - Arabic sub / mixdrop.ps | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
+| 77 | cimafu / المعلم | Cima4u - mixdrop.ps - Arabic sub / mixdrop.ps | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
+| 78 | cimafu / المعلم | Cima4u - mixdrop.ps - Arabic sub / mixdrop.ps | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
+| 79 | cimafu / المعلم | Cima4u - mixdrop.ps - Arabic sub / mixdrop.ps | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
+| 80 | cimafu / المعلم | Cima4u - cybervynx.com - Arabic sub / cybervynx.com | 1.6.25 | playback_confirmed | 0.4 → 3.9 s / 8539.1 s (media3) |
+| 81 | cimafu / المعلم | Cima4u - cybervynx.com - Arabic sub / cybervynx.com | 1.6.25 | playback_confirmed | 1.1 → 3.9 s / 8539.1 s (media3) |
+| 82 | cimafu / المعلم | Cima4u - 1vid.xyz - Arabic sub / 1vid.xyz | 1.6.25 | playback_confirmed | 0.0 → 3.3 s / 8539.1 s (webview) |
+| 83 | cimafu / المعلم | Cima4u - vidmoly.org - Arabic sub / vidmoly.org | 1.6.25 | playback_confirmed | 0.0 → 3.3 s / 8539.1 s (webview) |
+| 84 | cimafu / المعلم | Cima4u - vidspeed.org - Arabic sub / vidspeed.org | 1.6.25 | no_advancing_video |  |
+| 85 | cimafu / المعلم | Cima4u - bysesukior.com - Arabic sub / bysesukior.com | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
+| 86 | cimafu / المعلم | Cima4u - mixdrop.top - Arabic sub / mixdrop.top | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
+| 87 | cimafu / المعلم | Cima4u - hgcloud.to - Arabic sub / hgcloud.to | 1.6.25 | playback_confirmed | 0.1 → 3.4 s / 8539.1 s (media3) |
+| 88 | cimafu / المعلم | Cima4u - playmogo.com - Arabic sub / playmogo.com | 1.6.25 | no_advancing_video |  |
+| 89 | cimafu / المعلم | Cima4u - voe.sx - Arabic sub / voe.sx | 1.6.25 | playback_confirmed | 0.1 → 3.7 s / 8539.1 s (webview) |
 | 90 | ahwaktv / صقر وكناريا | AhwakTV - vkvideo.ru / vkvideo.ru | 1.6.22 | no_advancing_video |  |
 | 91 | ahwaktv / صقر وكناريا | AhwakTV - www.ok.ru / www.ok.ru | 1.6.22 | no_advancing_video |  |
 | 92 | ahwaktv / صقر وكناريا | AhwakTV - uqload.vc / uqload.vc | 1.6.22 | no_advancing_video |  |
@@ -173,8 +192,8 @@ The source provider identifies the catalogue sample. A returned alternative may 
 | 114 | myasiantv / You Should Be the One to Kiss Me | MyAsianTV - English sub / zumivids.com | 1.6.25 | playback_confirmed | 0.0 → 3.2 s / 1441.5 s (webview) |
 | 115 | toontales / Rabbit Fire | ToonTales / ww.toontales.net | 1.6.22 | playback_confirmed | 1.3 → 3.3 s / 452.4 s (media3) |
 | 116 | myasiantv / Dutdot | MyAsianTV - English sub / zumivids.com | 1.6.25 | playback_confirmed | 0.0 → 3.7 s / 4621.4 s (webview) |
-| 117 | yoturkish / Sevdam Karadeniz | YoTurkish - Server 1 (English sub) / rufiiguta.com | 1.6.22 | no_advancing_video |  |
-| 118 | yoturkish / Sevdam Karadeniz | YoTurkish - Server 2 (English sub) / engifuosi.com | 1.6.22 | missing_video | 404 The page you were looking for is not here. |
+| 117 | yoturkish / Sevdam Karadeniz | YoTurkish - Server 1 (English sub) / rufiiguta.com | 1.6.25 | no_advancing_video |  |
+| 118 | yoturkish / Sevdam Karadeniz | YoTurkish - Server 2 (English sub) / engifuosi.com | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
 | 119 | multimovies / Street Fighter | MultiMovies - Cineverse / rozgarlelo.modiplay.xyz | 1.6.22 | playback_confirmed | 0.3 → 3.5 s / 6522.7 s (webview) |
 | 120 | multimovies / Street Fighter | MultiMovies - GD mirror / streams.iqsmartgames.com | 1.6.22 | playback_confirmed | 0.9 → 4.0 s / 6522.7 s (webview) |
 | 121 | multimovies / Street Fighter | MultiMovies - Vidrift / embed.vidrift.net | 1.6.22 | playback_confirmed | 0.2 → 3.3 s / 6520.0 s (webview) |
@@ -187,25 +206,25 @@ The source provider identifies the catalogue sample. A returned alternative may 
 | 128 | multimovies / The Offer | MultiMovies - VIDOUT / vidout.pages.dev | 1.6.25 | no_advancing_video |  |
 | 129 | multimovies / The Offer | MultiMovies - Filmu / embed.filmu.in | 1.6.23 | no_advancing_video |  |
 | 130 | multimovies / The Offer | MultiMovies - VidBolt / vidbolt.xyz | 1.6.24 | missing_video | 404 Page not found |
-| 131 | cimafu / Shuiro No Kamen | Cima4u - bysetayico.com - Arabic sub / bysetayico.com | 1.6.25 | pending |  |
-| 132 | cimafu / Shuiro No Kamen | Cima4u - 1vid.xyz - Arabic sub / 1vid.xyz | 1.6.25 | pending |  |
-| 133 | cimafu / Shuiro No Kamen | Cima4u - vidmoly.org - Arabic sub / vidmoly.org | 1.6.25 | pending |  |
-| 134 | cimafu / حبت | Cima4u - bysetayico.com / bysetayico.com | 1.6.25 | pending |  |
-| 135 | cimafu / حبت | Cima4u - bysetayico.com / bysetayico.com | 1.6.25 | pending |  |
-| 136 | cimafu / حبت | Cima4u - mixdrop.ps / mixdrop.ps | 1.6.25 | pending |  |
-| 137 | cimafu / حبت | Cima4u - mixdrop.ps / mixdrop.ps | 1.6.25 | pending |  |
-| 138 | cimafu / حبت | Cima4u - mixdrop.ps / mixdrop.ps | 1.6.25 | pending |  |
-| 139 | cimafu / حبت | Cima4u - cybervynx.com / cybervynx.com | 1.6.25 | pending |  |
-| 140 | cimafu / حبت | Cima4u - cybervynx.com / cybervynx.com | 1.6.25 | pending |  |
-| 141 | cimafu / حبت | Cima4u - 1vid.xyz / 1vid.xyz | 1.6.25 | pending |  |
-| 142 | cimafu / حبت | Cima4u - vidmoly.org / vidmoly.org | 1.6.25 | pending |  |
-| 143 | cimafu / حبت | Cima4u - vidspeed.org / vidspeed.org | 1.6.25 | pending |  |
-| 144 | cimafu / حبت | Cima4u - hgcloud.to / hgcloud.to | 1.6.25 | pending |  |
-| 145 | cimafu / حبت | Cima4u - playmogo.com / playmogo.com | 1.6.25 | pending |  |
-| 146 | cimafu / حبت | Cima4u - voe.sx / voe.sx | 1.6.25 | pending |  |
-| 147 | cimafu / Rick and Morty | Cima4u - 1vid.xyz - Arabic sub / 1vid.xyz | 1.6.25 | pending |  |
-| 148 | cimafu / Rick and Morty | Cima4u - vidspeed.org - Arabic sub / vidspeed.org | 1.6.25 | pending |  |
-| 149 | cimafu / Lokah Chapter One: Chandra | Cima4u - vidspeed.org - Arabic sub / vidspeed.org | 1.6.25 | pending |  |
+| 131 | cimafu / Shuiro No Kamen | Cima4u - bysetayico.com - Arabic sub / bysetayico.com | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
+| 132 | cimafu / Shuiro No Kamen | Cima4u - 1vid.xyz - Arabic sub / 1vid.xyz | 1.6.25 | playback_confirmed | 0.0 → 3.3 s / 1430.2 s (webview) |
+| 133 | cimafu / Shuiro No Kamen | Cima4u - vidmoly.org - Arabic sub / vidmoly.org | 1.6.25 | playback_confirmed | 0.0 → 3.6 s / 1430.2 s (webview) |
+| 134 | cimafu / حبت | Cima4u - bysetayico.com / bysetayico.com | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
+| 135 | cimafu / حبت | Cima4u - bysetayico.com / bysetayico.com | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
+| 136 | cimafu / حبت | Cima4u - mixdrop.ps / mixdrop.ps | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
+| 137 | cimafu / حبت | Cima4u - mixdrop.ps / mixdrop.ps | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
+| 138 | cimafu / حبت | Cima4u - mixdrop.ps / mixdrop.ps | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
+| 139 | cimafu / حبت | Cima4u - cybervynx.com / cybervynx.com | 1.6.25 | playback_confirmed | 0.1 → 3.3 s / 3187.2 s (media3) |
+| 140 | cimafu / حبت | Cima4u - cybervynx.com / cybervynx.com | 1.6.25 | playback_confirmed | 0.1 → 3.0 s / 3187.2 s (media3) |
+| 141 | cimafu / حبت | Cima4u - 1vid.xyz / 1vid.xyz | 1.6.25 | playback_confirmed | 1.4 → 3.9 s / 3187.2 s (webview) |
+| 142 | cimafu / حبت | Cima4u - vidmoly.org / vidmoly.org | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
+| 143 | cimafu / حبت | Cima4u - vidspeed.org / vidspeed.org | 1.6.25 | playback_confirmed | 1.0 → 3.6 s / 3187.2 s (webview) |
+| 144 | cimafu / حبت | Cima4u - hgcloud.to / hgcloud.to | 1.6.25 | playback_confirmed | 0.1 → 3.5 s / 3187.2 s (media3) |
+| 145 | cimafu / حبت | Cima4u - playmogo.com / playmogo.com | 1.6.25 | no_advancing_video |  |
+| 146 | cimafu / حبت | Cima4u - voe.sx / voe.sx | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
+| 147 | cimafu / Rick and Morty | Cima4u - 1vid.xyz - Arabic sub / 1vid.xyz | 1.6.25 | playback_confirmed | 0.3 → 3.5 s / 1339.1 s (webview) |
+| 148 | cimafu / Rick and Morty | Cima4u - vidspeed.org - Arabic sub / vidspeed.org | 1.6.25 | playback_confirmed | 0.9 → 3.7 s / 1339.1 s (webview) |
+| 149 | cimafu / Lokah Chapter One: Chandra | Cima4u - vidspeed.org - Arabic sub / vidspeed.org | 1.6.25 | playback_confirmed | 1.1 → 3.7 s / 8928.5 s (webview) |
 | 150 | fmovies / Dating the Delaneys | FMovies · Embos / embos.top | 1.6.23 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
 | 151 | fmovies / Dating the Delaneys | FMovies · Vidcore / vidcore.net | 1.6.23 | no_advancing_video |  |
 | 152 | fmovies / Dating the Delaneys | FMovies · VidAPI / vidapi.xyz | 1.6.23 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
@@ -217,7 +236,7 @@ The source provider identifies the catalogue sample. A returned alternative may 
 | 158 | youtubeoriginals / Noob | VidSrc / vidsrc.mov | 1.6.22 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
 | 159 | youtubeoriginals / Noob | VidFast / vidfast.pro | 1.6.22 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
 | 160 | youtubeoriginals / Noob | VidLink / vidlink.pro | 1.6.22 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
-| 161 | animegg / Hakata Tonkotsu Ramens | AnimeGG - Subbed / www.animegg.org | 1.6.22 | source_unavailable | Please wait while the video is loading.... If you do not see a video, try refreshing Error loading player: No playable sources found |
+| 161 | animegg / Hakata Tonkotsu Ramens | AnimeGG - Subbed / www.animegg.org | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
 | 162 | youtubeoriginals / 【EN Dub】Mobile Suit Gundam SEED | YouTube - GUNDAM CHANNEL INTL (region availability varies) / www.youtube.com | 1.6.23 | region_restricted | Video unavailable Video unavailable The uploader has not made this video available in your country |
 | 163 | wco / Gravity Falls | Watch Cartoon Online / www.wcostream.tv | 1.6.22 | playback_confirmed | 0.5 → 12.5 s / 1268.8 s (media3) |
 | 164 | wco / Scooby-Doo, Where Are You! | Watch Cartoon Online / www.wcostream.tv | 1.6.22 | playback_confirmed | 1.8 → 3.8 s / 1313.3 s (media3) |
@@ -274,14 +293,14 @@ The source provider identifies the catalogue sample. A returned alternative may 
 | 215 | fmovies / Dune: Part Two | French Stream · VF · vidzy / vidzy.cc | 1.6.25 | no_advancing_video |  |
 | 216 | fmovies / Dune: Part Two | French Stream · VF · vidzy / vidzy.cc | 1.6.25 | no_advancing_video |  |
 | 217 | fmovies / Dune: Part Two | French Stream · DEFAULT · uqload / uqload.vc | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
-| 218 | fmovies / Dune: Part Two | French Stream · VOSTFR · uqload / uqload.vc | 1.6.25 | pending |  |
-| 219 | fmovies / Dune: Part Two | French Stream · VF · uqload / uqload.vc | 1.6.25 | pending |  |
-| 220 | fmovies / Dune: Part Two | French Stream · DEFAULT · dood / trakx.lol | 1.6.25 | pending |  |
-| 221 | fmovies / Dune: Part Two | French Stream · VOSTFR · dood / trakx.lol | 1.6.25 | pending |  |
-| 222 | fmovies / Dune: Part Two | French Stream · VF · dood / trakx.lol | 1.6.25 | pending |  |
-| 223 | fmovies / Dune: Part Two | French Stream · VF · dood / trakx.lol | 1.6.25 | pending |  |
-| 224 | fmovies / Dune: Part Two | French Stream · VOSTFR · voe / trakx.lol | 1.6.25 | pending |  |
-| 225 | fmovies / Dune: Part Two | French Stream · DEFAULT · filmoon / trakx.lol | 1.6.25 | pending |  |
+| 218 | fmovies / Dune: Part Two | French Stream · VOSTFR · uqload / uqload.vc | 1.6.25 | no_advancing_video |  |
+| 219 | fmovies / Dune: Part Two | French Stream · VF · uqload / uqload.vc | 1.6.25 | verification_required | CONFIRM YOU ARE NOT A ROBOT Click the button I'm not a robot |
+| 220 | fmovies / Dune: Part Two | French Stream · DEFAULT · dood / trakx.lol | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
+| 221 | fmovies / Dune: Part Two | French Stream · VOSTFR · dood / trakx.lol | 1.6.25 | no_advancing_video |  |
+| 222 | fmovies / Dune: Part Two | French Stream · VF · dood / trakx.lol | 1.6.25 | no_advancing_video |  |
+| 223 | fmovies / Dune: Part Two | French Stream · VF · dood / trakx.lol | 1.6.25 | no_advancing_video |  |
+| 224 | fmovies / Dune: Part Two | French Stream · VOSTFR · voe / trakx.lol | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
+| 225 | fmovies / Dune: Part Two | French Stream · DEFAULT · filmoon / trakx.lol | 1.6.25 | no_advancing_video |  |
 | 226 | dessinanime / ‎Des Minions et des Monstres | Myflixer · Soap2Cloud (HLS) / snowy-morning.soapsoap123.workers.dev | 1.6.25 | playback_confirmed | 0.1 → 4.1 s / 4897.5 s (media3) (earlier playback confirmed on 1.6.25) |
 | 227 | dessinanime / ‎Des Minions et des Monstres | Myflixer · Soap2Us (HLS) / snowy-morning.soapsoap123.workers.dev | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
 | 228 | dessinanime / ‎Des Minions et des Monstres | Myflixer · Soap2Moon (HLS) / snowy-morning.soapsoap123.workers.dev | 1.6.25 | playback_confirmed | 0.9 → 5.0 s / 5559.7 s (media3) |
@@ -307,7 +326,7 @@ The source provider identifies the catalogue sample. A returned alternative may 
 | 248 | dessinanime / ‎Des Minions et des Monstres | French Stream · VF · voe / trakx.lol | 1.6.25 | no_advancing_video |  |
 | 249 | dessinanime / ‎Des Minions et des Monstres | FMovies · Embos / embos.top | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
 | 250 | dessinanime / ‎Des Minions et des Monstres | FMovies · Vidcore / vidcore.net | 1.6.25 | no_advancing_video |  |
-| 251 | dessinanime / ‎Des Minions et des Monstres | FMovies · VidAPI / vidapi.xyz | 1.6.25 | pending |  |
+| 251 | dessinanime / ‎Des Minions et des Monstres | FMovies · VidAPI / vidapi.xyz | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
 | 252 | hdtoday / Dad, Make Me Marry | HDToday · vidsrc.mov / vidsrc.mov | 1.6.22 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
 | 253 | hdtoday / Dad, Make Me Marry | HDToday · vidsrc.fyi / vidsrc.fyi | 1.6.22 | no_advancing_video |  |
 | 254 | hdtoday / Dad, Make Me Marry | HDToday · VIP / embed.vidsrc.si | 1.6.22 | playback_confirmed | 0.0 → 3.1 s / 5702.5 s (webview) |
@@ -335,24 +354,24 @@ The source provider identifies the catalogue sample. A returned alternative may 
 | 276 | hdtoday / a journey in my mother s footsteps | HDToday · multiembed / multiembed.mov | 1.6.25 | no_advancing_video |  |
 | 277 | hdtoday / a journey in my mother s footsteps | HDToday · mappletv / mappletv.uk | 1.6.25 | verification_required | I'm not a robot Check the box "I'm not a robot" to continue |
 | 278 | hdtoday / a journey in my mother s footsteps | HDToday · moviesapi / moviesapi.to | 1.6.25 | no_advancing_video |  |
-| 279 | hdtoday / a journey in my mother s footsteps | FMovies · Embos / embos.top | 1.6.25 | pending |  |
-| 280 | hdtoday / a journey in my mother s footsteps | FMovies · Vidcore / vidcore.net | 1.6.25 | pending |  |
-| 281 | hdtoday / a journey in my mother s footsteps | FMovies · VidAPI / vidapi.xyz | 1.6.25 | pending |  |
+| 279 | hdtoday / a journey in my mother s footsteps | FMovies · Embos / embos.top | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
+| 280 | hdtoday / a journey in my mother s footsteps | FMovies · Vidcore / vidcore.net | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
+| 281 | hdtoday / a journey in my mother s footsteps | FMovies · VidAPI / vidapi.xyz | 1.6.25 | no_advancing_video |  |
 | 282 | hdtoday / Hidden Pleasures | HDToday · vidsrc.mov / vidsrc.mov | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
-| 283 | hdtoday / Hidden Pleasures | HDToday · vidsrc.fyi / vidsrc.fyi | 1.6.25 | pending |  |
-| 284 | hdtoday / Hidden Pleasures | HDToday · VIP / embed.vidsrc.si | 1.6.25 | pending |  |
-| 285 | hdtoday / Hidden Pleasures | HDToday · vidfast / vidfast.pro | 1.6.25 | pending |  |
-| 286 | hdtoday / Hidden Pleasures | HDToday · vidup / vidup.to | 1.6.25 | pending |  |
-| 287 | hdtoday / Hidden Pleasures | HDToday · vidrock / vidrock.net | 1.6.25 | pending |  |
-| 288 | hdtoday / Hidden Pleasures | HDToday · vidnest / vidnest.fun | 1.6.25 | pending |  |
-| 289 | hdtoday / Hidden Pleasures | HDToday · vidlink / vidlink.pro | 1.6.25 | pending |  |
-| 290 | hdtoday / Hidden Pleasures | HDToday - Vidlove / player.vidlove.cc | 1.6.25 | pending |  |
-| 291 | hdtoday / Hidden Pleasures | HDToday · multiembed / multiembed.mov | 1.6.25 | pending |  |
-| 292 | hdtoday / Hidden Pleasures | HDToday · mappletv / mappletv.uk | 1.6.25 | pending |  |
-| 293 | hdtoday / Hidden Pleasures | HDToday · moviesapi / moviesapi.to | 1.6.25 | pending |  |
-| 294 | hdtoday / Hidden Pleasures | FMovies · Embos / embos.top | 1.6.25 | pending |  |
-| 295 | hdtoday / Hidden Pleasures | FMovies · Vidcore / vidcore.net | 1.6.25 | pending |  |
-| 296 | hdtoday / Hidden Pleasures | FMovies · VidAPI / vidapi.xyz | 1.6.25 | pending |  |
+| 283 | hdtoday / Hidden Pleasures | HDToday · vidsrc.fyi / vidsrc.fyi | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
+| 284 | hdtoday / Hidden Pleasures | HDToday · VIP / embed.vidsrc.si | 1.6.25 | playback_confirmed | 0.0 → 3.7 s / 5836.2 s (webview) |
+| 285 | hdtoday / Hidden Pleasures | HDToday · vidfast / vidfast.pro | 1.6.25 | playback_confirmed | 0.0 → 3.0 s / 5630.7 s (webview) |
+| 286 | hdtoday / Hidden Pleasures | HDToday · vidup / vidup.to | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
+| 287 | hdtoday / Hidden Pleasures | HDToday · vidrock / vidrock.net | 1.6.25 | playback_confirmed | 0.1 → 3.6 s / 5836.2 s (webview) |
+| 288 | hdtoday / Hidden Pleasures | HDToday · vidnest / vidnest.fun | 1.6.25 | no_advancing_video |  |
+| 289 | hdtoday / Hidden Pleasures | HDToday · vidlink / vidlink.pro | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
+| 290 | hdtoday / Hidden Pleasures | HDToday - Vidlove / player.vidlove.cc | 1.6.25 | playback_confirmed | 0.0 → 3.2 s / 5836.2 s (webview) |
+| 291 | hdtoday / Hidden Pleasures | HDToday · multiembed / multiembed.mov | 1.6.25 | no_advancing_video |  |
+| 292 | hdtoday / Hidden Pleasures | HDToday · mappletv / mappletv.uk | 1.6.25 | no_advancing_video |  |
+| 293 | hdtoday / Hidden Pleasures | HDToday · moviesapi / moviesapi.to | 1.6.25 | playback_confirmed | 1.6 → 3.8 s / 5836.2 s (webview) |
+| 294 | hdtoday / Hidden Pleasures | FMovies · Embos / embos.top | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
+| 295 | hdtoday / Hidden Pleasures | FMovies · Vidcore / vidcore.net | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
+| 296 | hdtoday / Hidden Pleasures | FMovies · VidAPI / vidapi.xyz | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
 | 297 | kirmalk / عادل مش عادل | AhwakTV - hgcloud.to / hgcloud.to | 1.6.24 | playback_confirmed | 1.6 → 3.7 s / 5472.4 s (media3) |
 | 298 | kirmalk / عادل مش عادل | Kirmalk - www.ok.ru / www.ok.ru | 1.6.24 | no_advancing_video |  |
 | 299 | kirmalk / الضيف | AhwakTV - vkvideo.ru / vkvideo.ru | 1.6.24 | no_advancing_video |  |
@@ -368,21 +387,21 @@ The source provider identifies the catalogue sample. A returned alternative may 
 | 309 | kirmalk / ابن الحاج أحمد | Kirmalk - www.ok.ru / www.ok.ru | 1.6.25 | no_advancing_video |  |
 | 310 | egydead / رهين | AhwakTV - hgcloud.to / hgcloud.to | 1.6.25 | playback_confirmed | 1.0 → 3.6 s / 5212.8 s (media3) |
 | 311 | egydead / رهين | French Stream · DEFAULT · vidzy / vidzy.cc | 1.6.25 | playback_confirmed | 1.3 → 3.1 s / 5212.8 s (webview) |
-| 312 | egydead / رهين | French Stream · VOSTFR · vidzy / vidzy.cc | 1.6.25 | pending |  |
-| 313 | egydead / رهين | French Stream · VF · vidzy / vidzy.cc | 1.6.25 | pending |  |
-| 314 | egydead / رهين | French Stream · DEFAULT · uqload / uqload.vc | 1.6.25 | pending |  |
-| 315 | egydead / رهين | French Stream · VOSTFR · uqload / uqload.vc | 1.6.25 | pending |  |
-| 316 | egydead / رهين | French Stream · DEFAULT · dood / kokoflix.lol | 1.6.25 | pending |  |
-| 317 | egydead / رهين | French Stream · VOSTFR · dood / trakx.lol | 1.6.25 | pending |  |
-| 318 | egydead / رهين | French Stream · DEFAULT · voe / kokoflix.lol | 1.6.25 | pending |  |
-| 319 | egydead / رهين | French Stream · VOSTFR · voe / trakx.lol | 1.6.25 | pending |  |
-| 320 | egydead / رهين | French Stream · DEFAULT · filmoon / kokoflix.lol | 1.6.25 | pending |  |
+| 312 | egydead / رهين | French Stream · VOSTFR · vidzy / vidzy.cc | 1.6.25 | playback_confirmed | 1.6 → 3.3 s / 5212.8 s (webview) |
+| 313 | egydead / رهين | French Stream · VF · vidzy / vidzy.cc | 1.6.25 | no_advancing_video |  |
+| 314 | egydead / رهين | French Stream · DEFAULT · uqload / uqload.vc | 1.6.25 | no_advancing_video |  |
+| 315 | egydead / رهين | French Stream · VOSTFR · uqload / uqload.vc | 1.6.25 | verification_required | I'm not a robot Check the box "I'm not a robot" to continue |
+| 316 | egydead / رهين | French Stream · DEFAULT · dood / kokoflix.lol | 1.6.25 | no_advancing_video |  |
+| 317 | egydead / رهين | French Stream · VOSTFR · dood / trakx.lol | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
+| 318 | egydead / رهين | French Stream · DEFAULT · voe / kokoflix.lol | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
+| 319 | egydead / رهين | French Stream · VOSTFR · voe / trakx.lol | 1.6.25 | no_advancing_video |  |
+| 320 | egydead / رهين | French Stream · DEFAULT · filmoon / kokoflix.lol | 1.6.25 | no_advancing_video |  |
 | 321 | dessinanime / Les Simpson | DessinAnime - VF - Panda / dessinanime | 1.6.25 | playback_confirmed | 0.1 → 4.1 s / 1395.2 s (media3) |
 | 322 | dessinanime / Les Simpson | DessinAnime - VF - Panda / dessinanime | 1.6.25 | playback_confirmed | 0.9 → 5.0 s / 1336.5 s (media3) |
 | 323 | dessinanime / Les Simpson | DessinAnime - MULTI - Lecteur / morencius.com | 1.6.25 | playback_confirmed | 1.2 → 4.0 s / 1394.9 s (webview) |
-| 324 | dessinanime / Les Simpson | VidSrc / vidsrc.mov | 1.6.25 | pending |  |
-| 325 | dessinanime / Les Simpson | VidFast / vidfast.pro | 1.6.25 | pending |  |
-| 326 | dessinanime / Les Simpson | VidLink / vidlink.pro | 1.6.25 | pending |  |
+| 324 | dessinanime / Les Simpson | VidSrc / vidsrc.mov | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
+| 325 | dessinanime / Les Simpson | VidFast / vidfast.pro | 1.6.25 | playback_confirmed | 0.0 → 3.2 s / 1395.0 s (webview) |
+| 326 | dessinanime / Les Simpson | VidLink / vidlink.pro | 1.6.25 | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
 | 327 | tuniflix / صيف حلق الوادي | Tuniflix - watch.strp2p.site / watch.strp2p.site | 1.6.22 | no_advancing_video |  |
 | 328 | egydead / المهايطية | EgyDead - q7v3k8m2p1.top / q7v3k8m2p1.top | 1.6.23 | no_advancing_video |  |
 | 329 | egydead / رهين | EgyDead - hgcloud.to / hgcloud.to | 1.6.25 | playback_confirmed | 0.3 → 4.3 s / 5212.6 s (media3) (earlier playback confirmed on 1.6.24) |
