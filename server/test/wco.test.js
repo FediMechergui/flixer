@@ -149,11 +149,22 @@ test('live provider search starts before a cold full index and retains late save
  let release,requests=0;const index=new Promise(resolve=>release=resolve),rows=[],events=[];
  const context=vm.createContext({window:{Capacitor:{Plugins:{WcoSource:{}}},FlixerWcoSource:{search:async()=>{requests++;return [{id:'new',title:'Example new',altTitles:[]}]}}},API_BASE:'https://backend.example',normalize:x=>x,byWeight:()=>0,URLSearchParams,Set,Map,Promise});
  vm.runInContext('globalThis.api={'+source.slice(start,end)+'};',context);
- const api=context.api;Object.assign(api,{liveEnabled:true,_indexReady:index,_searchProviders:Promise.resolve(['wco']),_byId:new Map(),catalog:async()=>{},all:async()=>rows,_reindex:()=>{},_merge:incoming=>incoming.forEach(r=>api._byId.set(r.id,r))});
+ const api=context.api;Object.assign(api,{liveEnabled:true,_indexReady:index,_searchProviders:Promise.resolve(['wco']),_byId:new Map(),catalog:async()=>{},all:async()=>rows,_groupSearchItems:ids=>[...ids].map(id=>api._byId.get(id)).filter(Boolean),_reindex:()=>{},_merge:incoming=>incoming.forEach(r=>api._byId.set(r.id,r))});
  const pending=api.search('example',{onLocal:r=>events.push(r)});await new Promise(resolve=>setImmediate(resolve));
  assert.equal(requests,1);assert.ok(events.some(r=>r.items.some(i=>i.id==='new')),'native results render while the full index is pending');
  const old={id:'saved',title:'Example saved',altTitles:[]};rows.push(old);api._byId.set(old.id,old);release();const result=await pending;
  assert.deepEqual(Array.from(result.items,i=>i.id).sort(),['new','saved']);assert.equal(result.pending,0);
+});
+
+test('native WCO search retries an empty query with an alias and retains edition names',async()=>{
+ const calls=[];
+ const anchor={textContent:'Example Show English Dubbed',getAttribute:()=>origin+'/anime/example?lang=dub',closest:()=>null},unrelated={textContent:'Another Show',getAttribute:()=>origin+'/anime/another-show',closest:()=>null};
+ const context=vm.createContext({window:{Capacitor:{Plugins:{WcoSource:{search:async({query})=>{calls.push(query);return {html:query==='Example Show'?'match':'empty'};}}}}},URL,DOMParser:class{parseFromString(html){return {querySelectorAll:()=>html==='match'?[anchor,unrelated]:[]};}}});
+ vm.runInContext(helper,context);
+ const rows=await context.window.FlixerWcoSource.search('An alternate name',{aliases:['Example Show','Unused']});
+ assert.deepEqual(calls,['An alternate name','Example Show']);assert.equal(rows.length,1);
+ assert.equal(rows[0].title,'Example Show English Dubbed');assert.deepEqual(Array.from(rows[0].altTitles),['Example Show']);assert.deepEqual(Array.from(rows[0].audioModes),['dub']);
+ await context.window.FlixerWcoSource.search('Cancelled',{signal:{aborted:true}});assert.equal(calls.length,2);
 });
 test('native details skip hosted snapshots and bound retries after empty guides or denial',async()=>{
  const source=fs.readFileSync(new URL('../../client-terrarium/js/api.js',import.meta.url),'utf8'),start=source.indexOf('    async details(_type,'),end=source.indexOf('    async _build(',start);

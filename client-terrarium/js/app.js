@@ -104,6 +104,12 @@
   }
 
   /* ---------- Components ---------- */
+  function providerBadge(item, inline=false) {
+    const providers=item.providers||[];if(!providers.length)return '';
+    const label=providers.length>1?'Various providers':providers[0].name;
+    const sources=providers.map(provider=>provider.name).join(', ');
+    return `<span class="card__provider${inline?' card__provider--inline':''}" title="${esc(sources)}" aria-label="Sources: ${esc(sources)}">${esc(label)}</span>`;
+  }
   function card(item, opts = {}) {
     const fresh = isFresh(item);
     const artHtml = item.poster ? `<img src="${esc(item.poster)}" alt="" decoding="async" referrerpolicy="no-referrer" loading="lazy" data-art="${esc(item.id)}">` : artPlaceholder(item);
@@ -112,6 +118,7 @@
       <div class="card__art">${artHtml}${fresh ? '<span class="card__fresh" title="New"></span>' : ""}
         ${r ? `<span class="card__rating">${r.rating.toFixed(1)}</span>` : ""}
         ${opts.showType ? `<span class="card__type">${item.type === "tv" ? "TV" : "FILM"}</span>` : ""}
+        ${providerBadge(item)}
       </div>
       <p class="card__title">${esc(item.title)}</p>
       <div class="card__meta">${esc(item.year || "—")}${opts.genre && item.genreIds[0] ? " · " + esc(genreName(item.type, item.genreIds[0])) : ""}${item.type === "tv" && item.episodeCount > 1 ? ` · ${item.episodeCount} ep` : ""}</div>
@@ -122,6 +129,7 @@
       <div class="card__art">${item.poster ? `<img src="${esc(item.poster)}" alt="" loading="lazy" data-art="${esc(item.id)}">` : artPlaceholder(item)}
         <span class="card__resume">RESUME</span>
         <span class="card__bar"><i style="width:${pct}%"></i></span>
+        ${providerBadge(item)}
       </div>
       <p class="card__title">${esc(item.title)}</p>
       <div class="card__meta">${pct}% watched</div>
@@ -648,7 +656,7 @@
         if (!r.items.length) { out.innerHTML = emptyState("No matches for “" + t + "”", "Check the spelling or try a shorter title."); return; }
         out.innerHTML = `<div class="list fade-in">${r.items.map(i => `<a class="list-item" href="#/${i.type}/${esc(i.id)}">
           <div class="list-item__art">${i.poster ? `<img src="${esc(i.poster)}" alt="" loading="lazy" data-art="${esc(i.id)}">` : artPlaceholder(i)}</div>
-          <div><p class="list-item__title">${esc(i.title)}</p><div class="meta list-item__meta">${i.type === "tv" ? "Series" : "Film"} · ${esc(i.year || "—")}${i.type === "tv" && i.episodeCount > 1 ? ` · ${i.episodeCount} ep` : ""}</div></div></a>`).join("")}</div>`;
+          <div><p class="list-item__title">${esc(i.title)}</p><div class="meta list-item__meta">${i.type === "tv" ? "Series" : "Film"} · ${esc(i.year || "—")}${i.type === "tv" && i.episodeCount > 1 ? ` · ${i.episodeCount} ep` : ""}</div>${providerBadge(i,true)}</div></a>`).join("")}</div>`;
       };
       try {
         const r = await api.search(t, {signal:searchRequest.signal,onLocal: local => paint(local)});

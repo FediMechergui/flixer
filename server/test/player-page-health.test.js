@@ -12,3 +12,7 @@ test('Android error-page health detects the soft-404 layouts observed on Embos a
 test('ordinary content, browser verification and long synopsis pages do not become missing-file signals',()=>{
  for(const text of ['Movie 404 — a story about a detective','Checking your browser. Verify you are human.','404 Page Not Found\n'+('Long plot '.repeat(300))])assert.deepEqual(messages(text),[]);
 });
+test('observed OK author blocks and disabled-embed pages fail over instead of idling',()=>{
+ for(const text of ['The author of this video has not been found or is blocked','Embeds disabled2'])assert.deepEqual(messages(text),['missing']);
+ assert.deepEqual(messages('A documentary discussing why Embeds disabled2 appears on websites.'),[]);
+});

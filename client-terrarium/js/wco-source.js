@@ -2,6 +2,8 @@
 (()=>{
  const origin='https://www.wcostream.tv',agent='Flixer (Android)',cache=new Map();
  const clean=s=>String(s||'').replace(/\s+/g,' ').trim();
+ const titleAliases=title=>{const base=clean(title).replace(/\s*(?:[-–—:]\s*)?\(?English\s+(?:Subbed|Dubbed)\)?$/i,'').trim();return base&&base!==title?[base]:[];};
+ const searchKey=value=>String(value||'').normalize('NFKD').replace(/\p{M}/gu,'').toLowerCase().replace(/&amp;/g,'&').replace(/&/g,' and ').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
  function sourceUrl(server){try{const u=new URL(server.embedUrl);return server.provider==='wco'&&server.type==='wco'&&u.origin===origin&&!u.username&&!u.password&&!u.search&&!u.hash&&/^\/[a-z0-9][a-z0-9-]{0,159}$/.test(u.pathname)?u.href:null}catch{return null}}
  function configuration(data){
   try{
@@ -55,9 +57,9 @@
   inferFirstSeason(episodes,m[1]);
   episodes.sort((a,b)=>(a.season??Number.MAX_SAFE_INTEGER)-(b.season??Number.MAX_SAFE_INTEGER)||(a.number??Number.MAX_SAFE_INTEGER)-(b.number??Number.MAX_SAFE_INTEGER)||a.id.localeCompare(b.id));
   const audioModes=[...new Set(episodes.flatMap(e=>e.audioModes))],anime=audioModes.length>0;
-  return {id,title,kind:'series',sourceUrl:origin+'/anime/'+m[1],channelId:'wco',documentary:false,providerMetadata:true,synopsis:clean(doc.querySelector('#cat-img-desc .iltext')?.textContent),poster:poster?{custom:poster}:null,portrait:poster,altTitles:[...doc.querySelectorAll('.film-name[data-jname]')].map(e=>clean(e.getAttribute('data-jname'))).filter(Boolean),tags:['animation',anime?'anime':'cartoons'],collections:[anime?'anime':'cartoons'],audioModes,episodes,episodeCount:episodes.length,episodesComplete:true,offerings:[{provider:'wco',id,sourceUrl:origin+'/anime/'+m[1]}]};
+  return {id,title,kind:'series',sourceUrl:origin+'/anime/'+m[1],channelId:'wco',documentary:false,providerMetadata:true,synopsis:clean(doc.querySelector('#cat-img-desc .iltext')?.textContent),poster:poster?{custom:poster}:null,portrait:poster,altTitles:[...new Set([...titleAliases(title),...[...doc.querySelectorAll('.film-name[data-jname]')].map(e=>clean(e.getAttribute('data-jname'))).filter(Boolean)])],tags:['animation',anime?'anime':'cartoons'],collections:[anime?'anime':'cartoons'],audioModes,episodes,episodeCount:episodes.length,episodesComplete:true,offerings:[{provider:'wco',id,sourceUrl:origin+'/anime/'+m[1]}]};
  }
- async function search(query){
+ async function searchPage(query){
   const {html}=await window.Capacitor.Plugins.WcoSource.search({query:String(query).slice(0,80)});if(typeof html!=='string'||html.length>2000000)throw Error('WCO search unavailable');
   const doc=new DOMParser().parseFromString(html,'text/html'),items=new Map();
   for(const a of doc.querySelectorAll('.aramadabaslik a[href]')){
@@ -68,9 +70,22 @@
    const id='sp:wco:s:'+slug,mode=u.searchParams.get('lang');let poster;
    try{const img=new URL(a.closest('.cerceve,.iccerceve')?.querySelector('img')?.getAttribute('src'),origin);if(img.protocol==='https:'&&img.hostname==='images.wcostream.com'&&!img.username&&!img.password)poster=img.href}catch{}
    const old=items.get(id);if(old){if(['sub','dub'].includes(mode)&&!old.audioModes.includes(mode))old.audioModes.push(mode);continue;}
-   items.set(id,{id,title,kind:'series',documentary:false,channelId:'wco',sourceUrl:origin+'/anime/'+slug,poster:poster?{custom:poster}:null,portrait:poster,providerMetadata:true,tags:['animation',...(['sub','dub'].includes(mode)?['anime']:mode==='cartoon'?['cartoons']:[])],collections:['sub','dub'].includes(mode)?['anime']:mode==='cartoon'?['cartoons']:[],audioModes:['sub','dub'].includes(mode)?[mode]:[],episodes:[],episodeCount:0,offerings:[{provider:'wco',id,sourceUrl:origin+'/anime/'+slug}]});
+   items.set(id,{id,title,altTitles:titleAliases(title),kind:'series',documentary:false,channelId:'wco',sourceUrl:origin+'/anime/'+slug,poster:poster?{custom:poster}:null,portrait:poster,providerMetadata:true,tags:['animation',...(['sub','dub'].includes(mode)?['anime']:mode==='cartoon'?['cartoons']:[])],collections:['sub','dub'].includes(mode)?['anime']:mode==='cartoon'?['cartoons']:[],audioModes:['sub','dub'].includes(mode)?[mode]:[],episodes:[],episodeCount:0,offerings:[{provider:'wco',id,sourceUrl:origin+'/anime/'+slug}]});
   }
-  return [...items.values()];
+  const terms=searchKey(query).split(/\s+/).filter(Boolean);
+  // The source returns OR matches: "Gravity Falls" also returns unrelated
+  // titles containing only "Falls". Require every requested word locally.
+  return terms.length?[...items.values()].filter(row=>[row.title,...row.altTitles].some(title=>terms.every(term=>searchKey(title).includes(term)))):[];
+ }
+ async function search(query,{aliases=[],signal}={}){
+  if(signal?.aborted)return [];
+  let rows=await searchPage(query);
+  // The native browser has one foreground resolver. Alias retries are serial
+  // and only needed for an empty result; never replace a title/video request.
+  for(const alias of [...new Set(aliases)].filter(value=>value&&value!==query).slice(0,2)){
+   if(rows.length||signal?.aborted)break;rows=await searchPage(alias);
+  }
+  return signal?.aborted?[]:rows;
  }
  function failureMessage(error){
   if(error?.code==='WCO_NO_MEDIA')return 'Watch Cartoon Online did not return a playable public video. Refresh sources or choose another source.';

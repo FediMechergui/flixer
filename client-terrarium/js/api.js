@@ -98,6 +98,46 @@
     if(window.FlixerCatalogueSource?.enabled())try{const body=await window.FlixerCatalogueSource.title(id);if(body)return {body};}catch(error){console.warn('[flixer] Published title unavailable:',error.message);}
     return getJson(`${DATA_BASE}/data/shows/${encodeURIComponent(encodeURIComponent(id))}.json`,ms);
   }
+  const PROVIDER_NAMES={myflixer:'MyFlixer',fmovies:'FMovies',hdtoday:'HDToday',wco:'WCO',animegg:'AnimeGG',megacartoons:'MegaCartoons',toontales:'ToonTales',myasiantv:'MyAsianTV',multimovies:'MultiMovies',yoturkish:'YoTurkish',dessinanime:'DessinAnime',onepace:'One Pace',youtubeoriginals:'YouTube',youtube:'YouTube',cimafu:'Cimafu',streamtunisie:'StreamTunisie',kirmalk:'Kirmalk',ahwaktv:'AhwakTV',egydead:'EgyDead',tuniflix:'Tuniflix',cinetimes:'Cinetimes',cimatn:'CimaTN',frenchstream:'FrenchStream'};
+  function providersOf(show) {
+    const ids=new Set(),seen=new Set();
+    const visit=row=>{if(!row||seen.has(row))return;seen.add(row);
+      for(const id of [row.id,...(row.aliasIds||[])]){const provider=/^sp:([^:]+):/.exec(id||'')?.[1]||({'mf':'myflixer','fm':'fmovies','hd':'hdtoday'}[String(id||'').split(':')[0]]);if(PROVIDER_NAMES[provider])ids.add(provider);}
+      for(const offering of row.offerings||[])if(PROVIDER_NAMES[offering.provider])ids.add(offering.provider);
+      for(const version of row.versions||[])visit(version);
+    };visit(show);
+    // YouTube channels and YouTube's player are the same source badge.
+    if(ids.has('youtubeoriginals'))ids.delete('youtube');
+    return [...ids].sort().map(id=>({id,name:PROVIDER_NAMES[id]}));
+  }
+  function coalesceEpisodes(rows, preferredIds=new Set()) {
+    // A refreshed canonical list may choose a different primary provider ID.
+    // Only explicit episode aliases prove equivalence; an equal episode number
+    // alone must not collapse an OVA, alternate cut or sub/dub source edition.
+    const aliases=new Map(),groups=new Set();
+    for(const row of rows){
+      const ids=[row.id,...(row.offerings||[]).map(offering=>offering.id)].filter(Boolean);
+      const matches=[...new Set(ids.map(id=>aliases.get(id)).filter(Boolean))];
+      const group=matches[0]||{rows:[],ids:new Set()};
+      if(!matches.length)groups.add(group);
+      for(const other of matches.slice(1)){group.rows.push(...other.rows);for(const id of other.ids){group.ids.add(id);aliases.set(id,group);}groups.delete(other);}
+      group.rows.push(row);for(const id of ids){group.ids.add(id);aliases.set(id,group);}
+    }
+    const order=new Map(rows.map((row,i)=>[row,i]));
+    return [...groups].map(group=>{
+      const members=group.rows.sort((a,b)=>order.get(a)-order.get(b)),first=members[0];
+      const merged=Object.assign({},...members.slice().reverse());
+      const canonical=members.find(row=>preferredIds.has(row.id))||first;
+      merged.id=canonical.id;
+      for(const key of ['sourceUrl','slug'])if(canonical[key])merged[key]=canonical[key];
+      merged.offerings=[...new Map(members.slice().reverse().flatMap(row=>{
+        const inferred=/^sp:([^:]+):/.exec(row.id||'')?.[1]||({mf:'myflixer',fm:'fmovies',hd:'hdtoday'}[String(row.id||'').split(':')[0]]);
+        return [...(inferred?[{provider:inferred,id:row.id,sourceUrl:row.sourceUrl}]:[]),...(row.offerings||[])];
+      }).map(offering=>[offering.provider+':'+offering.id,offering])).values()];
+      for(const key of ['audioModes','audioLanguages','subtitleLanguages'])merged[key]=[...new Set(members.flatMap(row=>row[key]||[]))];
+      return {episode:merged,order:order.get(first)};
+    }).sort((a,b)=>a.order-b.order).map(group=>group.episode);
+  }
   function normalize(s) {
     const type = s.kind === "series" ? "tv" : "movie";
     const date = String([s.providerUpdatedAt,s.latestAt,s.publishedAt,s.firstSeenAt].filter(Boolean).sort().pop() || "").slice(0,10);
@@ -109,6 +149,7 @@
     return {
       id: s.id,
       offerings: s.offerings || [],
+      providers: providersOf(s),
       access:s.access,
       versions: s.versions || [],
       sourceUrl: s.sourceUrl,
@@ -611,7 +652,7 @@
           if (r.sourceUrl&&(!cur.sourceUrl||fresh&&sameTitle)) cur.sourceUrl = r.sourceUrl;
           if (r.poster&&Object.values(r.poster).some(Boolean)&&(!cur.poster||!Object.values(cur.poster).some(Boolean)||fresh&&sameTitle)) cur.poster = r.poster;
           if (r.portrait&&(!cur.portrait||fresh&&sameTitle))cur.portrait=r.portrait;
-          if (Array.isArray(r.episodes)&&r.episodes.length) { const ordered=fresh&&sameTitle?[...r.episodes,...(cur.episodes||[])]:[...(cur.episodes||[]),...r.episodes];cur.episodes=[...new Map(ordered.reverse().map(e=>[e.id,e])).values()].reverse();cur.episodeCount=cur.episodes.length; }
+          if (Array.isArray(r.episodes)&&r.episodes.length) { const previous=cur.episodes||[],ordered=fresh&&sameTitle?[...r.episodes,...previous]:[...previous,...r.episodes];cur.episodes=coalesceEpisodes(ordered,new Set(previous.map(episode=>episode.id)));cur.episodeCount=cur.episodes.length; }
           const currentKeys=keys(cur);for(const key of oldKeys)if(!currentKeys.has(key)){this._identities.get(key)?.delete(cur);if(!this._identities.get(key)?.size)this._identities.delete(key);}addIdentity(cur,currentKeys);
         } else {
           this._universeDirty=true;
@@ -888,6 +929,8 @@
       return this._build(this._byId.get(id) || raw);
     }
     async _build(raw, { guide = true } = {}) {
+      const linked=(this._searchVersions?.get(raw.id)||[]).map(id=>this._byId.get(id)).filter(Boolean);
+      if(linked.length)raw={...raw,versions:[...new Map([...(raw.versions||[]),...linked.map(row=>({...row,versions:[],uncertainMatch:true}))].map(row=>[row.id,row])).values()]};
       const item = normalize(raw);
       const c = await this.catalog();
       const labels = new Map(c.genres[item.type].map(g => [g.id, g.name]));
@@ -981,6 +1024,27 @@
       return candidates()[0]||(tvImage&&!excluded.has(tvImage)?tvImage:null);
     }
 
+    // Yearless source results share a search card only when their name/alias
+    // identifies one edition. Keep their episode lists and routes independent.
+    _groupSearchItems(ids) {
+      const rows=[...new Map([...ids].map(id=>{const row=this._byId.get(id);return [row?.id,row];})).values()].filter(Boolean);
+      const names=row=>new Set([row.title,...(row.altTitles||[])].map(value=>this._key(value)).filter(Boolean));
+      const groups=[],byName=new Map();
+      const index=group=>{for(const row of group.rows)for(const name of names(row)){const key=row.kind+':'+name;let set=byName.get(key);if(!set)byName.set(key,set=new Set());set.add(group);}};
+      for(const row of [...rows].sort((a,b)=>!!b.year-!!a.year)){
+        const candidates=[...new Set([...names(row)].flatMap(name=>[...(byName.get(row.kind+':'+name)||[])]))].filter(group=>group.rows.every(other=>!(other.year&&row.year&&+other.year!==+row.year)&&!(other.tmdbId&&row.tmdbId&&+other.tmdbId!==+row.tmdbId)&&!(other.imdbId&&row.imdbId&&other.imdbId!==row.imdbId)));
+        const group=candidates.length===1?candidates[0]:{rows:[]};if(!group.rows.length)groups.push(group);group.rows.push(row);index(group);
+      }
+      this._searchVersions ||= new Map();
+      const order=new Map(rows.map((row,i)=>[row.id,i]));
+      return groups.sort((a,b)=>Math.min(...a.rows.map(row=>order.get(row.id)))-Math.min(...b.rows.map(row=>order.get(row.id)))).map(group=>{
+        // Preserve source identities; opening a version must never redirect to
+        // another edition or mix its episode numbering into that edition.
+        for(const row of group.rows)this._searchVersions.set(row.id,group.rows.filter(other=>other!==row).map(other=>other.id));
+        const root=group.rows[0],versions=[...new Map([...(root.versions||[]),...group.rows.slice(1).map(row=>({...row,versions:[],uncertainMatch:true}))].map(row=>[row.id,row])).values()];
+        return normalize({...root,versions});
+      });
+    }
     /* ----- Search: index first, widened by the source's own search ----- */
     async search(q, { onLocal,signal } = {}) {
       // Same normalization as shared/search.js, kept local for the classic-script client.
@@ -990,8 +1054,9 @@
       const hit = value => {const text=norm(value);return terms.every(term=>text.includes(term));};
       await this.catalog(); if(!API_BASE||!this.liveEnabled)await this._indexReady;
       const local = (await this.all()).filter(i => hit(i.title) || (i.alt && hit(i.alt)) || i.altTitles.some(hit)).sort(byWeight).slice(0, 60);
-      if (onLocal) onLocal({ items:local, totalPages:1,pending:this.liveEnabled?1:0 });
-      if (!this.liveEnabled) return { items: local, totalPages: 1 };
+      const localItems=this._groupSearchItems(local.map(item=>item.id));
+      if (onLocal) onLocal({ items:localItems, totalPages:1,pending:this.liveEnabled?1:0 });
+      if (!this.liveEnabled) return { items: localItems, totalPages: 1 };
       if(API_BASE){
         this._searchProviders ||= getJson(`${API_BASE}/api/search?providers=1`,3000).then(({body})=>body.providers).catch(()=>null);
         const names=[...new Set([...(await this._searchProviders||['myflixer','fmovies','hdtoday','streamtunisie','kirmalk','ahwaktv','egydead','tuniflix','cinetimes','cimatn','animegg','megacartoons','toontales','myasiantv','multimovies','yoturkish','frenchstream','dessinanime']),...(window.Capacitor?.Plugins?.WcoSource?['wco']:[])])];
@@ -999,14 +1064,14 @@
         const ids=new Set(local.map(i=>i.id));let pending=names.length+1;
         const exact=local.find(item=>[item.title,...(item.altTitles||[])].some(value=>norm(value)===norm(q)));
         const aliases=[...new Set(exact?[exact.title,...(exact.altTitles||[])]:[])].filter(value=>value&&norm(value)!==norm(q)&&value.length<=120).slice(0,2);
-        const result=()=>({items:[...new Map([...ids].map(id=>{const item=normalize(this._byId.get(id)||{});return [item.id,item];})).values()].filter(i=>i.id),totalPages:1,pending});
+        const result=()=>({items:this._groupSearchItems(ids),totalPages:1,pending});
         const saved=Promise.resolve(this._indexReady).then(async()=>{
           if(signal?.aborted)return;const rows=await this.all();if(signal?.aborted)return;
           rows.filter(i=>hit(i.title)||(i.alt&&hit(i.alt))||i.altTitles.some(hit)).sort(byWeight).slice(0,60).forEach(i=>ids.add(i.id));
         }).finally(()=>{pending--;if(!signal?.aborted&&onLocal)onLocal(result());});
         await Promise.allSettled([...names.map(async provider=>{try{
           const params=new URLSearchParams({q,provider});for(const alias of aliases)params.append('alias',alias);
-          const {body}=provider==='wco'&&window.Capacitor?.Plugins?.WcoSource?{body:{items:await window.FlixerWcoSource.search(q)}}:await getJson(`${API_BASE}/api/search?${params}`,12000,signal);
+          const {body}=provider==='wco'&&window.Capacitor?.Plugins?.WcoSource?{body:{items:await window.FlixerWcoSource.search(q,{aliases,signal})}}:await getJson(`${API_BASE}/api/search?${params}`,12000,signal);
           if(signal?.aborted)return;
           const rows=body.items||[];this._merge(rows);for(const row of rows)ids.add((this._byId.get(row.id)||row).id);
         }finally{pending--;if(!signal?.aborted&&onLocal)onLocal(result());}}),saved]);
@@ -1100,5 +1165,5 @@
     }
   }
 
-  window.Api = { FlixerApi };
+  window.Api = { FlixerApi, providersOf };
 })();

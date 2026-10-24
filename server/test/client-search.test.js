@@ -3,6 +3,38 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 
+test('native WCO search shares one card with a matching series and keeps independent versions playable',async()=>{
+ const catalog={product:'flixer',shows:[{id:'fm:t:1',title:'Gravity Falls',kind:'series',year:2012,offerings:[{provider:'fmovies',id:'fm:t:1'}],episodes:[{id:'fm:e:1',season:1,number:1}]}]};
+ const wco={id:'sp:wco:s:gravity-falls',title:'Gravity Falls',kind:'series',offerings:[{provider:'wco',id:'sp:wco:s:gravity-falls'}],episodes:[{id:'sp:wco:e:gravity-falls:gravity-falls-episode-1',season:null,number:1}]};
+ let native=0;const requests=[];
+ const context=vm.createContext({window:{FLIXER_CONFIG:{apiBase:'https://backend.test',live:false},Capacitor:{Plugins:{WcoSource:{}}},FlixerWcoSource:{search:async()=>{native++;return [wco];}},dispatchEvent:()=>{}},console,URL,URLSearchParams,localStorage:{getItem:()=>null,setItem:()=>{}},AbortController,setTimeout,clearTimeout,CustomEvent:class{},fetch:async input=>{
+  const u=new URL(String(input),'https://backend.test');requests.push(u.href);
+  const body=u.pathname==='/api/search'?u.searchParams.has('providers')?{providers:['fmovies','wco']}:{items:[]}:/services|universes/.test(u.pathname)?{}:catalog;
+  return {ok:true,status:200,headers:{get:()=>null},text:async()=>JSON.stringify(body)};
+ }});
+ for(const name of ['universes.js','tvmaze.js','api.js'])vm.runInContext(fs.readFileSync(new URL(`../../client-terrarium/js/${name}`,import.meta.url),'utf8'),context);
+ const api=new context.window.Api.FlixerApi();await api.catalog();await api._indexReady;api.liveEnabled=true;
+ const result=await api.search('Gravity Falls');assert.equal(native,1);assert.equal(result.items.length,1);
+ assert.deepEqual(Array.from(result.items[0].providers,p=>p.id),['fmovies','wco']);
+ assert.equal(result.items[0].versions[0].id,wco.id);assert.equal(result.items[0].versions[0].uncertainMatch,true);
+ assert.equal(api._byId.get(wco.id).id,wco.id,'a yearless source is not a canonical alias');
+ assert.equal(api._byId.get('fm:t:1').episodes.length,1,'uncertain episode numbering is not mixed');
+ const detail=await api._build(api._byId.get('fm:t:1'),{guide:false});assert.equal(detail.versions[0].id,wco.id);
+ assert.equal((await api._build(api._byId.get(wco.id),{guide:false})).versions[0].id,'fm:t:1');
+ assert.equal(requests.some(url=>url.includes('provider=wco')),false,'Android uses the native WCO search');
+ const providers=context.window.Api.providersOf({id:'sp:wco:s:x',offerings:[{provider:'wco'},{provider:'wco'},{provider:'tvm'}],tvm:{svc:'Netflix'}});assert.deepEqual(Array.from(providers,p=>p.name),['WCO']);
+ api._merge([{id:'fm:t:1',title:'Gravity Falls',kind:'series',episodes:[{id:'sp:frenchstream:e:1:1:1',season:1,number:1,offerings:[{provider:'fmovies',id:'fm:e:1'},{provider:'frenchstream',id:'sp:frenchstream:e:1:1:1',audioMode:'dub'}]}]}]);
+ const merged=api._byId.get('fm:t:1');assert.equal(merged.episodes.length,1,'a changed primary episode ID uses the explicit provider aliases');
+ assert.equal(merged.episodes[0].id,'fm:e:1','existing playback progress keeps its stable episode ID');
+ assert.equal(merged.episodes[0].offerings.find(o=>o.provider==='frenchstream').audioMode,'dub');
+ assert.ok(merged.episodes[0].offerings.some(o=>o.id==='fm:e:1'),'the original route remains available');
+ api._merge([{id:'fm:t:1',title:'Gravity Falls',kind:'series',episodes:[{id:'sp:frenchstream:e:other-edition:1:1',season:1,number:1,offerings:[{provider:'frenchstream',id:'sp:frenchstream:e:other-edition:1:1'}]}]}]);
+ assert.equal(merged.episodes.length,2,'equal numbering without an explicit alias is not proof of the same edition');
+ api._merge([{id:'fm:t:2',title:'Gravity Falls',kind:'series',year:2030,tmdbId:999}]);
+ const ambiguous=api._groupSearchItems(['fm:t:1','fm:t:2',wco.id]);assert.equal(ambiguous.length,3,'a yearless match does not choose between remakes');
+ api.liveEnabled=false;
+});
+
 test('Flixer offline search finds Happy & Gay when the user types and or omits punctuation',async()=>{
   const catalog={product:'flixer',shows:[{id:'happy-gay',title:'Happy & Gay',kind:'film',year:2014,tags:['animation']},{id:'holidays',title:'Happy Holidays',kind:'film',tags:['comedy']}]};
   const context=vm.createContext({window:{FLIXER_CONFIG:{live:false},dispatchEvent:()=>{}},console,localStorage:{getItem:()=>null,setItem:()=>{}},AbortController,setTimeout,clearTimeout,CustomEvent:class {},fetch:async url=>({ok:true,status:200,headers:{get:()=>null},text:async()=>JSON.stringify((/\/(catalog|bootstrap|index)\.json/.test(String(url)))?catalog:String(url).includes('/universes.json')?{universes:[]}:{services:[]})})});
