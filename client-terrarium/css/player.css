@@ -141,7 +141,10 @@
 .player__fs { width: 44px; height: 44px; margin-left: 0; backdrop-filter: none; font-size: 24px; }
 .player__srv:active, .player__fs:active { transform: scale(.97); }
 .player__notice { top: 10px; max-width: calc(100% - 24px); white-space: normal; border-radius: 10px; font-size: 12px; line-height: 1.4; }
-.player__error { gap: 10px; padding: 14px; }
+.player__error { gap: 10px; padding: 14px; justify-content: flex-start; overflow-y: auto; }
+.player__error > * { flex-shrink: 0; }
+.player__error > :first-child { margin-top: auto; }
+.player__error > :last-child { margin-bottom: auto; }
 .player__error strong { font-size: 16px; letter-spacing: -.02em; }
 .player__error p { color: var(--muted); font-size: 13px; max-width: 38ch; }
 .player__error-actions .btn { min-height: 40px; }

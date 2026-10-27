@@ -105,7 +105,7 @@
 
   /* ---------- Components ---------- */
   function providerBadge(item, inline=false) {
-    const providers=item.providers||[];if(!providers.length)return '';
+    const providers=item.providers||Api.providersOf(item);if(!providers.length)return '';
     const label=providers.length>1?'Various providers':providers[0].name;
     const sources=providers.map(provider=>provider.name).join(', ');
     return `<span class="card__provider${inline?' card__provider--inline':''}" title="${esc(sources)}" aria-label="Sources: ${esc(sources)}">${esc(label)}</span>`;

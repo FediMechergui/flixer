@@ -1,0 +1,49 @@
+{
+  "appVersion": "1.6.26",
+  "versionCode": 186,
+  "package": "app.flixer.stream",
+  "device": "Android 15 / API 35 emulator",
+  "checkedOn": "2026-10-27",
+  "timeZone": "Africa/Lagos",
+  "releaseSha256": "4c77577e16b3270c6f0fef15259a5c8a4ea9240f9ebc26264a20aafcb214ea80",
+  "signedReleaseSize": 18217545,
+  "nativeActivityLaunchMs": 1365,
+  "checks": {
+    "signedReleaseInstalls": true,
+    "mainActivityColdStarts": true,
+    "englishNeedleQueryFindsArabicFilm": true,
+    "singleAndVariousProviderBadgesVisible": true,
+    "ordinaryPlaybackReturnsCurrentTuniflixPlayers": true,
+    "needleStartsInlineOnUqload": true,
+    "needleContentFramesAdvance": true,
+    "observedCasinoAndBonusOverlaysAbsentAfterFix": true,
+    "playerCloses": true,
+    "homeNavigationReturnsWithPopulatedRecentSection": true
+  },
+  "isolatedPlayerProof": {
+    "debugApkSha256": "22ac437cf504d3760a6d4a54daa1213db06b87123410f1ff7ecc3b5c21b0a517",
+    "case": 1003,
+    "start": 385,
+    "end": 386.186323,
+    "duration": 6985.28,
+    "transport": "webview"
+  },
+  "validation": {
+    "nodeTests": 256,
+    "nodeFailures": 0,
+    "androidUnitChecks": "passed",
+    "releaseLintErrors": 0,
+    "releaseLintWarnings": 26,
+    "debugAndSignedReleaseBuilds": "passed"
+  },
+  "backend": {
+    "host": "flixer-api-fedimechergui.netlify.app",
+    "deployId": "6ae0d1d3e9dd4ba4306b1f14",
+    "normalNeedleStreamStatus": 200,
+    "currentPlayers": [
+      "watch.strp2p.site",
+      "uqload.vc"
+    ]
+  },
+  "notes": "Signed release was installed and exercised by normal navigation and English-alias search. Screenshots show changing film content, inline playback, and return to a populated home. Clock measurements are from the matching final debug player build, not a production DevTools session. Native launch time measures the activity, not catalogue/image completion. This visual smoke does not certify every provider, absence of all possible ads, or cache-generation correctness. The separate 40-choice report retains 33 failed/unconfirmed outcomes."
+}

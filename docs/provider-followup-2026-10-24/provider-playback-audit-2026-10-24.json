@@ -1,0 +1,2127 @@
+{
+  "at": "2026-10-24T18:21:23.933Z",
+  "startedAt": "2026-10-24T17:54:27.394Z",
+  "finishedAt": "2026-10-24T18:21:12.982Z",
+  "complete": true,
+  "outcomes": {
+    "no_advancing_video": 33,
+    "player_error": 21,
+    "playback_confirmed": 21,
+    "verification_required": 1,
+    "missing_video": 1,
+    "access_denied": 1
+  },
+  "appVersion": "1.6.26",
+  "appVersions": [
+    "1.6.26"
+  ],
+  "scope": "Follow-up using two Android 15 emulators: one previously advertised own-source route for each provider/host family, plus all four WCO cartoon/anime samples. Direct media is refreshed at test time; embeds use descriptors from the original sample matrix. Lookup statuses are retained from that matrix; four separate fresh One Pace lookups still returned zero episode links. This is not every episode or a repeat of all 336 routes.",
+  "preparationComplete": true,
+  "samples": 35,
+  "total": 78,
+  "tested": 78,
+  "confirmed": 21,
+  "previouslyConfirmed": 11,
+  "providers": [
+    {
+      "provider": "myflixer",
+      "samples": 2,
+      "returned": 8,
+      "sourceServers": 8,
+      "tested": 8,
+      "confirmed": 1,
+      "confirmedSource": 1,
+      "lookupIssues": []
+    },
+    {
+      "provider": "fmovies",
+      "samples": 1,
+      "returned": 3,
+      "sourceServers": 3,
+      "tested": 3,
+      "confirmed": 0,
+      "confirmedSource": 0,
+      "lookupIssues": []
+    },
+    {
+      "provider": "hdtoday",
+      "samples": 1,
+      "returned": 12,
+      "sourceServers": 12,
+      "tested": 12,
+      "confirmed": 1,
+      "confirmedSource": 1,
+      "lookupIssues": []
+    },
+    {
+      "provider": "cimafu",
+      "samples": 1,
+      "returned": 13,
+      "sourceServers": 13,
+      "tested": 13,
+      "confirmed": 2,
+      "confirmedSource": 2,
+      "lookupIssues": []
+    },
+    {
+      "provider": "streamtunisie",
+      "samples": 1,
+      "returned": 1,
+      "sourceServers": 1,
+      "tested": 1,
+      "confirmed": 0,
+      "confirmedSource": 0,
+      "lookupIssues": []
+    },
+    {
+      "provider": "kirmalk",
+      "samples": 2,
+      "returned": 2,
+      "sourceServers": 2,
+      "tested": 2,
+      "confirmed": 0,
+      "confirmedSource": 0,
+      "lookupIssues": []
+    },
+    {
+      "provider": "ahwaktv",
+      "samples": 2,
+      "returned": 6,
+      "sourceServers": 6,
+      "tested": 6,
+      "confirmed": 0,
+      "confirmedSource": 0,
+      "lookupIssues": []
+    },
+    {
+      "provider": "egydead",
+      "samples": 2,
+      "returned": 4,
+      "sourceServers": 4,
+      "tested": 4,
+      "confirmed": 1,
+      "confirmedSource": 1,
+      "lookupIssues": []
+    },
+    {
+      "provider": "tuniflix",
+      "samples": 3,
+      "returned": 3,
+      "sourceServers": 3,
+      "tested": 3,
+      "confirmed": 1,
+      "confirmedSource": 1,
+      "lookupIssues": []
+    },
+    {
+      "provider": "cinetimes",
+      "samples": 1,
+      "returned": 1,
+      "sourceServers": 1,
+      "tested": 1,
+      "confirmed": 1,
+      "confirmedSource": 1,
+      "lookupIssues": []
+    },
+    {
+      "provider": "cimatn",
+      "samples": 1,
+      "returned": 3,
+      "sourceServers": 3,
+      "tested": 3,
+      "confirmed": 1,
+      "confirmedSource": 1,
+      "lookupIssues": [
+        {
+          "title": "Arriére el goddem أريار القدام 2",
+          "status": "resolution_error",
+          "error": "Episode not found in this catalogue",
+          "providerErrors": []
+        }
+      ]
+    },
+    {
+      "provider": "frenchstream",
+      "samples": 2,
+      "returned": 3,
+      "sourceServers": 3,
+      "tested": 3,
+      "confirmed": 0,
+      "confirmedSource": 0,
+      "lookupIssues": []
+    },
+    {
+      "provider": "dessinanime",
+      "samples": 1,
+      "returned": 2,
+      "sourceServers": 2,
+      "tested": 2,
+      "confirmed": 2,
+      "confirmedSource": 2,
+      "lookupIssues": []
+    },
+    {
+      "provider": "onepace",
+      "samples": 4,
+      "returned": 0,
+      "sourceServers": 0,
+      "tested": 0,
+      "confirmed": 0,
+      "confirmedSource": 0,
+      "lookupIssues": [
+        {
+          "title": "One Pace: Punk Hazard",
+          "status": "no_episode_links",
+          "error": "",
+          "providerErrors": [
+            {
+              "provider": "onepace",
+              "error": "One Pace source HTTP 403"
+            }
+          ]
+        },
+        {
+          "title": "One Pace: Thriller Bark",
+          "status": "no_episode_links",
+          "error": "",
+          "providerErrors": [
+            {
+              "provider": "onepace",
+              "error": "One Pace source HTTP 403"
+            }
+          ]
+        },
+        {
+          "title": "One Pace: The Adventures of Buggy's Crew",
+          "status": "no_episode_links",
+          "error": "",
+          "providerErrors": [
+            {
+              "provider": "onepace",
+              "error": "One Pace source HTTP 403"
+            }
+          ]
+        },
+        {
+          "title": "One Pace: Whole Cake Island",
+          "status": "no_episode_links",
+          "error": "",
+          "providerErrors": [
+            {
+              "provider": "onepace",
+              "error": "One Pace source HTTP 403"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "provider": "youtubeoriginals",
+      "samples": 1,
+      "returned": 1,
+      "sourceServers": 1,
+      "tested": 1,
+      "confirmed": 1,
+      "confirmedSource": 1,
+      "lookupIssues": []
+    },
+    {
+      "provider": "wco",
+      "samples": 4,
+      "returned": 4,
+      "sourceServers": 4,
+      "tested": 4,
+      "confirmed": 4,
+      "confirmedSource": 4,
+      "lookupIssues": []
+    },
+    {
+      "provider": "animegg",
+      "samples": 1,
+      "returned": 1,
+      "sourceServers": 1,
+      "tested": 1,
+      "confirmed": 0,
+      "confirmedSource": 0,
+      "lookupIssues": []
+    },
+    {
+      "provider": "megacartoons",
+      "samples": 1,
+      "returned": 1,
+      "sourceServers": 1,
+      "tested": 1,
+      "confirmed": 1,
+      "confirmedSource": 1,
+      "lookupIssues": []
+    },
+    {
+      "provider": "toontales",
+      "samples": 1,
+      "returned": 1,
+      "sourceServers": 1,
+      "tested": 1,
+      "confirmed": 1,
+      "confirmedSource": 1,
+      "lookupIssues": []
+    },
+    {
+      "provider": "myasiantv",
+      "samples": 1,
+      "returned": 1,
+      "sourceServers": 1,
+      "tested": 1,
+      "confirmed": 1,
+      "confirmedSource": 1,
+      "lookupIssues": []
+    },
+    {
+      "provider": "multimovies",
+      "samples": 1,
+      "returned": 6,
+      "sourceServers": 6,
+      "tested": 6,
+      "confirmed": 3,
+      "confirmedSource": 3,
+      "lookupIssues": []
+    },
+    {
+      "provider": "yoturkish",
+      "samples": 1,
+      "returned": 2,
+      "sourceServers": 2,
+      "tested": 2,
+      "confirmed": 0,
+      "confirmedSource": 0,
+      "lookupIssues": []
+    }
+  ],
+  "routes": [
+    {
+      "case": 1,
+      "provider": "fmovies",
+      "serverProvider": "fmovies",
+      "title": "Come Home Love: Lo and Behold",
+      "kind": "series",
+      "server": "FMovies · Embos",
+      "host": "embos.top",
+      "type": "embed",
+      "testedAt": "2026-10-24T17:54:27.394Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "no_advancing_video",
+      "ms": 43328,
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 2,
+      "provider": "fmovies",
+      "serverProvider": "fmovies",
+      "title": "Come Home Love: Lo and Behold",
+      "kind": "series",
+      "server": "FMovies · Vidcore",
+      "host": "vidcore.net",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:02:37.640Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "player_error",
+      "ms": 27882,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
+      "httpStatuses": []
+    },
+    {
+      "case": 3,
+      "provider": "fmovies",
+      "serverProvider": "fmovies",
+      "title": "Come Home Love: Lo and Behold",
+      "kind": "series",
+      "server": "FMovies · VidAPI",
+      "host": "vidapi.xyz",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:07:47.527Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "no_advancing_video",
+      "ms": 37635,
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 7,
+      "provider": "myflixer",
+      "serverProvider": "myflixer",
+      "title": "Tazza: The Song of Beelzebub",
+      "kind": "film",
+      "server": "Myflixer · Player 1",
+      "host": "sv2.nontongo.stream",
+      "type": "embed",
+      "testedAt": "2026-10-24T17:55:11.016Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "player_error",
+      "ms": 8163,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
+      "httpStatuses": [
+        502
+      ]
+    },
+    {
+      "case": 8,
+      "provider": "myflixer",
+      "serverProvider": "myflixer",
+      "title": "Tazza: The Song of Beelzebub",
+      "kind": "film",
+      "server": "Myflixer · Player 2",
+      "host": "balance.medmedia03.wiki",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:03:05.811Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "player_error",
+      "ms": 19379,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
+      "httpStatuses": []
+    },
+    {
+      "case": 9,
+      "provider": "myflixer",
+      "serverProvider": "myflixer",
+      "title": "Tazza: The Song of Beelzebub",
+      "kind": "film",
+      "server": "Myflixer · Player 3",
+      "host": "vidapi.xyz",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:08:25.391Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "no_advancing_video",
+      "ms": 36888,
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 10,
+      "provider": "myflixer",
+      "serverProvider": "myflixer",
+      "title": "Tazza: The Song of Beelzebub",
+      "kind": "film",
+      "server": "Myflixer · Player 4",
+      "host": "embedmaster.link",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:12:57.872Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "no_advancing_video",
+      "ms": 36591,
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 11,
+      "provider": "myflixer",
+      "serverProvider": "myflixer",
+      "title": "Tazza: The Song of Beelzebub",
+      "kind": "film",
+      "server": "Myflixer · Player 5",
+      "host": "vidfast.pro",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:12:08.584Z",
+      "appVersion": "1.6.26",
+      "appSha256": "e1cba7e8a69c8d3b06e0ff79c67dbe0d4f79e4f7eb5124f2c4adfe55ecd609b9",
+      "status": "no_advancing_video",
+      "ms": 39058,
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 12,
+      "provider": "myflixer",
+      "serverProvider": "myflixer",
+      "title": "Tazza: The Song of Beelzebub",
+      "kind": "film",
+      "server": "Myflixer · Player 6",
+      "host": "multiembed.mov",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:15:34.601Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "no_advancing_video",
+      "ms": 36700,
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 13,
+      "provider": "myflixer",
+      "serverProvider": "myflixer",
+      "title": "Tazza: The Song of Beelzebub",
+      "kind": "film",
+      "server": "Myflixer · Player 7",
+      "host": "moviesapi.to",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:16:26.909Z",
+      "appVersion": "1.6.26",
+      "appSha256": "e1cba7e8a69c8d3b06e0ff79c67dbe0d4f79e4f7eb5124f2c4adfe55ecd609b9",
+      "status": "no_advancing_video",
+      "ms": 36983,
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 14,
+      "provider": "cimafu",
+      "serverProvider": "cimafu",
+      "title": "Tenzing",
+      "kind": "film",
+      "server": "Cima4u - doodstream.com - Arabic sub",
+      "host": "doodstream.com",
+      "type": "embed",
+      "testedAt": "2026-10-24T17:55:19.448Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "no_advancing_video",
+      "ms": 37541,
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 17,
+      "provider": "cimafu",
+      "serverProvider": "cimafu",
+      "title": "Tenzing",
+      "kind": "film",
+      "server": "Cima4u - bysetayico.com - Arabic sub",
+      "host": "bysetayico.com",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:03:25.456Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "player_error",
+      "ms": 6408,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
+      "httpStatuses": []
+    },
+    {
+      "case": 19,
+      "provider": "cimafu",
+      "serverProvider": "cimafu",
+      "title": "Tenzing",
+      "kind": "film",
+      "server": "Cima4u - mixdrop.ps - Arabic sub",
+      "host": "mixdrop.ps",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:09:02.556Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "player_error",
+      "ms": 6728,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
+      "httpStatuses": []
+    },
+    {
+      "case": 25,
+      "provider": "cimafu",
+      "serverProvider": "cimafu",
+      "title": "Tenzing",
+      "kind": "film",
+      "server": "Cima4u - cybervynx.com - Arabic sub",
+      "host": "cybervynx.com",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:13:34.736Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "playback_confirmed",
+      "ms": 10478,
+      "previousConfirmation": {
+        "appVersion": "1.6.24",
+        "at": "2026-10-24T09:10:41.914Z",
+        "proof": {
+          "start": 0.674,
+          "end": 4.678,
+          "duration": 7533.693,
+          "transport": "media3"
+        }
+      },
+      "proof": {
+        "start": 1.992,
+        "end": 4.017,
+        "duration": 7533.693,
+        "transport": "media3"
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 27,
+      "provider": "cimafu",
+      "serverProvider": "cimafu",
+      "title": "Tenzing",
+      "kind": "film",
+      "server": "Cima4u - 1vid.xyz - Arabic sub",
+      "host": "1vid.xyz",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:12:48.203Z",
+      "appVersion": "1.6.26",
+      "appSha256": "e1cba7e8a69c8d3b06e0ff79c67dbe0d4f79e4f7eb5124f2c4adfe55ecd609b9",
+      "status": "no_advancing_video",
+      "ms": 38473,
+      "previousConfirmation": {
+        "appVersion": "1.6.24",
+        "at": "2026-10-24T09:14:54.842Z",
+        "proof": {
+          "start": 1.042412,
+          "end": 4.222553,
+          "duration": 7533.701,
+          "transport": "webview"
+        }
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 28,
+      "provider": "cimafu",
+      "serverProvider": "cimafu",
+      "title": "Tenzing",
+      "kind": "film",
+      "server": "Cima4u - vidmoly.org - Arabic sub",
+      "host": "vidmoly.org",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:16:11.540Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "no_advancing_video",
+      "ms": 37851,
+      "previousConfirmation": {
+        "appVersion": "1.6.25",
+        "at": "2026-10-24T10:15:37.151Z",
+        "proof": {
+          "start": 0,
+          "end": 3.414643,
+          "duration": 7533,
+          "transport": "webview"
+        }
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 29,
+      "provider": "cimafu",
+      "serverProvider": "cimafu",
+      "title": "Tenzing",
+      "kind": "film",
+      "server": "Cima4u - vidspeed.org - Arabic sub",
+      "host": "vidspeed.org",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:17:04.342Z",
+      "appVersion": "1.6.26",
+      "appSha256": "e1cba7e8a69c8d3b06e0ff79c67dbe0d4f79e4f7eb5124f2c4adfe55ecd609b9",
+      "status": "no_advancing_video",
+      "ms": 35887,
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 30,
+      "provider": "cimafu",
+      "serverProvider": "cimafu",
+      "title": "Tenzing",
+      "kind": "film",
+      "server": "Cima4u - www.mp4upload.com - Arabic sub",
+      "host": "www.mp4upload.com",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:17:11.891Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "no_advancing_video",
+      "ms": 37646,
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 31,
+      "provider": "cimafu",
+      "serverProvider": "cimafu",
+      "title": "Tenzing",
+      "kind": "film",
+      "server": "Cima4u - bysesukior.com - Arabic sub",
+      "host": "bysesukior.com",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:18:45.034Z",
+      "appVersion": "1.6.26",
+      "appSha256": "e1cba7e8a69c8d3b06e0ff79c67dbe0d4f79e4f7eb5124f2c4adfe55ecd609b9",
+      "status": "player_error",
+      "ms": 8561,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
+      "httpStatuses": []
+    },
+    {
+      "case": 32,
+      "provider": "cimafu",
+      "serverProvider": "cimafu",
+      "title": "Tenzing",
+      "kind": "film",
+      "server": "Cima4u - mixdrop.top - Arabic sub",
+      "host": "mixdrop.top",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:19:04.379Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "player_error",
+      "ms": 7135,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
+      "httpStatuses": []
+    },
+    {
+      "case": 33,
+      "provider": "cimafu",
+      "serverProvider": "cimafu",
+      "title": "Tenzing",
+      "kind": "film",
+      "server": "Cima4u - hgcloud.to - Arabic sub",
+      "host": "hgcloud.to",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:19:29.509Z",
+      "appVersion": "1.6.26",
+      "appSha256": "e1cba7e8a69c8d3b06e0ff79c67dbe0d4f79e4f7eb5124f2c4adfe55ecd609b9",
+      "status": "playback_confirmed",
+      "ms": 12378,
+      "previousConfirmation": {
+        "appVersion": "1.6.25",
+        "at": "2026-10-24T09:46:15.519Z",
+        "proof": {
+          "start": 0.429,
+          "end": 4.465,
+          "duration": 7533.693,
+          "transport": "media3"
+        }
+      },
+      "proof": {
+        "start": 1.363,
+        "end": 3.436,
+        "duration": 7533.693,
+        "transport": "media3"
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 34,
+      "provider": "cimafu",
+      "serverProvider": "cimafu",
+      "title": "Tenzing",
+      "kind": "film",
+      "server": "Cima4u - playmogo.com - Arabic sub",
+      "host": "playmogo.com",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:19:48.495Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "no_advancing_video",
+      "ms": 36606,
+      "previousConfirmation": {
+        "appVersion": "1.6.25",
+        "at": "2026-10-24T10:18:57.152Z",
+        "proof": {
+          "start": 0.640146,
+          "end": 3.945656,
+          "duration": 7533.666667,
+          "transport": "webview"
+        }
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 35,
+      "provider": "cimafu",
+      "serverProvider": "cimafu",
+      "title": "Tenzing",
+      "kind": "film",
+      "server": "Cima4u - voe.sx - Arabic sub",
+      "host": "voe.sx",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:19:59.532Z",
+      "appVersion": "1.6.26",
+      "appSha256": "e1cba7e8a69c8d3b06e0ff79c67dbe0d4f79e4f7eb5124f2c4adfe55ecd609b9",
+      "status": "no_advancing_video",
+      "ms": 36479,
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 36,
+      "provider": "streamtunisie",
+      "serverProvider": "streamtunisie",
+      "title": "ستارتاب",
+      "kind": "film",
+      "server": "StreamTunisie - YouTube",
+      "host": "www.youtube.com",
+      "type": "youtube",
+      "testedAt": "2026-10-24T17:55:57.182Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "no_advancing_video",
+      "ms": 36576,
+      "previousConfirmation": {
+        "appVersion": "1.6.23",
+        "at": "2026-10-24T08:45:43.191Z",
+        "proof": {
+          "start": 0.466912,
+          "end": 3.801701,
+          "duration": 150.081,
+          "transport": "webview"
+        }
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 37,
+      "provider": "myflixer",
+      "serverProvider": "myflixer",
+      "title": "The Diplomat",
+      "kind": "series",
+      "server": "Myflixer · Soap2Cloud (HLS)",
+      "host": "snowy-morning.soapsoap123.workers.dev",
+      "type": "hls",
+      "testedAt": "2026-10-24T18:17:49.773Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "playback_confirmed",
+      "ms": 20621,
+      "previousConfirmation": {
+        "appVersion": "1.6.25",
+        "at": "2026-10-24T09:40:40.755Z",
+        "proof": {
+          "start": 0.26,
+          "end": 4.338,
+          "duration": 2648.88,
+          "transport": "media3"
+        }
+      },
+      "proof": {
+        "start": 0.569,
+        "end": 3.25,
+        "duration": 2648.88,
+        "transport": "media3"
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 90,
+      "provider": "ahwaktv",
+      "serverProvider": "ahwaktv",
+      "title": "صقر وكناريا",
+      "kind": "film",
+      "server": "AhwakTV - vkvideo.ru",
+      "host": "vkvideo.ru",
+      "type": "embed",
+      "testedAt": "2026-10-24T17:56:33.971Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "no_advancing_video",
+      "ms": 36034,
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 91,
+      "provider": "ahwaktv",
+      "serverProvider": "ahwaktv",
+      "title": "صقر وكناريا",
+      "kind": "film",
+      "server": "AhwakTV - www.ok.ru",
+      "host": "www.ok.ru",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:03:32.100Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "no_advancing_video",
+      "ms": 36433,
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 92,
+      "provider": "ahwaktv",
+      "serverProvider": "ahwaktv",
+      "title": "صقر وكناريا",
+      "kind": "film",
+      "server": "AhwakTV - uqload.vc",
+      "host": "uqload.vc",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:09:09.553Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "verification_required",
+      "ms": 36985,
+      "errors": [
+        "CONFIRM YOU ARE NOT A ROBOT\n\nClick the button\n\nI'm not a robot"
+      ],
+      "httpStatuses": []
+    },
+    {
+      "case": 93,
+      "provider": "ahwaktv",
+      "serverProvider": "ahwaktv",
+      "title": "صقر وكناريا",
+      "kind": "film",
+      "server": "AhwakTV - hgcloud.to",
+      "host": "hgcloud.to",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:13:27.060Z",
+      "appVersion": "1.6.26",
+      "appSha256": "e1cba7e8a69c8d3b06e0ff79c67dbe0d4f79e4f7eb5124f2c4adfe55ecd609b9",
+      "status": "no_advancing_video",
+      "ms": 38035,
+      "previousConfirmation": {
+        "appVersion": "1.6.24",
+        "at": "2026-10-24T09:09:28.015Z",
+        "proof": {
+          "start": 0.799,
+          "end": 4.812,
+          "duration": 7478.625,
+          "transport": "media3"
+        }
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 94,
+      "provider": "ahwaktv",
+      "serverProvider": "ahwaktv",
+      "title": "صقر وكناريا",
+      "kind": "film",
+      "server": "AhwakTV - playmogo.com",
+      "host": "playmogo.com",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:13:45.439Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "no_advancing_video",
+      "ms": 35381,
+      "previousConfirmation": {
+        "appVersion": "1.6.22",
+        "at": "2026-10-24T08:32:36.241Z",
+        "proof": {
+          "start": 1.319975,
+          "end": 4.542769,
+          "duration": 7478.625,
+          "transport": "webview"
+        }
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 95,
+      "provider": "ahwaktv",
+      "serverProvider": "ahwaktv",
+      "title": "خمسين خمسين",
+      "kind": "series",
+      "server": "AhwakTV - ok.ru",
+      "host": "ok.ru",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:17:40.560Z",
+      "appVersion": "1.6.26",
+      "appSha256": "e1cba7e8a69c8d3b06e0ff79c67dbe0d4f79e4f7eb5124f2c4adfe55ecd609b9",
+      "status": "player_error",
+      "ms": 6736,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
+      "httpStatuses": []
+    },
+    {
+      "case": 98,
+      "provider": "tuniflix",
+      "serverProvider": "tuniflix",
+      "title": "الإبرة",
+      "kind": "film",
+      "server": "Tuniflix - watch.easyvidplayer.com",
+      "host": "watch.easyvidplayer.com",
+      "type": "embed",
+      "testedAt": "2026-10-24T17:57:10.124Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "no_advancing_video",
+      "ms": 37028,
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 99,
+      "provider": "tuniflix",
+      "serverProvider": "tuniflix",
+      "title": "Doctor Love",
+      "kind": "series",
+      "server": "Tuniflix - YouTube",
+      "host": "www.youtube.com",
+      "type": "youtube",
+      "testedAt": "2026-10-24T18:04:08.744Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "playback_confirmed",
+      "ms": 12468,
+      "previousConfirmation": {
+        "appVersion": "1.6.23",
+        "at": "2026-10-24T08:45:56.998Z",
+        "proof": {
+          "start": 0,
+          "end": 4.291767,
+          "duration": 1101.941,
+          "transport": "webview"
+        }
+      },
+      "proof": {
+        "start": 0,
+        "end": 3.874557,
+        "duration": 1101.941,
+        "transport": "webview"
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 100,
+      "provider": "cinetimes",
+      "serverProvider": "cinetimes",
+      "title": "La fille de Carthage (1924) - Cinetimes",
+      "kind": "film",
+      "server": "Cinetimes - Wikimedia archive",
+      "host": "upload.wikimedia.org",
+      "type": "file",
+      "testedAt": "2026-10-24T17:57:47.277Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "playback_confirmed",
+      "ms": 9968,
+      "previousConfirmation": {
+        "appVersion": "1.6.22",
+        "at": "2026-10-24T08:10:52.888Z",
+        "proof": {
+          "start": 0.957,
+          "end": 4.969,
+          "duration": 1108.227,
+          "transport": "media3"
+        }
+      },
+      "proof": {
+        "start": 0.372,
+        "end": 4.405,
+        "duration": 1108.227,
+        "transport": "media3"
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 101,
+      "provider": "frenchstream",
+      "serverProvider": "frenchstream",
+      "title": "He's Watching You",
+      "kind": "film",
+      "server": "French Stream · DEFAULT · vidzy",
+      "host": "vidzy.cc",
+      "type": "embed",
+      "testedAt": "2026-10-24T17:57:59.807Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "no_advancing_video",
+      "ms": 35508,
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 102,
+      "provider": "frenchstream",
+      "serverProvider": "frenchstream",
+      "title": "He's Watching You",
+      "kind": "film",
+      "server": "French Stream · DEFAULT · dood",
+      "host": "trakx.lol",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:04:21.411Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "no_advancing_video",
+      "ms": 36179,
+      "previousConfirmation": {
+        "appVersion": "1.6.22",
+        "at": "2026-10-24T08:23:14.036Z",
+        "proof": {
+          "start": 0.326519,
+          "end": 3.479019,
+          "duration": 6151.103991,
+          "transport": "webview"
+        }
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 107,
+      "provider": "frenchstream",
+      "serverProvider": "frenchstream",
+      "title": "Dumas",
+      "kind": "series",
+      "server": "French Stream · VF · uqload",
+      "host": "uqload.vc",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:10:14.685Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "no_advancing_video",
+      "ms": 37263,
+      "previousConfirmation": {
+        "appVersion": "1.6.25",
+        "at": "2026-10-24T10:12:10.314Z",
+        "proof": {
+          "start": 1.734381,
+          "end": 3.721326,
+          "duration": 2610.989,
+          "transport": "webview"
+        }
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 112,
+      "provider": "youtubeoriginals",
+      "serverProvider": "youtube",
+      "title": "Knights Of Guinevere",
+      "kind": "series",
+      "server": "YouTube - GLITCH",
+      "host": "www.youtube.com",
+      "type": "youtube",
+      "testedAt": "2026-10-24T17:58:35.442Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "playback_confirmed",
+      "ms": 7576,
+      "previousConfirmation": {
+        "appVersion": "1.6.23",
+        "at": "2026-10-24T08:46:04.595Z",
+        "proof": {
+          "start": 0,
+          "end": 4.301473,
+          "duration": 1587.501,
+          "transport": "webview"
+        }
+      },
+      "proof": {
+        "start": 0,
+        "end": 3.510765,
+        "duration": 1587.501,
+        "transport": "webview"
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 113,
+      "provider": "megacartoons",
+      "serverProvider": "megacartoons",
+      "title": "Baby Looney Tunes",
+      "kind": "series",
+      "server": "MegaCartoons",
+      "host": "ww.megacartoons.net",
+      "type": "mp4",
+      "testedAt": "2026-10-24T17:58:43.136Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "playback_confirmed",
+      "ms": 9772,
+      "previousConfirmation": {
+        "appVersion": "1.6.22",
+        "at": "2026-10-24T08:17:49.748Z",
+        "proof": {
+          "start": 1.648,
+          "end": 3.656,
+          "duration": 601.393,
+          "transport": "media3"
+        }
+      },
+      "proof": {
+        "start": 0.612,
+        "end": 4.614,
+        "duration": 601.393,
+        "transport": "media3"
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 114,
+      "provider": "myasiantv",
+      "serverProvider": "myasiantv",
+      "title": "You Should Be the One to Kiss Me",
+      "kind": "series",
+      "server": "MyAsianTV - English sub",
+      "host": "zumivids.com",
+      "type": "embed",
+      "testedAt": "2026-10-24T17:58:55.512Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "playback_confirmed",
+      "ms": 24865,
+      "previousConfirmation": {
+        "appVersion": "1.6.25",
+        "at": "2026-10-24T10:09:38.868Z",
+        "proof": {
+          "start": 0,
+          "end": 3.191396,
+          "duration": 1441.541,
+          "transport": "webview"
+        }
+      },
+      "proof": {
+        "start": 0,
+        "end": 3.065255,
+        "duration": 1441.541,
+        "transport": "webview"
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 115,
+      "provider": "toontales",
+      "serverProvider": "toontales",
+      "title": "Rabbit Fire",
+      "kind": "film",
+      "server": "ToonTales",
+      "host": "ww.toontales.net",
+      "type": "mp4",
+      "testedAt": "2026-10-24T17:59:20.497Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "playback_confirmed",
+      "ms": 6691,
+      "previousConfirmation": {
+        "appVersion": "1.6.22",
+        "at": "2026-10-24T08:18:33.046Z",
+        "proof": {
+          "start": 1.311,
+          "end": 3.321,
+          "duration": 452.416,
+          "transport": "media3"
+        }
+      },
+      "proof": {
+        "start": 1.079,
+        "end": 3.083,
+        "duration": 452.416,
+        "transport": "media3"
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 117,
+      "provider": "yoturkish",
+      "serverProvider": "yoturkish",
+      "title": "Sevdam Karadeniz",
+      "kind": "series",
+      "server": "YoTurkish - Server 1 (English sub)",
+      "host": "rufiiguta.com",
+      "type": "embed",
+      "testedAt": "2026-10-24T17:59:29.196Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "no_advancing_video",
+      "ms": 36509,
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 118,
+      "provider": "yoturkish",
+      "serverProvider": "yoturkish",
+      "title": "Sevdam Karadeniz",
+      "kind": "series",
+      "server": "YoTurkish - Server 2 (English sub)",
+      "host": "engifuosi.com",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:04:57.798Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "player_error",
+      "ms": 4958,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
+      "httpStatuses": []
+    },
+    {
+      "case": 119,
+      "provider": "multimovies",
+      "serverProvider": "multimovies",
+      "title": "Street Fighter",
+      "kind": "film",
+      "server": "MultiMovies - Cineverse",
+      "host": "rozgarlelo.modiplay.xyz",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:00:05.963Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "playback_confirmed",
+      "ms": 13746,
+      "previousConfirmation": {
+        "appVersion": "1.6.22",
+        "at": "2026-10-24T08:19:15.657Z",
+        "proof": {
+          "start": 0.312365,
+          "end": 3.489046,
+          "duration": 6522.733333,
+          "transport": "webview"
+        }
+      },
+      "proof": {
+        "start": 0,
+        "end": 4.138102,
+        "duration": 6522.733333,
+        "transport": "webview"
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 120,
+      "provider": "multimovies",
+      "serverProvider": "multimovies",
+      "title": "Street Fighter",
+      "kind": "film",
+      "server": "MultiMovies - GD mirror",
+      "host": "streams.iqsmartgames.com",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:05:03.020Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "playback_confirmed",
+      "ms": 28415,
+      "previousConfirmation": {
+        "appVersion": "1.6.22",
+        "at": "2026-10-24T08:24:45.175Z",
+        "proof": {
+          "start": 0.853745,
+          "end": 4.010664,
+          "duration": 6522.733,
+          "transport": "webview"
+        }
+      },
+      "proof": {
+        "start": 0.440432,
+        "end": 3.005805,
+        "duration": 6522.733,
+        "transport": "webview"
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 121,
+      "provider": "multimovies",
+      "serverProvider": "multimovies",
+      "title": "Street Fighter",
+      "kind": "film",
+      "server": "MultiMovies - Vidrift",
+      "host": "embed.vidrift.net",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:14:05.681Z",
+      "appVersion": "1.6.26",
+      "appSha256": "e1cba7e8a69c8d3b06e0ff79c67dbe0d4f79e4f7eb5124f2c4adfe55ecd609b9",
+      "status": "player_error",
+      "ms": 15296,
+      "previousConfirmation": {
+        "appVersion": "1.6.22",
+        "at": "2026-10-24T08:27:34.500Z",
+        "proof": {
+          "start": 0.175323,
+          "end": 3.34372,
+          "duration": 6520.021000000012,
+          "transport": "webview"
+        }
+      },
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
+      "httpStatuses": []
+    },
+    {
+      "case": 122,
+      "provider": "multimovies",
+      "serverProvider": "multimovies",
+      "title": "Street Fighter",
+      "kind": "film",
+      "server": "MultiMovies - VIDOUT",
+      "host": "vidout.pages.dev",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:10:52.191Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "playback_confirmed",
+      "ms": 24723,
+      "previousConfirmation": {
+        "appVersion": "1.6.22",
+        "at": "2026-10-24T08:30:46.082Z",
+        "proof": {
+          "start": 0.082874,
+          "end": 3.028721,
+          "duration": 6522.733,
+          "transport": "webview"
+        }
+      },
+      "proof": {
+        "start": 3.199724,
+        "end": 5.097185,
+        "duration": 6522.733,
+        "transport": "webview"
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 123,
+      "provider": "multimovies",
+      "serverProvider": "multimovies",
+      "title": "Street Fighter",
+      "kind": "film",
+      "server": "MultiMovies - Filmu",
+      "host": "embed.filmu.in",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:17:47.595Z",
+      "appVersion": "1.6.26",
+      "appSha256": "e1cba7e8a69c8d3b06e0ff79c67dbe0d4f79e4f7eb5124f2c4adfe55ecd609b9",
+      "status": "no_advancing_video",
+      "ms": 36564,
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 124,
+      "provider": "multimovies",
+      "serverProvider": "multimovies",
+      "title": "Street Fighter",
+      "kind": "film",
+      "server": "MultiMovies - VidBolt",
+      "host": "vidbolt.xyz",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:14:21.047Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "missing_video",
+      "ms": 36629,
+      "errors": [
+        "404\n\nPage not found"
+      ],
+      "httpStatuses": []
+    },
+    {
+      "case": 153,
+      "provider": "wco",
+      "serverProvider": "wco",
+      "title": "With Vengeance Sincerely Your Broken Saintess",
+      "kind": "series",
+      "server": "Watch Cartoon Online",
+      "host": "www.wcostream.tv",
+      "type": "wco",
+      "testedAt": "2026-10-24T18:00:20.030Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "playback_confirmed",
+      "ms": 34839,
+      "previousConfirmation": {
+        "appVersion": "1.6.25",
+        "at": "2026-10-24T09:38:14.541Z",
+        "proof": {
+          "start": 0.749,
+          "end": 10.864,
+          "duration": 780.061,
+          "transport": "media3"
+        }
+      },
+      "proof": {
+        "start": 0.041,
+        "end": 8.136,
+        "duration": 780.061,
+        "transport": "media3"
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 161,
+      "provider": "animegg",
+      "serverProvider": "animegg",
+      "title": "Hakata Tonkotsu Ramens",
+      "kind": "series",
+      "server": "AnimeGG - Subbed",
+      "host": "www.animegg.org",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:00:55.043Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "player_error",
+      "ms": 10448,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
+      "httpStatuses": []
+    },
+    {
+      "case": 163,
+      "provider": "wco",
+      "serverProvider": "wco",
+      "title": "Gravity Falls",
+      "kind": "series",
+      "server": "Watch Cartoon Online",
+      "host": "www.wcostream.tv",
+      "type": "wco",
+      "testedAt": "2026-10-24T18:07:11.559Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "playback_confirmed",
+      "ms": 35683,
+      "previousConfirmation": {
+        "appVersion": "1.6.22",
+        "at": "2026-10-24T08:09:33.901Z",
+        "proof": {
+          "start": 0.462,
+          "end": 12.535,
+          "duration": 1268.837,
+          "transport": "media3"
+        }
+      },
+      "proof": {
+        "start": 1.279,
+        "end": 11.387,
+        "duration": 1268.837,
+        "transport": "media3"
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 164,
+      "provider": "wco",
+      "serverProvider": "wco",
+      "title": "Scooby-Doo, Where Are You!",
+      "kind": "series",
+      "server": "Watch Cartoon Online",
+      "host": "www.wcostream.tv",
+      "type": "wco",
+      "testedAt": "2026-10-24T18:15:45.798Z",
+      "appVersion": "1.6.26",
+      "appSha256": "e1cba7e8a69c8d3b06e0ff79c67dbe0d4f79e4f7eb5124f2c4adfe55ecd609b9",
+      "status": "playback_confirmed",
+      "ms": 40865,
+      "previousConfirmation": {
+        "appVersion": "1.6.22",
+        "at": "2026-10-24T08:10:03.314Z",
+        "proof": {
+          "start": 1.787,
+          "end": 3.802,
+          "duration": 1313.344,
+          "transport": "media3"
+        }
+      },
+      "proof": {
+        "start": 1.847,
+        "end": 7.21,
+        "duration": 1313.344,
+        "transport": "media3"
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 165,
+      "provider": "wco",
+      "serverProvider": "wco",
+      "title": "Haikyuu — English subbed",
+      "kind": "series",
+      "server": "Watch Cartoon Online",
+      "host": "www.wcostream.tv",
+      "type": "wco",
+      "testedAt": "2026-10-24T18:12:23.131Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "playback_confirmed",
+      "ms": 34479,
+      "previousConfirmation": {
+        "appVersion": "1.6.22",
+        "at": "2026-10-24T08:10:23.606Z",
+        "proof": {
+          "start": 0.207,
+          "end": 12.269,
+          "duration": 1467.072,
+          "transport": "media3"
+        }
+      },
+      "proof": {
+        "start": 1.144,
+        "end": 9.253,
+        "duration": 1467.072,
+        "transport": "media3"
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 198,
+      "provider": "kirmalk",
+      "serverProvider": "kirmalk",
+      "title": "صفحة بيضا الموسم 1",
+      "kind": "series",
+      "server": "Kirmalk - www.ok.ru",
+      "host": "www.ok.ru",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:01:05.724Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "player_error",
+      "ms": 9487,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
+      "httpStatuses": []
+    },
+    {
+      "case": 252,
+      "provider": "hdtoday",
+      "serverProvider": "hdtoday",
+      "title": "Dad, Make Me Marry",
+      "kind": "film",
+      "server": "HDToday · vidsrc.mov",
+      "host": "vidsrc.mov",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:01:15.447Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "player_error",
+      "ms": 7911,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
+      "httpStatuses": []
+    },
+    {
+      "case": 253,
+      "provider": "hdtoday",
+      "serverProvider": "hdtoday",
+      "title": "Dad, Make Me Marry",
+      "kind": "film",
+      "server": "HDToday · vidsrc.fyi",
+      "host": "vidsrc.fyi",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:05:31.658Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "no_advancing_video",
+      "ms": 36748,
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 254,
+      "provider": "hdtoday",
+      "serverProvider": "hdtoday",
+      "title": "Dad, Make Me Marry",
+      "kind": "film",
+      "server": "HDToday · VIP",
+      "host": "embed.vidsrc.si",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:14:21.360Z",
+      "appVersion": "1.6.26",
+      "appSha256": "e1cba7e8a69c8d3b06e0ff79c67dbe0d4f79e4f7eb5124f2c4adfe55ecd609b9",
+      "status": "playback_confirmed",
+      "ms": 36119,
+      "previousConfirmation": {
+        "appVersion": "1.6.22",
+        "at": "2026-10-24T08:28:05.282Z",
+        "proof": {
+          "start": 0,
+          "end": 3.100213,
+          "duration": 5702.530000000101,
+          "transport": "webview"
+        }
+      },
+      "proof": {
+        "start": 0,
+        "end": 6.098613,
+        "duration": 5702.530000000101,
+        "transport": "webview"
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 255,
+      "provider": "hdtoday",
+      "serverProvider": "hdtoday",
+      "title": "Dad, Make Me Marry",
+      "kind": "film",
+      "server": "HDToday · vidfast",
+      "host": "vidfast.pro",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:11:17.141Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "player_error",
+      "ms": 24180,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
+      "httpStatuses": []
+    },
+    {
+      "case": 256,
+      "provider": "hdtoday",
+      "serverProvider": "hdtoday",
+      "title": "Dad, Make Me Marry",
+      "kind": "film",
+      "server": "HDToday · vidup",
+      "host": "vidup.to",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:18:24.542Z",
+      "appVersion": "1.6.26",
+      "appSha256": "e1cba7e8a69c8d3b06e0ff79c67dbe0d4f79e4f7eb5124f2c4adfe55ecd609b9",
+      "status": "player_error",
+      "ms": 20145,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
+      "httpStatuses": []
+    },
+    {
+      "case": 257,
+      "provider": "hdtoday",
+      "serverProvider": "hdtoday",
+      "title": "Dad, Make Me Marry",
+      "kind": "film",
+      "server": "HDToday · vidrock",
+      "host": "vidrock.net",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:14:57.951Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "no_advancing_video",
+      "ms": 36373,
+      "previousConfirmation": {
+        "appVersion": "1.6.23",
+        "at": "2026-10-24T08:47:20.944Z",
+        "proof": {
+          "start": 1.05704,
+          "end": 4.622356,
+          "duration": 5702.530000000101,
+          "transport": "webview"
+        }
+      },
+      "errors": [],
+      "httpStatuses": [
+        404
+      ]
+    },
+    {
+      "case": 258,
+      "provider": "hdtoday",
+      "serverProvider": "hdtoday",
+      "title": "Dad, Make Me Marry",
+      "kind": "film",
+      "server": "HDToday · vidnest",
+      "host": "vidnest.fun",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:18:53.892Z",
+      "appVersion": "1.6.26",
+      "appSha256": "e1cba7e8a69c8d3b06e0ff79c67dbe0d4f79e4f7eb5124f2c4adfe55ecd609b9",
+      "status": "no_advancing_video",
+      "ms": 35360,
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 259,
+      "provider": "hdtoday",
+      "serverProvider": "hdtoday",
+      "title": "Dad, Make Me Marry",
+      "kind": "film",
+      "server": "HDToday · vidlink",
+      "host": "vidlink.pro",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:16:49.608Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "player_error",
+      "ms": 21936,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
+      "httpStatuses": []
+    },
+    {
+      "case": 260,
+      "provider": "hdtoday",
+      "serverProvider": "hdtoday",
+      "title": "Dad, Make Me Marry",
+      "kind": "film",
+      "server": "HDToday - Vidlove",
+      "host": "player.vidlove.cc",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:19:42.110Z",
+      "appVersion": "1.6.26",
+      "appSha256": "e1cba7e8a69c8d3b06e0ff79c67dbe0d4f79e4f7eb5124f2c4adfe55ecd609b9",
+      "status": "player_error",
+      "ms": 17145,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
+      "httpStatuses": []
+    },
+    {
+      "case": 261,
+      "provider": "hdtoday",
+      "serverProvider": "hdtoday",
+      "title": "Dad, Make Me Marry",
+      "kind": "film",
+      "server": "HDToday · multiembed",
+      "host": "multiembed.mov",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:18:28.118Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "no_advancing_video",
+      "ms": 35873,
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 262,
+      "provider": "hdtoday",
+      "serverProvider": "hdtoday",
+      "title": "Dad, Make Me Marry",
+      "kind": "film",
+      "server": "HDToday · mappletv",
+      "host": "mappletv.uk",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:20:36.282Z",
+      "appVersion": "1.6.26",
+      "appSha256": "e1cba7e8a69c8d3b06e0ff79c67dbe0d4f79e4f7eb5124f2c4adfe55ecd609b9",
+      "status": "no_advancing_video",
+      "ms": 36441,
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 263,
+      "provider": "hdtoday",
+      "serverProvider": "hdtoday",
+      "title": "Dad, Make Me Marry",
+      "kind": "film",
+      "server": "HDToday · moviesapi",
+      "host": "moviesapi.to",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:19:11.845Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "no_advancing_video",
+      "ms": 36398,
+      "previousConfirmation": {
+        "appVersion": "1.6.24",
+        "at": "2026-10-24T09:13:01.834Z",
+        "proof": {
+          "start": 0,
+          "end": 4.435323,
+          "duration": 5702.530000000101,
+          "transport": "webview"
+        }
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 303,
+      "provider": "kirmalk",
+      "serverProvider": "kirmalk",
+      "title": "الضيف",
+      "kind": "film",
+      "server": "Kirmalk - s1.hdup400.com",
+      "host": "s1.hdup400.com",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:06:08.680Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "player_error",
+      "ms": 6618,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
+      "httpStatuses": []
+    },
+    {
+      "case": 321,
+      "provider": "dessinanime",
+      "serverProvider": "dessinanime",
+      "title": "Les Simpson",
+      "kind": "series",
+      "server": "DessinAnime - VF - Panda",
+      "host": null,
+      "type": "dessinanime",
+      "testedAt": "2026-10-24T18:01:23.581Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "playback_confirmed",
+      "ms": 19561,
+      "previousConfirmation": {
+        "appVersion": "1.6.25",
+        "at": "2026-10-24T09:53:32.772Z",
+        "proof": {
+          "start": 0.082,
+          "end": 4.079,
+          "duration": 1395.241,
+          "transport": "media3"
+        }
+      },
+      "proof": {
+        "start": 1.346,
+        "end": 3.384,
+        "duration": 1395.241,
+        "transport": "media3"
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 323,
+      "provider": "dessinanime",
+      "serverProvider": "dessinanime",
+      "title": "Les Simpson",
+      "kind": "series",
+      "server": "DessinAnime - MULTI - Lecteur",
+      "host": "morencius.com",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:06:15.543Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "playback_confirmed",
+      "ms": 38164,
+      "previousConfirmation": {
+        "appVersion": "1.6.25",
+        "at": "2026-10-24T09:58:29.137Z",
+        "proof": {
+          "start": 1.19925,
+          "end": 3.998642,
+          "duration": 1394.934999999999,
+          "transport": "webview"
+        }
+      },
+      "proof": {
+        "start": 5,
+        "end": 18.284411,
+        "duration": 1394.934999999999,
+        "transport": "webview"
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 327,
+      "provider": "tuniflix",
+      "serverProvider": "tuniflix",
+      "title": "صيف حلق الوادي",
+      "kind": "film",
+      "server": "Tuniflix - watch.strp2p.site",
+      "host": "watch.strp2p.site",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:14:58.045Z",
+      "appVersion": "1.6.26",
+      "appSha256": "e1cba7e8a69c8d3b06e0ff79c67dbe0d4f79e4f7eb5124f2c4adfe55ecd609b9",
+      "status": "no_advancing_video",
+      "ms": 35783,
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 328,
+      "provider": "egydead",
+      "serverProvider": "egydead",
+      "title": "المهايطية",
+      "kind": "film",
+      "server": "EgyDead - q7v3k8m2p1.top",
+      "host": "q7v3k8m2p1.top",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:01:43.404Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "no_advancing_video",
+      "ms": 37757,
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 329,
+      "provider": "egydead",
+      "serverProvider": "egydead",
+      "title": "رهين",
+      "kind": "film",
+      "server": "EgyDead - hgcloud.to",
+      "host": "hgcloud.to",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:06:53.917Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "playback_confirmed",
+      "ms": 12255,
+      "previousConfirmation": {
+        "appVersion": "1.6.25",
+        "at": "2026-10-24T09:41:17.742Z",
+        "proof": {
+          "start": 0.281,
+          "end": 4.316,
+          "duration": 5212.583,
+          "transport": "media3"
+        }
+      },
+      "proof": {
+        "start": 1.149,
+        "end": 3.314,
+        "duration": 5212.583,
+        "transport": "media3"
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 330,
+      "provider": "egydead",
+      "serverProvider": "egydead",
+      "title": "رهين",
+      "kind": "film",
+      "server": "EgyDead - morencius.com",
+      "host": "morencius.com",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:11:41.548Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "player_error",
+      "ms": 4984,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
+      "httpStatuses": []
+    },
+    {
+      "case": 331,
+      "provider": "egydead",
+      "serverProvider": "egydead",
+      "title": "رهين",
+      "kind": "film",
+      "server": "EgyDead - mixdrop.top",
+      "host": "mixdrop.top",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:15:34.401Z",
+      "appVersion": "1.6.26",
+      "appSha256": "e1cba7e8a69c8d3b06e0ff79c67dbe0d4f79e4f7eb5124f2c4adfe55ecd609b9",
+      "status": "player_error",
+      "ms": 11006,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
+      "httpStatuses": []
+    },
+    {
+      "case": 332,
+      "provider": "cimatn",
+      "serverProvider": "cimatn",
+      "title": "Arriére el goddem أريار القدام 2",
+      "kind": "series",
+      "server": "CimaTN - YouTube",
+      "host": "www.youtube.com",
+      "type": "youtube",
+      "testedAt": "2026-10-24T18:02:21.402Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "playback_confirmed",
+      "ms": 15896,
+      "previousConfirmation": {
+        "appVersion": "1.6.23",
+        "at": "2026-10-24T09:00:08.869Z",
+        "proof": {
+          "start": 0.19494,
+          "end": 3.633522,
+          "duration": 2255.381,
+          "transport": "webview"
+        }
+      },
+      "proof": {
+        "start": 0,
+        "end": 6.539808,
+        "duration": 2255.381,
+        "transport": "webview"
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 333,
+      "provider": "cimatn",
+      "serverProvider": "cimatn",
+      "title": "Arriére el goddem أريار القدام 2",
+      "kind": "series",
+      "server": "CimaTN - geo.dailymotion.com",
+      "host": "geo.dailymotion.com",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:07:06.531Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "access_denied",
+      "ms": 4767,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
+      "httpStatuses": [
+        403
+      ]
+    },
+    {
+      "case": 334,
+      "provider": "cimatn",
+      "serverProvider": "cimatn",
+      "title": "Arriére el goddem أريار القدام 2",
+      "kind": "series",
+      "server": "CimaTN - vkvideo.ru",
+      "host": "vkvideo.ru",
+      "type": "embed",
+      "testedAt": "2026-10-24T18:11:46.805Z",
+      "appVersion": "1.6.26",
+      "appSha256": "0c2af86d800792992acb356f9564de5524690c132dc228b7ec9a2a301266c37f",
+      "status": "player_error",
+      "ms": 36096,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
+      "httpStatuses": []
+    }
+  ]
+}

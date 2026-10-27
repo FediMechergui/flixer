@@ -12,3 +12,23 @@ test('player cleanup blocks popups and offers only already-playing public conten
  assert.equal(fixture({url:'https://cdn.example/main.m3u8?token=actual'}).messages[0].format,'hls');
  for(const options of [{url:'blob:https://player.example/id'},{url:'http://cdn.example/movie.mp4'},{duration:30},{encrypted:true},{hidden:true},{hostname:'localhost'}])assert.equal(fixture(options).messages.length,0,JSON.stringify(options));
 });
+
+test('Uqload promotional frames are hidden while video, verification and account frames stay available',()=>{
+ const observers=[],timers=[],styles=[],frames=['Claim your bonus!','Confirm you are not a robot','Upgrade your account to watch videos with no limits!',''].map(text=>({contentDocument:{body:{innerText:text}},attributes:{},setAttribute(key,value){this.attributes[key]=value;}}));
+ const root={appendChild:style=>styles.push(style)},events={};
+ const document={documentElement:root,querySelectorAll:()=>frames,addEventListener:(name,fn)=>events[name]=fn,getElementById:()=>styles[0],createElement:()=>({})};
+ vm.runInNewContext(script,{document,location:{hostname:'uqload.vc'},window:{addEventListener(){},open(){}},WeakSet,MutationObserver:class{constructor(fn){this.fn=fn;}observe(target){observers.push({target,fn:this.fn});}disconnect(){}},setTimeout:fn=>timers.push(fn)});
+ while(timers.length)timers.shift()();
+ assert.ok(Object.hasOwn(frames[0].attributes,'data-flixer-promotional-ad'));
+ for(const frame of frames.slice(1))assert.deepEqual(frame.attributes,{});
+ assert.ok(styles[0].textContent.includes('iframe[data-flixer-promotional-ad]'));
+ assert.ok(styles[0].textContent.includes('#uqcs-bar'));
+ assert.ok(styles[0].textContent.includes('#uqcs-box'));
+ assert.ok(!styles[0].textContent.includes('#play_limit_box'));
+ assert.ok(!styles[0].textContent.includes('#adbd'));
+ // A later injected promotion is caught without clicking its buttons.
+ frames[3].contentDocument.body.innerText='Claim your free spins';
+ observers.find(o=>o.target===frames[3].contentDocument.body).fn();
+ while(timers.length)timers.shift()();
+ assert.ok(Object.hasOwn(frames[3].attributes,'data-flixer-promotional-ad'));
+});

@@ -1064,7 +1064,8 @@
         const ids=new Set(local.map(i=>i.id));let pending=names.length+1;
         const exact=local.find(item=>[item.title,...(item.altTitles||[])].some(value=>norm(value)===norm(q)));
         const aliases=[...new Set(exact?[exact.title,...(exact.altTitles||[])]:[])].filter(value=>value&&norm(value)!==norm(q)&&value.length<=120).slice(0,2);
-        const result=()=>({items:this._groupSearchItems(ids),totalPages:1,pending});
+        const matches=item=>hit(item.title)||(item.alt&&hit(item.alt))||(item.altTitles||[]).some(hit)||(item.versions||[]).some(version=>hit(version.title)||(version.altTitles||[]).some(hit));
+        const result=()=>({items:this._groupSearchItems(ids).filter(matches),totalPages:1,pending});
         const saved=Promise.resolve(this._indexReady).then(async()=>{
           if(signal?.aborted)return;const rows=await this.all();if(signal?.aborted)return;
           rows.filter(i=>hit(i.title)||(i.alt&&hit(i.alt))||i.altTitles.some(hit)).sort(byWeight).slice(0,60).forEach(i=>ids.add(i.id));

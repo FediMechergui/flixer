@@ -48,6 +48,9 @@ public class PlayerViewPlugin extends Plugin {
     public void open(PluginCall call) {
         String url = call.getString("url");
         if (!approved(url)) { call.reject("This player origin is not supported"); return; }
+        Uri source=Uri.parse(url);
+        boolean observableFile="uqload.vc".equals(source.getHost())&&source.getPath().matches("/embed-[a-zA-Z0-9]+\\.html")
+            ||"watch.strp2p.site".equals(source.getHost());
         getActivity().runOnUiThread(() -> {
             if (playerDialog != null) { call.reject("A player is already open"); return; }
             NativePlayerSurface dialog = new NativePlayerSurface((com.getcapacitor.BridgeActivity)getActivity(),getBridge().getWebView(),call.getObject("bounds"));
@@ -83,6 +86,7 @@ public class PlayerViewPlugin extends Plugin {
                     }catch(Exception ignored){}
                 });
                 WebViewCompat.addDocumentStartJavaScript(web,PlayerAdBlock.script(getContext(),"player-health.js"),origins);
+                WebViewCompat.addDocumentStartJavaScript(web,PlayerAdBlock.script(getContext(),"public-file-start.js"),origins);
             }
             web.setWebViewClient(new WebViewClient() {
                 @Override public android.webkit.WebResourceResponse shouldInterceptRequest(WebView view,WebResourceRequest request){return PlayerAdBlock.intercept(request);}
@@ -92,7 +96,7 @@ public class PlayerViewPlugin extends Plugin {
                 @Override public void onPageFinished(WebView view,String target){
                     // A completed page may play through a cross-origin frame whose
                     // clock we cannot observe. Do not close it for missing telemetry.
-                    if(!challengeDocument[0]){watchdog.removeCallbacks(startupTimeout);verifying[0]=false;}
+                    if(!challengeDocument[0]){if(!observableFile)watchdog.removeCallbacks(startupTimeout);verifying[0]=false;}
                 }
                 @Override public void onReceivedHttpError(WebView view,WebResourceRequest request,android.webkit.WebResourceResponse response){
                     if(!request.isForMainFrame()||response.getStatusCode()<400)return;
@@ -123,7 +127,7 @@ public class PlayerViewPlugin extends Plugin {
             });
             stage.addView(web,new FrameLayout.LayoutParams(-1,-1)); dialog.setContentView(layout);
             dialog.setOnDismissListener(d -> { watchdog.removeCallbacksAndMessages(null);web.stopLoading();web.loadUrl("about:blank");stage.removeAllViews();web.destroy();playerWebView=null;playerDialog=null;JSObject result=new JSObject();result.put("reason",reason[0]);result.put("played",played[0]);result.put("media",media);call.resolve(result); });
-            dialog.show();watchdog.postDelayed(startupTimeout,60000);web.loadUrl(url);
+            dialog.show();watchdog.postDelayed(startupTimeout,observableFile?30000:60000);web.loadUrl(url);
         });
     }
     @PluginMethod public void close(PluginCall call) { getActivity().runOnUiThread(() -> { if(playerDialog!=null)playerDialog.dismiss();call.resolve(); }); }

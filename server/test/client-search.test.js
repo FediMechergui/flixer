@@ -9,7 +9,7 @@ test('native WCO search shares one card with a matching series and keeps indepen
  let native=0;const requests=[];
  const context=vm.createContext({window:{FLIXER_CONFIG:{apiBase:'https://backend.test',live:false},Capacitor:{Plugins:{WcoSource:{}}},FlixerWcoSource:{search:async()=>{native++;return [wco];}},dispatchEvent:()=>{}},console,URL,URLSearchParams,localStorage:{getItem:()=>null,setItem:()=>{}},AbortController,setTimeout,clearTimeout,CustomEvent:class{},fetch:async input=>{
   const u=new URL(String(input),'https://backend.test');requests.push(u.href);
-  const body=u.pathname==='/api/search'?u.searchParams.has('providers')?{providers:['fmovies','wco']}:{items:[]}:/services|universes/.test(u.pathname)?{}:catalog;
+  const body=u.pathname==='/api/search'?u.searchParams.has('providers')?{providers:['fmovies','wco']}:{items:[{id:'fm:t:unrelated',title:'Unrelated upstream default',kind:'series',year:2026}]}:/services|universes/.test(u.pathname)?{}:catalog;
   return {ok:true,status:200,headers:{get:()=>null},text:async()=>JSON.stringify(body)};
  }});
  for(const name of ['universes.js','tvmaze.js','api.js'])vm.runInContext(fs.readFileSync(new URL(`../../client-terrarium/js/${name}`,import.meta.url),'utf8'),context);

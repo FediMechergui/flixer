@@ -5,6 +5,21 @@
  const selectors=['.adsbygoogle','ins.adsbygoogle','[data-ad-slot]','[data-ad-client]',
   '#ad-banner','#ad-container','#ads-container','.ad-banner','.ads-banner','.advertisement',
   '.advertising','.banner-ad','.popunder-overlay','iframe[title="Advertisement"]'];
+ // Uqload injects a same-origin promotional iframe above its playing video.
+ // Match its advertising copy, leaving verification and account notices intact.
+ if(location.hostname==='uqload.vc'){
+  selectors.push('#uqcs-bar','#uqcs-box','iframe[data-flixer-promotional-ad]');
+  const watched=new WeakSet();let queued=false;
+  const scan=()=>{queued=false;for(const frame of document.querySelectorAll('iframe')){
+   try{const body=frame.contentDocument?.body;if(!body)continue;
+    if(/claim your bonus|claim (?:your )?free spins/i.test(body.innerText||''))frame.setAttribute('data-flixer-promotional-ad','');
+    if(!watched.has(body)){watched.add(body);new MutationObserver(schedule).observe(body,{childList:true,subtree:true,characterData:true});}
+   }catch{}
+  }};
+  const schedule=()=>{if(!queued){queued=true;setTimeout(scan,50);}};
+  const ready=()=>{new MutationObserver(schedule).observe(document.documentElement,{childList:true,subtree:true});document.addEventListener('load',schedule,true);schedule();};
+  if(document.documentElement)ready();else document.addEventListener('DOMContentLoaded',ready,{once:true});
+ }
  const hide=()=>{
   if(!document.documentElement)return;
   let style=document.getElementById('flixer-ad-filter');

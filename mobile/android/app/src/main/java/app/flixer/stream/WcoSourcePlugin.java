@@ -53,7 +53,7 @@ public class WcoSourcePlugin extends Plugin {
         if(pending!=null)finish(pending,null,"WCO request superseded");
         if(!WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)||!WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)){call.reject("Update Android System WebView to resolve this source");return;}
         pending=call;pendingPriority=priority;WebView web=new WebView(getActivity());source=web;
-        WebSettings settings=web.getSettings();settings.setJavaScriptEnabled(true);settings.setDomStorageEnabled(true);settings.setAllowFileAccess(false);settings.setAllowContentAccess(false);settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);settings.setSupportMultipleWindows(true);settings.setJavaScriptCanOpenWindowsAutomatically(false);settings.setUserAgentString(USER_AGENT);settings.setLoadsImagesAutomatically(false);settings.setBlockNetworkImage(true);
+        WebSettings settings=web.getSettings();settings.setJavaScriptEnabled(true);settings.setDomStorageEnabled(true);settings.setAllowFileAccess(false);settings.setAllowContentAccess(false);settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);settings.setMediaPlaybackRequiresUserGesture(false);settings.setSupportMultipleWindows(true);settings.setJavaScriptCanOpenWindowsAutomatically(false);settings.setUserAgentString(USER_AGENT);settings.setLoadsImagesAutomatically(!page);settings.setBlockNetworkImage(page);
         android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(web,true);
         surface=new FrameLayout(getActivity());surface.setAlpha(0);surface.setImportantForAccessibility(android.view.View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);surface.addView(web,new FrameLayout.LayoutParams(412,600));getActivity().addContentView(surface,new ViewGroup.LayoutParams(1,1));
         java.util.Set<String> origins=new HashSet<>(Arrays.asList("https://www.wcostream.tv","https://embed.wcostream.com"));
@@ -79,7 +79,10 @@ public class WcoSourcePlugin extends Plugin {
             @Override public android.webkit.WebResourceResponse shouldInterceptRequest(WebView v,WebResourceRequest request){return PlayerAdBlock.intercept(request);}
             @Override public boolean shouldOverrideUrlLoading(WebView v,WebResourceRequest request){return request.isForMainFrame()&&!request.getUrl().toString().equals(url);}
             @Override public void onReceivedError(WebView v,WebResourceRequest request,android.webkit.WebResourceError error){if(request.isForMainFrame())finish(call,null,"WCO page unavailable");}
-            @Override public void onReceivedHttpError(WebView v,WebResourceRequest request,android.webkit.WebResourceResponse response){if(request.isForMainFrame()&&response.getStatusCode()>=400&&!PlayerHttpPolicy.needsBrowserVerification(response.getStatusCode(),response.getResponseHeaders()))finish(call,null,"WCO HTTP "+response.getStatusCode());}
+            @Override public void onReceivedHttpError(WebView v,WebResourceRequest request,android.webkit.WebResourceResponse response){
+                if(!page&&WcoHttpPolicy.deniedPlayer(request.getUrl().toString(),response.getStatusCode())){finish(call,null,"WCO public player access denied","WCO_ACCESS_DENIED");return;}
+                if(request.isForMainFrame()&&response.getStatusCode()>=400&&!PlayerHttpPolicy.needsBrowserVerification(response.getStatusCode(),response.getResponseHeaders()))finish(call,null,"WCO HTTP "+response.getStatusCode());
+            }
         });
         web.setDownloadListener((target,agent,disposition,mime,length)->{});
         web.setWebChromeClient(new WebChromeClient(){

@@ -24,6 +24,7 @@
     const i = servers.findIndex(s => s.type==='youtube'||s.videoId||s.type==='file'||s.type==='mp4'||s.type==='hls'||s.type==='dessinanime');
     if(i!==-1)return i;
     if(window.FlixerBrowser?.hasNativeVideo?.()){
+      const publicFile=servers.findIndex(s=>{try{return s.provider==='tuniflix'&&new URL(s.embedUrl).hostname==='uqload.vc';}catch{return false;}});if(publicFile>=0)return publicFile;
       const hg=servers.findIndex(s=>window.FlixerHgSource?.supports(s));if(hg>=0)return hg;
     }
     return 0;
@@ -178,7 +179,8 @@
       if (!automatic) {st.attempted.clear();st.sourceErrors.clear();}
       st.attempted.add(i);
       st.idx = i;st.recovering=false;
-      $('[data-browser-player]',root).hidden=!window.FlixerBrowser?.hasNativePlayer?.()||servers[i]?.provider==='dessinanime'||!['embed','browser'].includes(servers[i]?.type);
+      // Native embed players open automatically; source selection can reopen one.
+      $('[data-browser-player]',root).hidden=true;
       renderBar();
       teardownMedia();
       const s = servers[i];

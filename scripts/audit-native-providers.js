@@ -15,7 +15,7 @@ if(args.includes('--retest')){
  report.previousAttempts=[...(report.previousAttempts||[]),...report.cases.filter(row=>selected.has(row.case))];
  report.cases=report.cases.filter(row=>!selected.has(row.case));
 }
-delete report.finishedAt;delete report.pausedAt;
+delete report.finishedAt;delete report.pausedAt;delete report.runEndedAt;
 const pause=ms=>new Promise(r=>setTimeout(r,ms)),save=()=>{fs.writeFileSync(output+'.tmp',JSON.stringify(report,null,2));fs.renameSync(output+'.tmp',output)};
 async function shell(...params){return(await run(adb,['-s',serial,...params],{timeout:20000,windowsHide:true,maxBuffer:1024*1024})).stdout.trim()}
 async function pages(){const r=await fetch('http://127.0.0.1:'+port+'/json',{signal:AbortSignal.timeout(5000)});return r.json()}
@@ -51,7 +51,9 @@ while(true){if(fs.existsSync(path.join(dir,'pause'))){report.pausedAt=new Date()
   await main.evaluate(`(()=>{window.__auditPlayer?.destroy();window.__auditAttempt=${row.case};window.__auditProgress=[];window.__auditNativeResults=[];if(!window.__auditWrapped){for(const name of ['openPlayer','openMedia']){const original=FlixerBrowser[name];FlixerBrowser[name]=async(...args)=>{const attempt=window.__auditAttempt;try{const result=await original(...args);if(attempt===window.__auditAttempt)window.__auditNativeResults.push({surface:name,result});return result}catch(error){if(attempt===window.__auditAttempt)window.__auditNativeResults.push({surface:name,error:error.message});throw error}}}window.__auditWrapped=true}window.__auditPlayer=FlixerPlayer.mount(document.getElementById('audit-player'),{title:${JSON.stringify(row.title)},servers:[${JSON.stringify(server)}],onProgress:(position,duration)=>window.__auditProgress.push({position,duration}),onExit:()=>{}});return true})()`);
   const mainContexts=observe(main,result);await enable(main);surfaces.set(main.page.id,{c:main,contexts:mainContexts});
   while(Date.now()-start<seconds*1000){
-   for(const page of await pages())if(page.type==='page'&&!surfaces.has(page.id)&&!page.url.startsWith('https://localhost'))try{const c=await connect(page),contexts=observe(c,result);await enable(c);surfaces.set(page.id,{c,contexts})}catch{}
+   // Attaching DevTools can keep a hidden source WebView's timers alive. WCO
+   // must resolve without that intervention; prove its resulting Media3 clock.
+   if(row.type!=='wco')for(const page of await pages())if(page.type==='page'&&!surfaces.has(page.id)&&!page.url.startsWith('https://localhost'))try{const c=await connect(page),contexts=observe(c,result);await enable(c);surfaces.set(page.id,{c,contexts})}catch{}
    for(const {c,contexts}of surfaces.values())for(const [id,frame]of [...contexts].slice(0,8))try{const s=await c.evaluate(snapshot,id,2500);s.frame=frame;s.elapsedMs=Date.now()-start;
     if(!s.url.startsWith('https://localhost'))result.observations.push(s);
     for(const v of s.videos){const advancing=observeVideoClock(proof,frame,v);if(advancing){result.playbackConfirmed=true;result.proof=advancing}}

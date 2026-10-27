@@ -312,6 +312,7 @@ export async function unifiedStream(id,{showId,source,prefix='/api/stream',catal
     if(server.requiresBrowserVerification || /^https?:\/\/hdtoday\.sx(?:[/:?#]|$)/i.test(server.embedUrl || ''))continue;
     const identity=server.streamUrl||server.embedUrl||(server.type==='dessinanime'?`dessinanime:${server.playerId}`:`youtube:${server.videoId}`);if(!seen.has(identity)){seen.add(identity);servers.push(server);}
   }
+  for(const provider of new Set(servers.filter(server=>server.cached).map(server=>server.provider)))providerErrors.push({provider,error:'Source revalidation failed; cached player links retained',cached:true});
   if(title.kind==='series')for(const server of documentedTvServers({tmdbId:title.tmdbId || title.offerings?.find(o=>o.provider==='fmovies')?.tmdbId,season:episode.season,number:episode.number})){
     if(!seen.has(server.embedUrl)){seen.add(server.embedUrl);servers.push(server);}
   }

@@ -6,6 +6,8 @@ The matrix covers 22 catalogue providers and 68 sample titles. Each returned pla
 
 All 336 returned choices received a device outcome. The latest attempts confirmed playback on 93 choices; one additional choice has an earlier confirmation and a different latest outcome. Kirmalk, AnimeGG and YoTurkish had no own-source confirmation in these samples. One Pace returned no eligible in-app episode routes. The detailed report distinguishes player errors, unconfirmed advancement, removals, verification, country and embedding restrictions.
 
+A later [provider-family follow-up](provider-followup-2026-10-24/provider-playback-audit-2026-10-24.md), observed from 18:54 to 19:21 WAT, tested 78 choices across 35 sample titles on two Android 15 emulators. It confirmed 21 choices, including all four WCO cartoon/anime samples; 57 remained failed, restricted or unconfirmed. Eleven other choices retain earlier confirmations with a different latest outcome. This selection samples each previously advertised own-source provider/host family, rather than repeating all 336 routes. Embedded descriptors and lookup statuses come from the original matrix; direct media is refreshed during testing. Four fresh One Pace backend lookups still returned no episode links. A failed title sample does not establish a provider-wide outage.
+
 The signed 1.6.25 release also passed installation, cold activity launch, Movies browsing and returning to a populated Home/Recently updated screen. See the [release smoke record](release-smoke-2026-10-24.json). This visual check does not establish an exact catalogue-loading time or prove every cache transition.
 
 ## Fixes supported by the investigation
@@ -40,3 +42,7 @@ The audit uses a debug-only entry point to isolate the real production player fr
 ## Audit corrections
 
 Raw YouTube descriptors are normalized through the same conversion as the client; earlier incomplete-descriptor attempts are excluded. A counter that failed to accept clocks starting at zero was corrected, and saved observations were evaluated again against the advancing-clock rule. Standard small Play controls, including role-based buttons, are actionable independently of the minimum video size. Paused-source cases are retested with that correction; advertising, verification and premium prompts are excluded from automated interaction. The MyAsianTV samples played after ordinary Play taps. These interaction changes correct the test harness and do not require a different application APK.
+
+## 27 October update
+
+The [current Arabic, Tunisian and WCO follow-up](provider-followup-2026-10-27/README.md) covers 40 choices across ten sampled titles: seven advancing-video confirmations and 33 failed or unconfirmed choices. Tuniflix's ordinary playback was serving obsolete snapshot players; it now revalidates through the shared two-minute page cache. The Needle's current Uqload route played after starting the eligible public file through its normal video API. Current WCO resolution did not reproduce the older instrumented successes; observed public-player HTTP 403 is reported explicitly.

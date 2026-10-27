@@ -4,6 +4,15 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class PlayerAdsTest {
+    @org.junit.Test public void uqloadPopunderLoaderDoesNotBlockPlaybackOrAccountChecks(){
+        assertTrue(PlayerAds.blocked("https://uqload.vc/js2/tsl.js"));
+        assertFalse(PlayerAds.blocked("https://uqload.vc/player/jw8/jwplayer.js"));
+        assertFalse(PlayerAds.blocked("https://uqload.vc/ad/pop.adsbox.js"));
+        assertFalse(PlayerAds.blocked("https://media.uqload.vc/video.mp4"));
+        assertFalse(PlayerAds.blocked("https://other.example/js2/tsl.js"));
+        assertTrue(PlayerAds.blocked("https://uj.uniolaicecaps.com/advertising-script"));
+        assertTrue(PlayerAds.blocked("https://eo.todditehexarch.com/advertising-script"));
+    }
     @Test public void blocksAdHostsAndTheirSubdomainsButNotLookalikes(){
         assertTrue(PlayerAds.blocked("https://ads.doubleclick.net/pagead/video.mp4"));
         assertTrue(PlayerAds.blocked("https://POPCASH.NET./pop.js"));

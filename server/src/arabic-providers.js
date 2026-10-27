@@ -315,13 +315,16 @@ export function egydeadWatchLink(id,html){
  for(const el of $('.watchNow a[href]').toArray())try{const u=new URL($(el).attr('href'),base);if(u.origin===base.origin&&u.pathname===expected&&!u.search&&!u.hash&&!u.username&&!u.password&&u.port==='')return u.href;}catch{}
  return null;
 }
-export async function resolveArabicServers(id,{fresh=false,transport,fetchPage=arabicPage}={}){
+export async function resolveArabicServers(id,{fresh=false,transport,fetchPage=arabicPage,readSnapshot=arabicSnapshot}={}){
   if(parseCimafuId(id))return resolveCimafuServers(id,{fresh,transport});
-  const saved=await arabicSnapshot(id),episode=saved?.episodes?.find(e=>e.id===id),stored=episode?.cachedPlayers;
+  const saved=await readSnapshot(id),episode=saved?.episodes?.find(e=>e.id===id),stored=episode?.cachedPlayers,cached=[];
   if(!fresh&&stored?.length&&parseArabicId(id)?.provider!=='cimatn'){
     const validated=approvedPlayers(id,stored.map(s=>({url:s.embedUrl||(s.type==='youtube'?`https://www.youtube.com/embed/${s.videoId}`:'')})));
     const files=stored.filter(s=>s.type==='file'&&(pSafeCommons(s.streamUrl)||safeTunisianFile(s.streamUrl))||parseArabicId(id)?.provider==='streamtunisie'&&s.type==='hls'&&safeSourceHls(s.streamUrl));
-    if(validated.length||files.length)return [...validated,...files];
+    cached.push(...validated,...files);
+    // Tuniflix rotates hosters. Snapshot links have no playback-fetch timestamp;
+    // revalidate through arabicPage's shared two-minute cache on ordinary play.
+    if(cached.length&&parseArabicId(id)?.provider!=='tuniflix')return cached;
   }
   if(parseArabicId(id)?.provider==='cimatn'){
     const data=await cimaWatchData(await arabicPage(arabicUrl(id),{fresh})),p=parseArabicId(id);
@@ -330,7 +333,9 @@ export async function resolveArabicServers(id,{fresh=false,transport,fetchPage=a
     if(data?.sourceUrl&&/^https:\/\/cimatnwatchingg\.blogspot\.com\/p\/[a-z0-9-]+\.html$/.test(data.sourceUrl))players.push({id:'cimatn:original-page',provider:'cimatn',name:'CimaTN - original player page',type:'browser',embedUrl:data.sourceUrl,sandbox:null});
     return players;
   }
-  const p=parseArabicId(id);if(!p||p.type==='s')return [];let html=await fetchPage(arabicUrl(id),{fresh});
+  const p=parseArabicId(id);if(!p||p.type==='s')return [];let html;
+  try{html=await fetchPage(arabicUrl(id),{fresh});}
+  catch(error){if(p.provider==='tuniflix'&&!fresh&&cached.length&&!/HTTP (?:404|410)\b/.test(error.message||''))return cached.map(server=>({...server,cached:true}));throw error;}
   if(p.provider==='egydead'){
     const watch=egydeadWatchLink(id,html);
     if(watch)html=await fetchPage(watch,{fresh});
@@ -344,7 +349,9 @@ export async function resolveArabicServers(id,{fresh=false,transport,fetchPage=a
     const $=load(html),choices=$('iframe[src]').toArray().map(a=>fixed($(a).attr('src'),ARABIC_PROVIDERS.tuniflix.origin)).filter(u=>u&&u.pathname==='/'&&/^\d+$/.test(u.searchParams.get('trembed')||'')&&/^\d+$/.test(u.searchParams.get('trid')||'')&&/^[12]$/.test(u.searchParams.get('trtype')||''));
     const firstId=choices[0]?.searchParams.get('trid');
     $('.OptionBx[data-key][data-id]').each((_,el)=>{const key=$(el).attr('data-key'),post=$(el).attr('data-id');if(post===firstId&&/^\d+$/.test(key||''))choices.push(new URL(`/?trembed=${key}&trid=${post}&trtype=${p.type==='m'?1:2}`,ARABIC_PROVIDERS.tuniflix.origin));});
-    const wrappers=await collectArabicPages([...new Map(choices.map(u=>[u.href,u])).values()],u=>arabicPage(u.href,{fresh}));return wrappers.flatMap(r=>r.status==='fulfilled'?parseArabicServers(id,r.value):[]);
+    const wrappers=await collectArabicPages([...new Map(choices.map(u=>[u.href,u])).values()],u=>fetchPage(u.href,{fresh})),players=wrappers.flatMap(r=>r.status==='fulfilled'?parseArabicServers(id,r.value):[]);
+    if(!players.length&&!fresh&&cached.length&&wrappers.length&&wrappers.every(r=>r.status==='rejected'&&!/HTTP (?:404|410)\b/.test(r.reason?.message||'')))return cached.map(server=>({...server,cached:true}));
+    return players;
   }
   const servers=parseArabicServers(id,html);
   if(p.provider==='cinetimes'&&!servers.length)return cinetimesCommonsServers(html);
