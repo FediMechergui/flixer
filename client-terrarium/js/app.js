@@ -59,7 +59,7 @@
   const universeName = id => { const u = UNIVERSES.find(x => x.id === id); return u ? u.name : ""; };
   const saveFilters = () => store.set("filters", state.filters);
   const saveWatchlist = () => store.set("watchlist", state.watchlist);
-  const saveProgress = () => store.set("progress", state.progress);
+  const saveProgress = () => {store.set("progress", state.progress);state.progressRevision=(state.progressRevision||0)+1;};
 
   async function ensureMeta(type) {
     if (type && !state.meta.genres[type]) state.meta.genres[type] = await api.genres(type);
@@ -82,24 +82,37 @@
   }
 
   /* ---------- Progress (resume / watched) ---------- */
-  function setProgress(epId, showId, position, duration) {
+  const episodeIds=episode=>[...new Set(typeof episode==='string'?[episode]:[episode.id,...(episode.offerings||[]).map(o=>o.id)].filter(Boolean))];
+  function progressFor(episode) {
+    const revision=state.progressRevision||0;
+    if(!state.progressLookup||state.progressLookupRevision!==revision){
+      state.progressLookup=new Map();state.progressLookupRevision=revision;
+      for(const [id,p] of Object.entries(state.progress))if(p)for(const key of [id,...(p.episodeIds||[])])if(!state.progressLookup.has(key)||p.at>state.progressLookup.get(key).at)state.progressLookup.set(key,p);
+    }
+    return episodeIds(episode).map(id=>state.progressLookup.get(id)).filter(Boolean).sort((a,b)=>b.at-a.at)[0];
+  }
+  function setProgress(episode, showId, position, duration) {
+    if(!Number.isFinite(position)||!Number.isFinite(duration)||position<=0||duration<=0||position>duration+1)return;
+    const ids=[...new Set([...episodeIds(episode),...(progressFor(episode)?.episodeIds||[])])],epId=ids[0];
     const finished = duration > 0 && duration - position < 30;
-    state.progress[epId] = { showId, position, duration, finished, at: Date.now() };
+    for(const [id,p] of Object.entries(state.progress))if(id!==epId&&(ids.includes(id)||(p?.episodeIds||[]).some(id=>ids.includes(id))))delete state.progress[id];
+    state.progress[epId] = { showId, position, duration, finished, at: Date.now(),episodeIds:ids,...(typeof episode==='object'?{episode:{id:episode.id,title:episode.title,season:episode.season,n:episode.n}}:{}) };
     saveProgress();
   }
-  function markFinished(epId, showId) {
-    const p = state.progress[epId] || { showId, position: 0, duration: 0 };
-    state.progress[epId] = Object.assign(p, { showId, finished: true, at: Date.now() });
+  function markFinished(episode, showId) {
+    const p = progressFor(episode) || { showId, position: 0, duration: 0 },ids=[...new Set([...episodeIds(episode),...(p.episodeIds||[])])],epId=ids[0];
+    for(const [id,p] of Object.entries(state.progress))if(id!==epId&&(ids.includes(id)||(p?.episodeIds||[]).some(id=>ids.includes(id))))delete state.progress[id];
+    state.progress[epId] = Object.assign(p, { showId, finished: true, at: Date.now(),episodeIds:ids });
     saveProgress();
   }
-  const resumeAt = epId => { const p = state.progress[epId]; return p && !p.finished && p.position > 15 && p.duration - p.position > 30 ? p.position : 0; };
-  const pctOf = epId => { const p = state.progress[epId]; return p && p.duration > 0 ? Math.min(100, Math.round(p.position / p.duration * 100)) : 0; };
+  const resumeAt = episode => { const p = progressFor(episode); return p && !p.finished && p.position > 15 && p.duration - p.position > 30 ? p.position : 0; };
+  const pctOf = episode => { const p = progressFor(episode); return p && p.duration > 0 ? Math.min(100, Math.round(p.position / p.duration * 100)) : 0; };
   // Where to start a show: the first unfinished episode with progress, else the first episode.
   function entryEpisode(d) {
     const eps = d.episodes || [];
-    const started = eps.filter(e => state.progress[e.id] && !state.progress[e.id].finished).sort((a, b) => state.progress[b.id].at - state.progress[a.id].at)[0];
+    const started = eps.filter(e => progressFor(e) && !progressFor(e).finished).sort((a, b) => progressFor(b).at - progressFor(a).at)[0];
     if (started) return started;
-    const lastDone = eps.map((e, i) => state.progress[e.id] && state.progress[e.id].finished ? i : -1).reduce((a, b) => Math.max(a, b), -1);
+    const lastDone = eps.map((e, i) => progressFor(e)?.finished ? i : -1).reduce((a, b) => Math.max(a, b), -1);
     return eps[Math.min(lastDone + 1, eps.length - 1)] || null;
   }
 
@@ -125,6 +138,7 @@
     </a>`;
   }
   function resumeCard(item, ep, pct) {
+    const saved=progressFor(ep)?.episode;
     return `<a class="card" href="#/watch/${esc(item.id)}/${esc(ep)}" aria-label="Resume ${esc(item.title)}">
       <div class="card__art">${item.poster ? `<img src="${esc(item.poster)}" alt="" loading="lazy" data-art="${esc(item.id)}">` : artPlaceholder(item)}
         <span class="card__resume">RESUME</span>
@@ -132,7 +146,7 @@
         ${providerBadge(item)}
       </div>
       <p class="card__title">${esc(item.title)}</p>
-      <div class="card__meta">${pct}% watched</div>
+      <div class="card__meta">${item.type==='tv'&&saved?esc(epLabel(item.type,saved))+' · ':''}${pct}% watched</div>
     </a>`;
   }
   const skelCard = () => `<div class="card skel-card"><div class="card__art skel"></div><div class="skel skel-line"></div></div>`;
@@ -227,7 +241,10 @@
 
   function renderTab(tab) {
     $$(".tab").forEach(t => t.classList.toggle("is-active", t.dataset.tab === tab));
-    if (state.renderedTab === tab && !(tab==='home'&&state.homeRevision!==(state.catalogRevision||0))) { return; }
+    if (state.renderedTab === tab && !(tab==='home'&&state.homeRevision!==(state.catalogRevision||0))) {
+      if(tab==='home'&&state.homeProgressRevision!==(state.progressRevision||0))refreshContinueWatching();
+      return;
+    }
     if (state.renderedTab) state.scroll[state.renderedTab] = window.scrollY;
     clearInterval(state.heroTimer);
     if (state.browse && state.browse.observer) state.browse.observer.disconnect();
@@ -310,6 +327,7 @@
     } else hero.remove();
 
     // Continue watching
+    const resumeRevision=state.progressRevision||0;
     const resumeRow = await continueWatchingRow();
     if (!current()) return;
 
@@ -331,7 +349,7 @@
     if (!current()) return;
 
     $("#home-rows").innerHTML =
-      resumeRow +
+      `<div id="continue-watching">${resumeRow}</div>` +
       section("Recently updated", "Movies and series from all providers", (trend || []).slice(0, 12), { showType: true, link:"#/recent", recent:true }) +
       section("Popular series", "TVmaze popularity", popularTv, { rating: true }) +
       section("New movies", "Latest additions", now, { link: "#/movies" }) +
@@ -342,6 +360,7 @@
       section("Recent releases", "Films by release year", topM, { genre: true }) +
       section("Longest series", "Most episodes available", topT, { genre: true });
     state.homeRevision=state.catalogRevision||0;
+    state.homeProgressRevision=resumeRevision;
 
     $$("[data-collection]", view).forEach(b => b.addEventListener("click", () => {
       state.filters.all = Object.assign(defaultFilters(), { collection:b.dataset.collection }); saveFilters(); state.renderedTab = null;
@@ -420,6 +439,11 @@
     el.scrollTop = 0;
   }
 
+  async function refreshContinueWatching() {
+    const box=$('#continue-watching'),revision=state.progressRevision||0;if(!box)return;
+    const html=await continueWatchingRow();
+    if(box.isConnected&&state.renderedTab==='home'&&revision===(state.progressRevision||0)){box.innerHTML=html;state.homeProgressRevision=revision;}
+  }
   async function continueWatchingRow() {
     const entries = Object.entries(state.progress).filter(([, p]) => p && !p.finished && p.position > 15).sort((a, b) => b[1].at - a[1].at).slice(0, 12);
     if (!entries.length) return "";
@@ -694,8 +718,8 @@
 
   /* ---------- Details ---------- */
   function episodeRow(d, e, activeId) {
-    const p = state.progress[e.id];
-    const pct = pctOf(e.id);
+    const p = progressFor(e);
+    const pct = pctOf(e);
     const status = p && p.finished ? `<span class="episode__watched">Watched</span>` : pct ? `${pct}% watched` : "";
     return `<a class="episode ${e.id === activeId ? "is-active" : ""}" href="#/watch/${esc(d.id)}/${esc(e.id)}">
       <div class="episode__still">${e.still ? `<img src="${esc(e.still)}" alt="" loading="lazy" data-art="${esc(d.id)}">` : artPlaceholder(d)}<span class="episode__play">${ICON.play}</span></div>
@@ -720,8 +744,8 @@
 
     const saved = inList(d);
     const entry = d.access==='catalogue-only'?null:entryEpisode(d);
-    const entryPct = entry ? pctOf(entry.id) : 0;
-    const playLabel = entry && entryPct && !(state.progress[entry.id] || {}).finished
+    const entryPct = entry ? pctOf(entry) : 0;
+    const playLabel = entry && entryPct && !progressFor(entry)?.finished
       ? (type === "tv" ? `Resume ${epLabel(type, entry)}` : "Resume")
       : (type === "tv" && entry && entry !== d.episodes[0] ? `Play ${epLabel(type, entry)}` : "Play");
     const facts = [
@@ -878,13 +902,13 @@
       onExit: goBack,
       poster: episode.still || show.backdrop || show.poster,
       title: `${show.title}${type === "tv" ? " · " + episode.title : ""}`,
-      startAt: resumeAt(episode.id),
+      startAt: resumeAt(episode),
       sourceUrl: episode.sourceUrl,
       onDiscover:async()=>{await api.search(show.title,{signal:request.signal});const freshShow=await api._build(await api.show(show.id),{guide:false});return api.stream(episode.id,episode.sourceUrl,freshShow,{signal:request.signal,fresh:true});},
       onRetry:()=>api.stream(episode.id,episode.sourceUrl,show,{signal:request.signal,fresh:true}),
-      onProgress: (pos, dur) => { const now = Date.now(); if (now - lastSave > 5000) { lastSave = now; setProgress(episode.id, show.id, pos, dur); } },
+      onProgress: (pos, dur, {force=false}={}) => { const now = Date.now(); if (force||now - lastSave > 5000) { lastSave = now; setProgress(episode, show.id, pos, dur); } },
       onEnded: () => {
-        markFinished(episode.id, show.id);
+        markFinished(episode, show.id);
         if (next && state.settings.autoplay) startCountdown(el, show, next);
       }
     });

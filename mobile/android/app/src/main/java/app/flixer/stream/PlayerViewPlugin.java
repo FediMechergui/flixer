@@ -51,11 +51,13 @@ public class PlayerViewPlugin extends Plugin {
         Uri source=Uri.parse(url);
         boolean observableFile="uqload.vc".equals(source.getHost())&&source.getPath().matches("/embed-[a-zA-Z0-9]+\\.html")
             ||"watch.strp2p.site".equals(source.getHost());
+        String session=call.getString("session","");double requestedStart=call.getDouble("startAt",0.0);
+        double startAt=Double.isFinite(requestedStart)&&requestedStart>0?requestedStart:0;
         getActivity().runOnUiThread(() -> {
             if (playerDialog != null) { call.reject("A player is already open"); return; }
             NativePlayerSurface dialog = new NativePlayerSurface((com.getcapacitor.BridgeActivity)getActivity(),getBridge().getWebView(),call.getObject("bounds"));
             playerDialog = dialog;
-            String[] reason={"closed"};boolean[] played={false};boolean[] verifying={false};boolean[] challengeDocument={false};
+            String[] reason={"closed"};boolean[] played={false};boolean[] verifying={false};boolean[] challengeDocument={false};double[] latest={0,0};
             android.os.Handler watchdog=new android.os.Handler(android.os.Looper.getMainLooper());
             Runnable startupTimeout=()->{if(dialog.isShowing()&&!played[0]){reason[0]="failed";dialog.dismiss();}};JSObject media=new JSObject();boolean captureMedia=call.getBoolean("captureMedia",true);
             LinearLayout layout = new LinearLayout(getActivity()); layout.setOrientation(LinearLayout.VERTICAL); layout.setBackgroundColor(Color.rgb(12,18,16));
@@ -76,17 +78,27 @@ public class PlayerViewPlugin extends Plugin {
             if(WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)&&WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)){
                 Set<String> origins=playerOrigins();
                 WebViewCompat.addWebMessageListener(web,"FlixerPlayback",origins,(view,message,origin,main,reply)->{
+                    if(playerDialog!=dialog)return;
                     if("playing".equals(message.getData())){played[0]=true;watchdog.removeCallbacks(startupTimeout);}
                     if("missing".equals(message.getData())&&!played[0]){reason[0]="failed";dialog.dismiss();}
-                    if(captureMedia&&message.getData()!=null&&message.getData().length()<14000)try{
+                    if(message.getData()!=null&&message.getData().length()<14000)try{
                         JSONObject data=new JSONObject(message.getData());String target=data.optString("url"),format=data.optString("format");Uri uri=Uri.parse(target);
-                        if("public-media".equals(data.optString("type"))&&"https".equals(uri.getScheme())&&uri.getHost()!=null&&uri.getUserInfo()==null&&uri.getPort()==-1&&Arrays.asList("mp4","hls","dash").contains(format)){
+                        if("progress".equals(data.optString("type"))){
+                            double position=data.optDouble("position",-1),duration=data.optDouble("duration",0);
+                            if(Double.isFinite(position)&&Double.isFinite(duration)&&position>0&&duration>0&&position<=duration+1){
+                                latest[0]=Math.min(position,duration);latest[1]=duration;played[0]=true;watchdog.removeCallbacks(startupTimeout);
+                                JSObject progress=new JSObject();progress.put("session",session);progress.put("position",latest[0]);progress.put("duration",duration);progress.put("playing",data.optBoolean("playing"));progress.put("final",data.optBoolean("final"));notifyListeners("progress",progress);
+                                if(data.optBoolean("ended")&&duration-position<=2){reason[0]="ended";dialog.dismiss();}
+                            }
+                        }
+                        if(captureMedia&&"public-media".equals(data.optString("type"))&&"https".equals(uri.getScheme())&&uri.getHost()!=null&&uri.getUserInfo()==null&&uri.getPort()==-1&&Arrays.asList("mp4","hls","dash").contains(format)){
                             media.put("url",target);media.put("format",format);media.put("position",Math.max(0,data.optDouble("position",0)));media.put("sourceOrigin",origin.toString());reason[0]="media";dialog.dismiss();
                         }
                     }catch(Exception ignored){}
                 });
                 WebViewCompat.addDocumentStartJavaScript(web,PlayerAdBlock.script(getContext(),"player-health.js"),origins);
                 WebViewCompat.addDocumentStartJavaScript(web,PlayerAdBlock.script(getContext(),"public-file-start.js"),origins);
+                WebViewCompat.addDocumentStartJavaScript(web,PlayerAdBlock.script(getContext(),"player-progress.js").replace("/*FLIXER_START_AT*/0",Double.toString(startAt)),origins);
             }
             web.setWebViewClient(new WebViewClient() {
                 @Override public android.webkit.WebResourceResponse shouldInterceptRequest(WebView view,WebResourceRequest request){return PlayerAdBlock.intercept(request);}
@@ -126,7 +138,7 @@ public class PlayerViewPlugin extends Plugin {
                 @Override public boolean onJsPrompt(WebView view,String target,String message,String initial,android.webkit.JsPromptResult result){result.cancel();return true;}
             });
             stage.addView(web,new FrameLayout.LayoutParams(-1,-1)); dialog.setContentView(layout);
-            dialog.setOnDismissListener(d -> { watchdog.removeCallbacksAndMessages(null);web.stopLoading();web.loadUrl("about:blank");stage.removeAllViews();web.destroy();playerWebView=null;playerDialog=null;JSObject result=new JSObject();result.put("reason",reason[0]);result.put("played",played[0]);result.put("media",media);call.resolve(result); });
+            dialog.setOnDismissListener(d -> { watchdog.removeCallbacksAndMessages(null);web.stopLoading();web.loadUrl("about:blank");stage.removeAllViews();web.destroy();playerWebView=null;playerDialog=null;JSObject result=new JSObject();result.put("reason",reason[0]);result.put("played",played[0]);result.put("media",media);result.put("position",latest[0]);result.put("duration",latest[1]);call.resolve(result); });
             dialog.show();watchdog.postDelayed(startupTimeout,observableFile?30000:60000);web.loadUrl(url);
         });
     }

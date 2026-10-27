@@ -39,3 +39,14 @@ test('native media forwards source captions and User-Agent together with the vid
  await window.FlixerBrowser.openMedia({type:'mp4',streamUrl:'https://ndisk.wcostream.com/getvid?evid=actual-video',headers,subtitles});
  assert.equal(request.subtitles,subtitles);assert.equal(request.headers,headers);
 });
+
+test('embedded progress is isolated to its native session and the listener is removed on close',async()=>{
+ let listener,request,finish,removed=0;const progress=[];
+ const plugin={close:async()=>{},addListener:async(name,fn)=>{listener=fn;return {remove:async()=>removed++};},open:options=>{request=options;return new Promise(resolve=>finish=resolve);}};
+ const window={Capacitor:{isNativePlatform:()=>true,Plugins:{PlayerView:plugin}}};vm.runInNewContext(source,{window,URL,Promise,Math,Date});
+ const pending=window.FlixerBrowser.openPlayer('https://uqload.vc/embed-example.html',{startAt:120,onProgress:state=>progress.push(state)});
+ await new Promise(resolve=>setImmediate(resolve));assert.equal(request.startAt,120);
+ listener({session:'old-session',position:800,duration:1800});assert.equal(progress.length,0);
+ listener({session:request.session,position:125,duration:1800});assert.equal(progress[0].position,125);
+ finish({reason:'closed'});await pending;assert.equal(removed,1);
+});

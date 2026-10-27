@@ -1,0 +1,111 @@
+{
+  "checkedOn": "2026-10-27",
+  "timeZone": "Africa/Lagos",
+  "appVersion": "1.6.27",
+  "versionCode": 187,
+  "debugApkSha256": "fadefa590be20c5885120de9d09e7f9830484a09175417cd731c4e68d335407f",
+  "releaseApkSha256": "1b178c0d64a38a291633e18c52c46fcc9dfacef04f1e8035da3d5826caf9eed6",
+  "releaseApkSize": 18220377,
+  "device": "Android 15 / API 35 emulator",
+  "automated": {
+    "nodeTests": 265,
+    "failures": 0,
+    "androidUnitChecks": "passed",
+    "releaseLintErrors": 0,
+    "releaseLintWarnings": 27,
+    "debugAndReleaseBuilds": "passed"
+  },
+  "tests": [
+    {
+      "transport": "native-hls",
+      "at": "2026-10-27T17:14:43.904Z",
+      "syntheticShowId": "resume-fixture",
+      "episode": {
+        "season": 2,
+        "number": 2
+      },
+      "playerRequests": [
+        {
+          "name": "Unavailable control",
+          "startAt": 60
+        },
+        {
+          "name": "Working second server",
+          "startAt": 60
+        },
+        {
+          "name": "Working second server",
+          "startAt": 72.03
+        }
+      ],
+      "afterFailover": {
+        "position": 66.372,
+        "duration": 634.584
+      },
+      "afterClose": {
+        "position": 72.03,
+        "duration": 634.584
+      },
+      "continueWatchingLabel": "S2 · E02 · 11% watched",
+      "afterReopen": {
+        "position": 83.51,
+        "duration": 634.584,
+        "episodeId": "resume-fixture:episode-2"
+      },
+      "passed": true
+    },
+    {
+      "transport": "embedded-webview",
+      "at": "2026-10-27T17:17:03.651Z",
+      "syntheticShowId": "resume-embed-fixture",
+      "episode": {
+        "season": 2,
+        "number": 2
+      },
+      "playerRequests": [
+        {
+          "name": "Unavailable control",
+          "startAt": 60
+        },
+        {
+          "name": "Working second server",
+          "startAt": 60
+        },
+        {
+          "name": "Unavailable control",
+          "startAt": 67.69
+        },
+        {
+          "name": "Working second server",
+          "startAt": 67.69
+        }
+      ],
+      "afterFailover": {
+        "position": 65.990174,
+        "duration": 6985.28
+      },
+      "afterClose": {
+        "position": 67.69,
+        "duration": 6985.28
+      },
+      "continueWatchingLabel": "S2 · E02 · 1% watched",
+      "afterReopen": {
+        "position": 72.151669,
+        "duration": 6985.28,
+        "episodeId": "resume-embed-fixture:episode-2"
+      },
+      "passed": true
+    }
+  ],
+  "scope": "Local synthetic series with real native playback surfaces. An unavailable first source fails over to a working HLS sample or a public Uqload file player. This checks app persistence, episode identity and resume requests, not the membership of the sample films in the synthetic series. Live catalogue updates can replace other home rows; cached-home progress-only rendering is covered separately by a regression test. Source WebViews were not inspected with DevTools. No source URLs, cookies or tokens are published.",
+  "signedReleaseSmoke": {
+    "installedAsUpdate": true,
+    "mainActivityColdStarts": true,
+    "nativeActivityLaunchMs": 4010,
+    "normalNeedleAliasSearch": true,
+    "needleOpenedInEmbeddedUqloadPlayer": true,
+    "titlePageShowsResumeAfterPlayback": true,
+    "homeShowsNeedleContinueWatchingCardWithProgress": true,
+    "notes": "Visual checks on the signed production package; timestamp request and saved-position measurements above come from the matching debug build. Native launch timing excludes catalogue/image completion."
+  }
+}

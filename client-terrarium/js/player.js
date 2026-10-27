@@ -59,7 +59,7 @@
 
   function mount(container, opts) {
     const servers = publicServers(opts.servers);
-    const st = { idx: initialIndex(servers), hls: null, destroyed: false, noticeTimer: null, switchTimer: null, startupTimer: null, generation: 0, recoveryTried:false, recovering:false, attempted: new Set(), hgAttempted:new Set(), sourceErrors:new Map() };
+    const st = { idx: initialIndex(servers), hls: null, destroyed: false, noticeTimer: null, switchTimer: null, startupTimer: null, generation: 0, recoveryTried:false, recovering:false, attempted: new Set(), hgAttempted:new Set(), sourceErrors:new Map(), resumePosition:Number(opts.startAt)||0, progress:null };
 
     container.innerHTML = `<div class="player" tabindex="-1">
       <div class="player__bar">
@@ -107,7 +107,18 @@
       if(!persistent)st.noticeTimer = setTimeout(() => { notice.hidden = true; }, 2500);
     }
 
+    function reportProgress(position,duration,force=false) {
+      if(!Number.isFinite(position)||!Number.isFinite(duration)||position<=0||duration<=0||position>duration+1)return;
+      st.resumePosition=Math.min(position,duration);st.progress={position:st.resumePosition,duration};
+      opts.onProgress?.(st.resumePosition,duration,{force});
+    }
+    function flushProgress(){if(st.progress)opts.onProgress?.(st.progress.position,st.progress.duration,{force:true});}
+    const onBackground=()=>{if(document.visibilityState==='hidden')flushProgress();};
+    document.addEventListener('visibilitychange',onBackground);
+    window.addEventListener('pagehide',flushProgress);
+
     function teardownMedia() {
+      flushProgress();
       clearTimeout(st.switchTimer);
       clearTimeout(st.startupTimer);
       st.generation++;
@@ -126,12 +137,16 @@
       const generation = st.generation;
       const current = () => !st.destroyed && st.generation === generation;
       stage.innerHTML = '<div class="player__loading">Player open in the app</div>';
-      try { const result=await window.FlixerBrowser.openPlayer(url,{captureMedia:captureMedia===true&&server.captureMedia!==false,bounds:inlineBounds()});
+      try { const result=await window.FlixerBrowser.openPlayer(url,{captureMedia:captureMedia===true&&server.captureMedia!==false,bounds:inlineBounds(),startAt:st.resumePosition,onProgress:state=>{
+        if(current())reportProgress(state.position,state.duration,state.final===true);
+      }});
+        if(current()&&result?.played)reportProgress(result.position,result.duration,true);
         if(current()&&result?.reason==='media'&&window.FlixerBrowser.hasNativeVideo?.()){
           const media=result.media;
           if(media&&['mp4','hls','dash'].includes(media.format)&&window.FlixerBrowser.publicUrl(media.url))return openDirectPlayer({...server,type:media.format,streamUrl:media.url,rawStreamUrl:media.url,startAt:media.position,headers:{Referer:media.sourceOrigin+'/'},nativeFallbackEmbed:true});
           return openNativePlayer(false);
         }
+        if(current()&&result?.reason==='ended'){opts.onEnded?.();return;}
         if(current()&&['failed','next'].includes(result?.reason)){failover();return;}
         if(current()&&result?.reason==='closed'){opts.onExit?.();return;}
       }
@@ -159,14 +174,17 @@
 
     async function openDirectPlayer(server){
       const generation=st.generation,current=()=>!st.destroyed&&st.generation===generation;
+      let played=false;
       stage.innerHTML='<div class="player__loading">Video open in the app</div>';
       try{
-        const result=await window.FlixerBrowser.openMedia(server,{title:opts.title,startAt:server.startAt||opts.startAt,bounds:inlineBounds(),onProgress:state=>{
+        const result=await window.FlixerBrowser.openMedia(server,{title:opts.title,startAt:server.startAt??st.resumePosition,bounds:inlineBounds(),onProgress:state=>{
           if(!current())return;
           if(state.playing){try{localStorage.setItem('flixer:player-preference',JSON.stringify({provider:server.provider,name:server.name,audioMode:server.audioMode,confirmed:true}));}catch{}}
-          if(state.duration>0)opts.onProgress?.(state.position,state.duration);
+          if(state.playing)played=true;
+          if(played)reportProgress(state.position,state.duration,state.final===true);
         }});
         if(!current())return;
+        if(result?.played)reportProgress(result.position,result.duration,true);
         if(result?.reason==='failed'&&server.nativeFallbackEmbed)return openNativePlayer(false);
         if(['failed','next'].includes(result?.reason))return failover();
         if(result?.reason==='ended')return opts.onEnded?.();
@@ -232,9 +250,11 @@
       v.addEventListener("playing", () => {ready();try{localStorage.setItem('flixer:player-preference',JSON.stringify({provider:s.provider,name:s.name,audioMode:s.audioMode,confirmed:true}));}catch{}});
       v.addEventListener("waiting", () => { if (current()) showNotice("Buffering... You can switch servers above"); });
       v.addEventListener("error", failed);
-      v.addEventListener("timeupdate", () => { if (v.duration > 0 && opts.onProgress) opts.onProgress(v.currentTime, v.duration); });
-      v.addEventListener("ended", () => { if (opts.onEnded) opts.onEnded(); });
-      const seek = () => { if (opts.startAt > 0) { try { v.currentTime = opts.startAt; } catch { /* not seekable yet */ } } };
+      v.addEventListener("timeupdate", () => { if(current())reportProgress(v.currentTime,v.duration); });
+      v.addEventListener("pause", () => { if(current())reportProgress(v.currentTime,v.duration,true); });
+      v.addEventListener("ended", () => { if(current()){reportProgress(v.currentTime,v.duration,true);opts.onEnded?.();} });
+      const startAt=st.resumePosition;
+      const seek = () => { if (startAt > 0) { try { v.currentTime = startAt; } catch { /* not seekable yet */ } } };
       if(!['mp4','file'].includes(s.type) && !v.canPlayType("application/vnd.apple.mpegurl") && !window.Hls) {
         try {await loadHlsLibrary();} catch {if(!st.destroyed && stage.contains(v)) failover();return;}
         if(st.destroyed || !stage.contains(v))return;
@@ -388,6 +408,7 @@
         if($('.player__error',stage)||st.recovering)load(first,true);else renderBar();
       },
       destroy() {
+        flushProgress();
         st.destroyed = true;
         window.FlixerWcoSource?.cancel?.();
         if(boundsFrame!==null)cancelAnimationFrame(boundsFrame);
@@ -403,6 +424,8 @@
         window.removeEventListener('message',onProviderMessage);
         document.removeEventListener("fullscreenchange", onFsChange);
         document.removeEventListener("webkitfullscreenchange", onFsChange);
+        document.removeEventListener('visibilitychange',onBackground);
+        window.removeEventListener('pagehide',flushProgress);
         teardownMedia();
         container.innerHTML = "";
       }
