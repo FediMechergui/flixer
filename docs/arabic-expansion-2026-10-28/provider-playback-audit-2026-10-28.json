@@ -1,0 +1,344 @@
+{
+  "at": "2026-10-28T00:13:58.063Z",
+  "startedAt": "2026-10-28T00:07:51.637Z",
+  "finishedAt": "2026-10-28T00:13:21.642Z",
+  "complete": true,
+  "outcomes": {
+    "player_error": 3,
+    "playback_confirmed": 6,
+    "no_advancing_video": 3,
+    "access_denied": 1
+  },
+  "appVersion": "1.6.28",
+  "appVersions": [
+    "1.6.28"
+  ],
+  "scope": "Every returned server for the provider/type/language sample matrix, using the production player; not every catalogue episode.",
+  "preparationComplete": true,
+  "samples": 9,
+  "total": 13,
+  "tested": 13,
+  "confirmed": 6,
+  "previouslyConfirmed": 0,
+  "providers": [
+    {
+      "provider": "tuniflix",
+      "samples": 3,
+      "returned": 4,
+      "sourceServers": 4,
+      "tested": 4,
+      "confirmed": 2,
+      "confirmedSource": 2,
+      "lookupIssues": []
+    },
+    {
+      "provider": "cimatn",
+      "samples": 1,
+      "returned": 2,
+      "sourceServers": 2,
+      "tested": 2,
+      "confirmed": 0,
+      "confirmedSource": 0,
+      "lookupIssues": []
+    },
+    {
+      "provider": "egydead",
+      "samples": 1,
+      "returned": 3,
+      "sourceServers": 3,
+      "tested": 3,
+      "confirmed": 1,
+      "confirmedSource": 1,
+      "lookupIssues": []
+    },
+    {
+      "provider": "aloula",
+      "samples": 2,
+      "returned": 2,
+      "sourceServers": 2,
+      "tested": 2,
+      "confirmed": 2,
+      "confirmedSource": 2,
+      "lookupIssues": []
+    },
+    {
+      "provider": "youtubeoriginals",
+      "samples": 2,
+      "returned": 2,
+      "sourceServers": 2,
+      "tested": 2,
+      "confirmed": 1,
+      "confirmedSource": 1,
+      "lookupIssues": []
+    }
+  ],
+  "routes": [
+    {
+      "case": 1,
+      "provider": "tuniflix",
+      "serverProvider": "tuniflix",
+      "title": "الإبرة",
+      "kind": "film",
+      "server": "Tuniflix - watch.strp2p.site",
+      "host": "watch.strp2p.site",
+      "type": "embed",
+      "testedAt": "2026-10-28T00:07:55.547Z",
+      "appVersion": "1.6.28",
+      "appSha256": "2c55a8f8cbdd6a5b1a7e67cb640b25f4d0d075bc3fed64a101e20098481a1c44",
+      "status": "player_error",
+      "ms": 38985,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
+      "httpStatuses": []
+    },
+    {
+      "case": 2,
+      "provider": "tuniflix",
+      "serverProvider": "tuniflix",
+      "title": "الإبرة",
+      "kind": "film",
+      "server": "Tuniflix - uqload.vc",
+      "host": "uqload.vc",
+      "type": "embed",
+      "testedAt": "2026-10-28T00:10:06.882Z",
+      "appVersion": "1.6.28",
+      "appSha256": "2c55a8f8cbdd6a5b1a7e67cb640b25f4d0d075bc3fed64a101e20098481a1c44",
+      "status": "playback_confirmed",
+      "ms": 16903,
+      "proof": {
+        "start": 0.2,
+        "end": 73,
+        "duration": 6985.28,
+        "transport": "webview"
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 3,
+      "provider": "tuniflix",
+      "serverProvider": "tuniflix",
+      "title": "صيف حلق الوادي",
+      "kind": "film",
+      "server": "Tuniflix - watch.strp2p.site",
+      "host": "watch.strp2p.site",
+      "type": "embed",
+      "testedAt": "2026-10-28T00:11:50.544Z",
+      "appVersion": "1.6.28",
+      "appSha256": "2c55a8f8cbdd6a5b1a7e67cb640b25f4d0d075bc3fed64a101e20098481a1c44",
+      "status": "player_error",
+      "ms": 40323,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
+      "httpStatuses": []
+    },
+    {
+      "case": 4,
+      "provider": "tuniflix",
+      "serverProvider": "tuniflix",
+      "title": "Doctor Love",
+      "kind": "series",
+      "server": "Tuniflix - YouTube",
+      "host": "www.youtube.com",
+      "type": "youtube",
+      "testedAt": "2026-10-28T00:13:08.486Z",
+      "appVersion": "1.6.28",
+      "appSha256": "2c55a8f8cbdd6a5b1a7e67cb640b25f4d0d075bc3fed64a101e20098481a1c44",
+      "status": "playback_confirmed",
+      "ms": 12985,
+      "proof": {
+        "start": 0,
+        "end": 4.193638,
+        "duration": 1101.941,
+        "transport": "webview"
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 5,
+      "provider": "cimatn",
+      "serverProvider": "cimatn",
+      "title": "Hbiba فيلم الرعب حبيبة كامل",
+      "kind": "film",
+      "server": "CimaTN - vkvideo.ru",
+      "host": "vkvideo.ru",
+      "type": "embed",
+      "testedAt": "2026-10-28T00:08:34.707Z",
+      "appVersion": "1.6.28",
+      "appSha256": "2c55a8f8cbdd6a5b1a7e67cb640b25f4d0d075bc3fed64a101e20098481a1c44",
+      "status": "no_advancing_video",
+      "ms": 36548,
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 6,
+      "provider": "cimatn",
+      "serverProvider": "cimatn",
+      "title": "Hbiba فيلم الرعب حبيبة كامل",
+      "kind": "film",
+      "server": "CimaTN - geo.dailymotion.com",
+      "host": "geo.dailymotion.com",
+      "type": "embed",
+      "testedAt": "2026-10-28T00:10:23.998Z",
+      "appVersion": "1.6.28",
+      "appSha256": "2c55a8f8cbdd6a5b1a7e67cb640b25f4d0d075bc3fed64a101e20098481a1c44",
+      "status": "access_denied",
+      "ms": 5323,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
+      "httpStatuses": [
+        403
+      ]
+    },
+    {
+      "case": 7,
+      "provider": "egydead",
+      "serverProvider": "egydead",
+      "title": "رهين",
+      "kind": "film",
+      "server": "EgyDead - hgcloud.to",
+      "host": "hgcloud.to",
+      "type": "embed",
+      "testedAt": "2026-10-28T00:09:11.378Z",
+      "appVersion": "1.6.28",
+      "appSha256": "2c55a8f8cbdd6a5b1a7e67cb640b25f4d0d075bc3fed64a101e20098481a1c44",
+      "status": "playback_confirmed",
+      "ms": 18278,
+      "proof": {
+        "start": 1.486,
+        "end": 4.086,
+        "duration": 5212.583,
+        "transport": "media3"
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 8,
+      "provider": "egydead",
+      "serverProvider": "egydead",
+      "title": "رهين",
+      "kind": "film",
+      "server": "EgyDead - morencius.com",
+      "host": "morencius.com",
+      "type": "embed",
+      "testedAt": "2026-10-28T00:10:29.611Z",
+      "appVersion": "1.6.28",
+      "appSha256": "2c55a8f8cbdd6a5b1a7e67cb640b25f4d0d075bc3fed64a101e20098481a1c44",
+      "status": "player_error",
+      "ms": 24665,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
+      "httpStatuses": []
+    },
+    {
+      "case": 9,
+      "provider": "egydead",
+      "serverProvider": "egydead",
+      "title": "رهين",
+      "kind": "film",
+      "server": "EgyDead - mixdrop.top",
+      "host": "mixdrop.top",
+      "type": "embed",
+      "testedAt": "2026-10-28T00:12:31.614Z",
+      "appVersion": "1.6.28",
+      "appSha256": "2c55a8f8cbdd6a5b1a7e67cb640b25f4d0d075bc3fed64a101e20098481a1c44",
+      "status": "no_advancing_video",
+      "ms": 36559,
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 10,
+      "provider": "aloula",
+      "serverProvider": "aloula",
+      "title": "الزافر",
+      "kind": "series",
+      "server": "Aloula - HLS",
+      "host": "clvod.itworkscdn.net",
+      "type": "hls",
+      "testedAt": "2026-10-28T00:09:29.824Z",
+      "appVersion": "1.6.28",
+      "appSha256": "2c55a8f8cbdd6a5b1a7e67cb640b25f4d0d075bc3fed64a101e20098481a1c44",
+      "status": "playback_confirmed",
+      "ms": 12425,
+      "proof": {
+        "start": 1.301,
+        "end": 4.608,
+        "duration": 2880.04,
+        "transport": "media3"
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 11,
+      "provider": "aloula",
+      "serverProvider": "aloula",
+      "title": "الزافر",
+      "kind": "series",
+      "server": "Aloula - HLS",
+      "host": "clvod.itworkscdn.net",
+      "type": "hls",
+      "testedAt": "2026-10-28T00:10:54.479Z",
+      "appVersion": "1.6.28",
+      "appSha256": "2c55a8f8cbdd6a5b1a7e67cb640b25f4d0d075bc3fed64a101e20098481a1c44",
+      "status": "playback_confirmed",
+      "ms": 11931,
+      "proof": {
+        "start": 0.746,
+        "end": 3.669,
+        "duration": 1789.84,
+        "transport": "media3"
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 12,
+      "provider": "youtubeoriginals",
+      "serverProvider": "youtube",
+      "title": "باب بنات",
+      "kind": "film",
+      "server": "YouTube - Watania Replay",
+      "host": "www.youtube.com",
+      "type": "youtube",
+      "testedAt": "2026-10-28T00:09:47.778Z",
+      "appVersion": "1.6.28",
+      "appSha256": "2c55a8f8cbdd6a5b1a7e67cb640b25f4d0d075bc3fed64a101e20098481a1c44",
+      "status": "playback_confirmed",
+      "ms": 18713,
+      "proof": {
+        "start": 0,
+        "end": 3.451667,
+        "duration": 7985.44,
+        "transport": "webview"
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 13,
+      "provider": "youtubeoriginals",
+      "serverProvider": "youtube",
+      "title": "الحرقة",
+      "kind": "film",
+      "server": "YouTube - Watania Replay",
+      "host": "www.youtube.com",
+      "type": "youtube",
+      "testedAt": "2026-10-28T00:11:09.648Z",
+      "appVersion": "1.6.28",
+      "appSha256": "2c55a8f8cbdd6a5b1a7e67cb640b25f4d0d075bc3fed64a101e20098481a1c44",
+      "status": "no_advancing_video",
+      "ms": 40621,
+      "errors": [],
+      "httpStatuses": []
+    }
+  ]
+}
