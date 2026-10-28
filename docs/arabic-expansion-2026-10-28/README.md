@@ -15,7 +15,9 @@ Android API 35 testing at 360 CSS pixels found no document overflow. In one debu
 - [Aloula](https://aloula.sba.sa/en): public programme listings, actual season IDs, paginated episode guides and source-provided HLS. Guest access is checked before resolving a player; subscription, regional restrictions and DRM are not bypassed. Audio-only programmes, trailers and foreign-parent episodes are excluded.
 - Watania Replay: the official channel linked by [Tunisian Television](https://www.tunisiatv.tn/ar). The importer traverses episode and film searches separately, preserves source numbering, retains unknown seasons, and rejects promotional clips and compilations. Arabic titles retain advertised Latin aliases. Confirmed examples include the film Bab Benat and episodes of Doctor Love through its existing Tuniflix offering.
 
-The initial read-only discovery traversed twelve pages per lane: 394 distinct source records and 219 collected episodes across Aloula and Watania. None of the three lanes had reached its end. These discovery figures are not a claim that the entire archive has been imported or that every entry has passed a playback test. The scheduled single-writer importer persists each lane's cursor and continues during historical refreshes. Its coverage report is retained with the workflow artifacts.
+The [published refresh](https://github.com/FediMechergui/flixer/actions/runs/40606421127) traversed twelve pages per lane and added 402 source records, containing 246 collected episodes, across Aloula and Watania. After catalogue merging and the regular provider refresh, the live library increased from 104,901 to 105,289 titles. The backend serves generation `2026-10-28T00:09:01.471Z`; normal app requests return Aloula HLS and the Watania film's YouTube choice from this publication.
+
+None of the three archive lanes has reached its end. These figures are not a claim that the entire archive has been imported or that every entry has passed a playback test. The scheduled single-writer importer persists each lane's cursor and continues during historical refreshes. Its coverage report is retained with subsequent workflow artifacts.
 
 ## Existing Arabic player fixes
 
@@ -34,7 +36,7 @@ The [per-server emulator report](provider-playback-audit-2026-10-28.md) covers 1
 - Aloula: the first and last episodes of Alzafer on its HLS CDN.
 - Watania Replay: Bab Benat on YouTube.
 
-CimaTN's Dailymotion route was denied; its VK route did not produce an advancing clock during the sample. Two StreamTape routes and EgyDead's Morencius route failed. Mixdrop and the second Watania film remained unconfirmed. Catalogue access, a returned player link or HTTP 200 is not playback proof. These results do not establish playback for every programme, episode, country or device. Previous HDToday and WCO access limitations remain unresolved.
+CimaTN's Dailymotion route was denied; its VK route did not produce an advancing clock during the sample. Two StreamTape routes and EgyDead's Morencius route failed. Mixdrop and the second Watania film remained unconfirmed. Catalogue access, a returned player link or HTTP 200 is not playback proof. These results do not establish playback for every programme, episode, country or device. Previous HDToday and WCO access limitations remain unresolved. The hosted refresh also retained cached records for blocked FMovies, DessinAnime and One Pace requests, Kirmalk's changed origin and Cima4u's partial response; a successful publication does not mean every upstream refresh succeeded.
 
 The isolated playback sweep used the initial 1.6.28 debug APK; its exact digest is recorded per case. The final APK additionally contains the verified mobile-list selector and nonblocking resume-row change. Those final paths were checked in a second emulator and covered by automated regressions; native player code is the same.
 
