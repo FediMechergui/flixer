@@ -78,7 +78,7 @@ async function scan({product,full,latestOnly,pageBudget,log}) {
     const merged=old?mergeShow(old,row):row;
     const priorEpisodes=new Set((old?.episodes||[]).map(e=>e.id));
     const addedEpisodes=!!old&&(row.episodes||[]).some(e=>!priorEpisodes.has(e.id));
-    items.set(row.id,{...merged,firstSeenAt:old?.firstSeenAt||now,latestEpisode:fresh?row.latestEpisode||old?.latestEpisode:old.latestEpisode,
+    items.set(row.id,{...merged,firstSeenAt:old?.firstSeenAt||now,contentUpdatedAt:old&&(addedEpisodes||fresh&&row.latestEpisode&&row.latestEpisode!==old.latestEpisode)?now:old?.contentUpdatedAt||row.contentUpdatedAt,latestEpisode:fresh?row.latestEpisode||old?.latestEpisode:old.latestEpisode,
       providerUpdatedAt:addedEpisodes || fresh && row.latestEpisode && row.latestEpisode!==old?.latestEpisode ? row.providerUpdatedAt||now : old?.providerUpdatedAt||row.providerUpdatedAt||now});
   }};
   if(feed){

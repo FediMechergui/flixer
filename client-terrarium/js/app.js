@@ -135,6 +135,7 @@
       </div>
       <p class="card__title">${esc(item.title)}</p>
       <div class="card__meta">${esc(item.year || "—")}${opts.genre && item.genreIds[0] ? " · " + esc(genreName(item.type, item.genreIds[0])) : ""}${item.type === "tv" && item.episodeCount > 1 ? ` · ${item.episodeCount} ep` : ""}</div>
+      ${opts.recent?`<div class="card__meta">${esc(({episodes:'Episodes added',release:'Published',added:'Added to library'})[item.updateKind]||'Source update')}${item.updatedAt?' · '+esc(item.updatedAt.slice(0,10)):''}</div>`:''}
     </a>`;
   }
   function resumeCard(item, ep, pct) {
@@ -282,9 +283,9 @@
       <div class="hero" id="hero"><div class="skel" style="position:absolute;inset:0;border-radius:0"></div></div>
       <div id="home-rows">${["Recently updated", "New movies", "New series"].map(t => `<section class="section"><div class="section__head"><h2 class="section__title">${t}</h2></div>${skelRow(5)}</section>`).join("")}</div>`;
 
-    const results = await Promise.allSettled([api.trending(), api.nowPlaying(), api.onTheAir(), api.topRated("movie"), api.topRated("tv"), ensureMeta("movie"), ensureMeta("tv")]);
+    const results = await Promise.allSettled([api.trending()]);
     if (!current()) return;
-    const [trend, now, air, topM, topT] = results.map(r => r.status === "fulfilled" ? r.value : null);
+    const [trend] = results.map(r => r.status === "fulfilled" ? r.value : null);
     const firstErr = results.find(r => r.status === "rejected");
     if (firstErr && !trend) {
       view.innerHTML = emptyState("Could not load the catalogue", firstErr.reason.message || "Check your connection and try again.", `<button class="btn btn--primary" onclick="location.reload()">Try again</button>`);
@@ -293,7 +294,7 @@
 
     // Hero carousel
     const slides = (trend || []).filter(i => i.backdrop || i.poster).slice(0, 6);
-    const hero = $("#hero");
+    const hero = $("#hero",view);
     let idx = 0;
     function paintHero(i) {
       if(!current())return;
@@ -330,37 +331,40 @@
     const resumeRevision=state.progressRevision||0;
     const resumeRow = await continueWatchingRow();
     if (!current()) return;
+    $('#home-rows',view).innerHTML=`<div id="continue-watching">${resumeRow}</div>`+
+      section('Recently updated','Movies and series from all providers',(trend||[]).slice(0,12),{showType:true,link:'#/recent',recent:true})+
+      '<div id="home-main-rows"></div><div id="home-extras"></div>';
+    state.homeRevision=state.catalogRevision||0;state.homeProgressRevision=resumeRevision;
+    await new Promise(resolve=>requestAnimationFrame(()=>setTimeout(resolve,0)));
+    if(!current())return;
+    const rankings=await Promise.allSettled([api.nowPlaying(),api.onTheAir(),api.topRated('movie'),api.topRated('tv'),api.popular('tv',14)]);
+    if(!current())return;
+    const [now,air,topM,topT,popularTv]=rankings.map(row=>row.status==='fulfilled'?row.value:[]);
+    $('#home-main-rows',view).innerHTML=section('Popular series','TVmaze popularity',popularTv,{rating:true})+
+      section('New movies','Latest additions',now,{link:'#/movies'})+section('New series','Latest additions',air,{link:'#/shows'})+
+      section('Top rated series','TVmaze rating',topT,{rating:true})+section('Recent releases','Films by release year',topM,{genre:true});
+    const extras=await Promise.allSettled([api.collections(),api.universeList(),api.serviceList(40),api.topUniverses(3),ensureMeta('movie'),ensureMeta('tv')]);
+    if(!current())return;
+    const [collections=[],allUniverses=[],services=[],topUni=[]]=extras.map(row=>row.status==='fulfilled'?row.value:undefined);
 
     // Genre quick row
     const mg = (state.meta.genres.movie || []).slice(0, 12);
-    const collections = await api.collections();
     const collectionRow = `<section class="section"><div class="section__head"><div><h2 class="section__title">Around the world & animation</h2><span class="section__sub eyebrow">Saved titles so far - browse to load more</span></div></div><div class="row">${collections.map(c => `<a class="chip" href="#/recent" data-collection="${esc(c.id)}">${esc(c.name)} <span class="chip__val">${c.count} saved</span></a>`).join("")}</div><a class="section__link" href="#/sources">Explore specialist sources</a></section>`;
     const genreRow = mg.length ? `<section class="section fade-in"><div class="section__head"><div><h2 class="section__title">Browse by genre</h2><span class="section__sub eyebrow">Movies · tap to filter</span></div></div>
       <div class="row">${mg.map(g => `<button class="chip" data-genre="${esc(g.id)}">${esc(g.name)} <span class="chip__val">${g.count}</span></button>`).join("")}</div></section>` : "";
     // Universes row: small scrollable logo tiles, in order of how much of each universe Flixer has.
-    const universes = (await api.universeList()).filter(u => u.count > 0);
+    const universes = allUniverses.filter(u => u.count > 0);
     const universeRow = universes.length ? `<section class="section fade-in"><div class="section__head"><div><h2 class="section__title">Universes</h2><span class="section__sub eyebrow">Shared universes and franchises · watch orders</span></div><a class="section__link" href="#/universes">See all</a></div>
       <div class="ulogos">${universes.map(u => `<a class="utile" href="#/universe/${esc(u.id)}" title="${esc(u.name)}">${u.logo ? `<img src="${esc(u.logo)}" alt="${esc(u.short)}" loading="lazy" onerror="this.outerHTML='<span class=\\'utile__mono\\'>'+this.alt.replace(/</g,'')+'</span>'">` : `<span class="utile__mono">${esc(u.short)}</span>`}<span class="utile__n">${u.count} titles</span></a>`).join("")}</div></section>` : "";
-    const services = await api.serviceList(40);
     const serviceRow = services.length ? `<section class="section fade-in"><div class="section__head"><div><h2 class="section__title">Streaming services</h2><span class="section__sub eyebrow">Where Flixer's series air or stream · tap to browse</span></div><a class="section__link" href="#/shows" data-svc-all>All series</a></div>
       <div class="ulogos">${services.map(s => `<a class="utile utile--svc" href="#/shows" data-svc="${esc(s.name)}" title="${esc(s.name)}">${s.logo ? `<img src="${esc(s.logo)}" alt="${esc(s.name)}" loading="lazy" onerror="this.outerHTML='<span class=\\'utile__mono\\'>'+this.alt.replace(/</g,'')+'</span>'">` : `<span class="utile__mono">${esc(s.name)}</span>`}<span class="utile__n">${s.count} series</span></a>`).join("")}</div></section>` : "";
-    const [popularTv, ratedTv, topUni] = await Promise.all([api.popular("tv", 14), api.topRated("tv", 14), api.topUniverses(3)]);
-    const uniRails = await Promise.all(topUni.map(async u => section(u.name, `${u.count} titles in Flixer`, await api.universeRail(u.id, 14), { showType: true, rating: true })));
+    const uniRails = (await Promise.allSettled(topUni.map(async u => section(u.name, `${u.count} titles in Flixer`, await api.universeRail(u.id, 14), { showType: true, rating: true })))).flatMap(row=>row.status==='fulfilled'?[row.value]:[]);
     if (!current()) return;
 
-    $("#home-rows").innerHTML =
-      `<div id="continue-watching">${resumeRow}</div>` +
-      section("Recently updated", "Movies and series from all providers", (trend || []).slice(0, 12), { showType: true, link:"#/recent", recent:true }) +
-      section("Popular series", "TVmaze popularity", popularTv, { rating: true }) +
-      section("New movies", "Latest additions", now, { link: "#/movies" }) +
-      section("New series", "Latest additions", air, { link: "#/shows" }) +
+    $("#home-extras",view).innerHTML =
       collectionRow + genreRow + universeRow + serviceRow +
       uniRails.join("") +
-      section("Top rated series", "TVmaze rating", ratedTv, { rating: true }) +
-      section("Recent releases", "Films by release year", topM, { genre: true }) +
       section("Longest series", "Most episodes available", topT, { genre: true });
-    state.homeRevision=state.catalogRevision||0;
-    state.homeProgressRevision=resumeRevision;
 
     $$("[data-collection]", view).forEach(b => b.addEventListener("click", () => {
       state.filters.all = Object.assign(defaultFilters(), { collection:b.dataset.collection }); saveFilters(); state.renderedTab = null;

@@ -18,6 +18,10 @@ on:
         description: 'Refresh current releases without the historical crawl'
         type: boolean
         default: false
+      official_backfill:
+        description: 'Continue official Arabic and Tunisian archives during this refresh'
+        type: boolean
+        default: false
 
 concurrency:
   group: refresh
@@ -46,6 +50,9 @@ jobs:
         run: node scripts/snapshot.js restore
       - name: Apply reviewed Arabic source identities
         run: node scripts/import-reviewed-sources.js
+      - name: Continue official Arabic and Tunisian source backfill
+        if: inputs.official_backfill || (github.event_name != 'schedule' && !inputs.latest_only) || github.event.schedule == '17 */2 * * *'
+        run: node scripts/import-official-arabic.js --pages 36
       - name: Continue complete Arabic catalogue traversal and sample playback routes
         if: (github.event_name != 'schedule' && !inputs.latest_only) || github.event.schedule == '17 */2 * * *'
         run: node scripts/audit-arabic.js --crawl --pages 180 --samples 1

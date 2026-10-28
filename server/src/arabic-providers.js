@@ -284,6 +284,9 @@ export function parseArabicServers(id,html){
   if(['tuniflix','cimatn'].includes(p.provider))$('iframe[src]').each((_,el)=>urls.push($(el).attr('src')));
   if(p.provider==='cinetimes')$('video source[src],iframe[src*="youtube.com/embed/"]').each((_,el)=>urls.push($(el).attr('src')));
   if(p.provider==='egydead')$('.watchAreaMaster [data-link],.watchServers [data-link],.serversList [data-link]').each((_,el)=>urls.push($(el).attr('data-link')));
+  return approvedArabicUrls(p,urls);
+}
+function approvedArabicUrls(p,urls){
   const direct=urls.filter(value=>safeTunisianFile(value)||(p.provider==='cinetimes'?pSafeCommons(value):p.provider==='streamtunisie'&&safeSourceHls(value))).map((url,i)=>({id:`${p.provider}:direct:${i}`,provider:p.provider,name:`${ARABIC_PROVIDERS[p.provider].name} - direct video`,type:p.provider==='cinetimes'||safeTunisianFile(url)?'file':'hls',streamUrl:url}));
   return [...direct,...[...new Set(urls)].flatMap((value,i)=>{try{const u=new URL(value);if(u.protocol!=='https:'||u.username||u.password||u.port||!embedHosts.has(u.hostname))return [];
     const videoId=['www.youtube.com','www.youtube-nocookie.com','youtube.com'].includes(u.hostname)?/^\/embed\/([\w-]{11})/.exec(u.pathname)?.[1]:null;
@@ -322,9 +325,8 @@ export async function resolveArabicServers(id,{fresh=false,transport,fetchPage=a
     const validated=approvedPlayers(id,stored.map(s=>({url:s.embedUrl||(s.type==='youtube'?`https://www.youtube.com/embed/${s.videoId}`:'')})));
     const files=stored.filter(s=>s.type==='file'&&(pSafeCommons(s.streamUrl)||safeTunisianFile(s.streamUrl))||parseArabicId(id)?.provider==='streamtunisie'&&s.type==='hls'&&safeSourceHls(s.streamUrl));
     cached.push(...validated,...files);
-    // Tuniflix rotates hosters. Snapshot links have no playback-fetch timestamp;
+    // Source hosters rotate. Snapshot links have no playback-fetch timestamp;
     // revalidate through arabicPage's shared two-minute cache on ordinary play.
-    if(cached.length&&parseArabicId(id)?.provider!=='tuniflix')return cached;
   }
   if(parseArabicId(id)?.provider==='cimatn'){
     const data=await cimaWatchData(await arabicPage(arabicUrl(id),{fresh})),p=parseArabicId(id);
@@ -335,16 +337,17 @@ export async function resolveArabicServers(id,{fresh=false,transport,fetchPage=a
   }
   const p=parseArabicId(id);if(!p||p.type==='s')return [];let html;
   try{html=await fetchPage(arabicUrl(id),{fresh});}
-  catch(error){if(p.provider==='tuniflix'&&!fresh&&cached.length&&!/HTTP (?:404|410)\b/.test(error.message||''))return cached.map(server=>({...server,cached:true}));throw error;}
+  catch(error){if(!fresh&&cached.length&&!/HTTP (?:404|410)\b/.test(error.message||''))return cached.map(server=>({...server,cached:true}));throw error;}
+  try{
   if(p.provider==='egydead'){
     const watch=egydeadWatchLink(id,html);
     if(watch)html=await fetchPage(watch,{fresh});
     else if(!parseArabicServers(id,html).length)html=await fetchPage(arabicUrl(id),{view:true,fresh});
   }
   if(p.provider==='streamtunisie'&&p.type==='m'){
-    const $=load(html),link=$('article a[href*="/watch-movie-"]').first().attr('href'),u=fixed(link,ARABIC_PROVIDERS[p.provider].origin);if(u&&/^\/watch-movie-[^/?]+\/$/.test(u.pathname))html=await arabicPage(u.href,{fresh});
+    const $=load(html),link=$('article a[href*="/watch-movie-"]').first().attr('href'),u=fixed(link,ARABIC_PROVIDERS[p.provider].origin);if(u&&/^\/watch-movie-[^/?]+\/$/.test(u.pathname))html=await fetchPage(u.href,{fresh});
   }
-  if(p.provider==='ahwaktv'){let url=`${ARABIC_PROVIDERS.ahwaktv.origin}/see.php?vid=${p.slug}`;html=await arabicPage(url,{fresh});for(let step=0;step<2;step++){const next=ahwakPlaybackLink(html);if(!next||next===url)break;url=next;html=await arabicPage(url,{fresh});}}
+  if(p.provider==='ahwaktv'){let url=`${ARABIC_PROVIDERS.ahwaktv.origin}/see.php?vid=${p.slug}`;html=await fetchPage(url,{fresh});for(let step=0;step<2;step++){const next=ahwakPlaybackLink(html);if(!next||next===url)break;url=next;html=await fetchPage(url,{fresh});}}
   if(p.provider==='tuniflix'){
     const $=load(html),choices=$('iframe[src]').toArray().map(a=>fixed($(a).attr('src'),ARABIC_PROVIDERS.tuniflix.origin)).filter(u=>u&&u.pathname==='/'&&/^\d+$/.test(u.searchParams.get('trembed')||'')&&/^\d+$/.test(u.searchParams.get('trid')||'')&&/^[12]$/.test(u.searchParams.get('trtype')||''));
     const firstId=choices[0]?.searchParams.get('trid');
@@ -356,6 +359,7 @@ export async function resolveArabicServers(id,{fresh=false,transport,fetchPage=a
   const servers=parseArabicServers(id,html);
   if(p.provider==='cinetimes'&&!servers.length)return cinetimesCommonsServers(html);
   return servers;
+  }catch(error){if(!fresh&&cached.length&&!/HTTP (?:404|410)\b/.test(error.message||''))return cached.map(server=>({...server,cached:true}));throw error;}
 }
 
 // Parse only an object/array literal, never execute source JavaScript. JSON5
@@ -376,8 +380,7 @@ export function dataLiteral(html,name){
   }return null;
 }
 function approvedPlayers(id,entries){
-  const html=entries.filter(x=>typeof x?.url==='string').map(x=>`<iframe src="${x.url.replace(/[&"<>]/g,c=>({'&':'&amp;','"':'&quot;','<':'&lt;','>':'&gt;'}[c]))}"></iframe>`).join('');
-  return parseArabicServers(id,html);
+  return approvedArabicUrls(parseArabicId(id),entries.filter(x=>typeof x?.url==='string').map(x=>x.url));
 }
 export function safeTunisianFile(value){try{const u=new URL(value);return u.protocol==='https:'&&u.hostname==='video.wixstatic.com'&&!u.username&&!u.password&&!u.port&&/^\/video\/[a-f0-9_]+\/(?:[0-9]+p\/)?mp4\/file\.mp4$/.test(u.pathname);}catch{return false;}}
 function pSafeCommons(value){try{const u=new URL(value);return u.protocol==='https:'&&u.hostname==='upload.wikimedia.org'&&!u.username&&!u.password&&!u.port&&/\.(?:webm|mp4)$/.test(u.pathname);}catch{return false;}}

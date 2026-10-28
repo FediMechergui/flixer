@@ -24,6 +24,15 @@ test('older EgyDead View forms remain supported when no watch link or inline pla
  assert.deepEqual(calls,[false,true]);assert.equal(servers.length,1);
 });
 
+test('Arabic snapshots revalidate rotating links and never hide authoritative removal',async()=>{
+ const id=arabicId('egydead','m','https://tv10.egydead.live/cache-regression/'),readSnapshot=async()=>({episodes:[{id,cachedPlayers:[{type:'embed',embedUrl:'https://hgcloud.to/e/old'}]}]}),html='<ul class="serversList"><li data-link="https://hgcloud.to/e/new"></li></ul>';
+ assert.equal((await resolveArabicServers(id,{readSnapshot,fetchPage:async()=>html}))[0].embedUrl,'https://hgcloud.to/e/new');
+ assert.deepEqual(await resolveArabicServers(id,{readSnapshot,fetchPage:async()=>'<main>Removed player</main>'}),[]);
+ const transient=async()=>{throw Error('Source timed out');};assert.equal((await resolveArabicServers(id,{readSnapshot,fetchPage:transient}))[0].cached,true);
+ await assert.rejects(resolveArabicServers(id,{readSnapshot,fresh:true,fetchPage:transient}),/timed out/);
+ await assert.rejects(resolveArabicServers(id,{readSnapshot,fetchPage:async()=>{throw Error('Arabic source HTTP 404');}}),/HTTP 404/);
+});
+
 test('large source episode lists are fully traversed with bounded concurrency and visible failures',async()=>{
   let active=0,peak=0;const pages=Array.from({length:25},(_,i)=>i+1);
   const results=await collectArabicPages(pages,async n=>{active++;peak=Math.max(peak,active);await new Promise(r=>setTimeout(r,1));active--;if(n===17)throw new Error('Source unavailable');return n;});

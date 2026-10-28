@@ -17,6 +17,7 @@ function fixture(shows, streams = {}, respond, options = {}) {
     const body=custom!==undefined?custom:url.includes('/data/index.json')&&options.index?await options.index:url.includes('/api/discover?')&&respond?await respond(url):url.includes('/api/stream?')?streams:/\/(bootstrap|index)\.json/.test(url)?catalog:{};
     return {ok:true,status:200,headers:{get:()=>null},text:async()=>JSON.stringify(body)};
   }});
+  context.window.FlixerArabicSource=options.arabicSource;
   for(const name of ['universes.js','tvmaze.js','api.js'])vm.runInContext(fs.readFileSync(new URL(`../../client-terrarium/js/${name}`,import.meta.url),'utf8'),context);
   return {api:new context.window.Api.FlixerApi(),requests,events};
 }
@@ -63,6 +64,15 @@ test('all known compatible Myflixer embeds receive the same player policy',async
   const {servers}=await api.stream('mf:m:example');assert.equal(servers[0].sandbox,null);assert.equal(servers[1].sandbox,null);assert.equal(servers[2].sandbox,undefined);
 });
 
+test('empty backend results wait for own-device links and late backend servers extend the same list',async()=>{
+ const id='sp:tuniflix:m:race',own={id:'own',provider:'tuniflix',type:'embed',embedUrl:'https://uqload.vc/embed-test.html'},other={id:'remote',type:'embed',embedUrl:'https://other.test/player'};
+ let finishDevice;const device=new Promise(resolve=>{finishDevice=resolve;}),updates=[];
+ const f=fixture([],{servers:[]},null,{arabicSource:{supports:value=>value===id,resolve:()=>device}});
+ const pending=f.api.stream(id,null,{}, {onSources:rows=>updates.push(rows)});await new Promise(resolve=>setTimeout(resolve,5));finishDevice([own]);assert.equal((await pending).servers[0].id,'own');
+ let finishRemote;const remote=new Promise(resolve=>{finishRemote=resolve;}),g=fixture([],{},null,{arabicSource:{supports:value=>value===id,resolve:async()=>[own]},fetchBody:url=>url.includes('/api/stream?')?remote:undefined});
+ const choices=[];assert.equal((await g.api.stream(id,null,{}, {onSources:rows=>choices.push(rows)})).servers[0].id,'own');finishRemote({servers:[other]});await new Promise(resolve=>setTimeout(resolve,5));assert.deepEqual(Array.from(choices.at(-1),row=>row.id),['own','remote']);
+});
+
 test('the Android audit applies the same YouTube descriptor conversion as the production data layer',async()=>{
  const raw={id:'official',name:'Official channel',type:'youtube',provider:'youtube',videoId:'abcdefghijk'}, {api}=fixture([],{servers:[raw]});
  const actual=(await api.stream('episode')).servers[0],audited=auditServer(raw);assert.equal(audited.embedUrl,actual.embedUrl);assert.equal(audited.sandbox,actual.sandbox);assert.equal(auditServer({...raw,videoId:'invalid'}).embedUrl,undefined);
@@ -92,7 +102,7 @@ test('delayed bundled index cannot revert live titles, slugs, artwork or recent 
   api._merge([{...old,title:'Correct title',slug:'correct',sourceUrl:'https://source.test/correct',poster:{custom:'https://source.test/new.jpg'},latestAt:'2026-10-15'}]);api._reindex();
   finish({product:'flixer',generatedAt:'2026-01-01',shows:[{...old}]});await api._indexReady;await api._metadataReady;
   const item=await api.item(old.id),raw=await api.show(old.id);
-  assert.equal(item.title,'Correct title');assert.equal(item.poster,'https://source.test/new.jpg');assert.equal(raw.slug,'correct');assert.equal(item.sourceUrl,'https://source.test/correct');assert.equal(item.updatedAt,'2026-10-15');
+  assert.equal(item.title,'Correct title');assert.equal(item.poster,'https://source.test/new.jpg');assert.equal(raw.slug,'correct');assert.equal(item.sourceUrl,'https://source.test/correct');assert.equal(Date.parse(item.updatedAt),Date.parse('2026-10-15'));
 });
 
 test('fresh cached entries survive an app restart and alternate providers preserve canonical URLs',async()=>{

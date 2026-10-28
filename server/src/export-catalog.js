@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import {writeJsonFile} from './json-files.js';
+import {contentFreshness} from '../../shared/freshness.js';
 
 function replaceGenerated(source,destination){
   for(let attempt=0;;attempt++){
@@ -25,7 +26,7 @@ export function leanCatalog(catalog, product) {
   } };
   const pick = (record, keys) => Object.fromEntries(keys.filter(key => record[key] !== undefined).map(key => [key, record[key]]));
   return { ...payload, shows: payload.shows.map(show => ({
-    ...pick(show, ['id','wpId','slug','kind','title','altTitles','year','lang','contentLang','originalLanguage','countries','audioMode','audioModes','collections','tags','primaryTag','episodeCount','seasons','totalDurationSec','totalViews','latestAt','latestEpisode','firstAt','publishedAt','portrait','synopsisGenerated','tvm','tmdbId','imdbId','documentary','offerings','firstSeenAt','providerUpdatedAt','providerMetadata','sourceUrl','access','episodesCheckedAt','audioLanguages','subtitleLanguages']),
+    ...pick(show, ['id','wpId','slug','kind','title','altTitles','year','lang','contentLang','originalLanguage','countries','audioMode','audioModes','collections','tags','primaryTag','episodeCount','seasons','totalDurationSec','totalViews','latestAt','latestEpisode','firstAt','publishedAt','portrait','synopsisGenerated','tvm','tmdbId','imdbId','documentary','offerings','firstSeenAt','contentUpdatedAt','providerUpdatedAt','providerMetadata','sourceUrl','access','episodesCheckedAt','audioLanguages','subtitleLanguages']),
     collections:[...new Set([...(show.collections||[]),...((show.versions||[]).some(v=>(v.collections||[]).includes('youtube-shows'))?['youtube-shows']:[])])],
     versions: (show.versions || []).map(v => ({...pick(v,['id','title','year','sourceUrl','offerings','kind','documentary','providerMetadata','tags','lang','tmdbId','imdbId']),uncertainMatch:true})),
     channelId: show.channelId || show.channel?.id,
@@ -72,7 +73,7 @@ export function writeCatalog(outDir, catalog, product, {titleFiles=true}={}) {
     if(product==='flixer') {
       const index={...lean,lite:true,shows:lean.shows.map(({episodes,seasons,versions,offerings,blurb,...show})=>({...show,aliasIds:(offerings||[]).map(o=>o.id).filter(id=>id!==show.id),firstEpisodeId:episodes?.[0]?.id}))};
       writeJsonFile(path.join(stage,'index.json'),index);
-      const updated=show=>[show.latestEpisode?show.providerUpdatedAt:null,show.latestAt,show.publishedAt].filter(Boolean).sort().pop() || '';
+      const updated=show=>contentFreshness(show).at;
       const recent=[...index.shows].sort((a,b)=>updated(b).localeCompare(updated(a)));
       const summaries=new Map(lean.shows.map(s=>[s.id,s.blurb]));
       writeJsonFile(path.join(stage,'bootstrap.json'),{...index,shows:recent.slice(0,600).map(s=>({...s,blurb:summaries.get(s.id)||''}))});

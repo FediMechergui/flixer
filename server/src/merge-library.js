@@ -53,6 +53,7 @@ export function mergeShow(existing, incoming) {
     subtitleLanguages:[...new Set([...(existing.subtitleLanguages||[]),...(incoming.subtitleLanguages||[])])],
     latestAt:[existing.latestAt,incoming.latestAt].filter(Boolean).sort().pop()||null,
     providerUpdatedAt:[existing.providerUpdatedAt,incoming.providerUpdatedAt].filter(Boolean).sort().pop()||null,
+    contentUpdatedAt:[existing.contentUpdatedAt,incoming.contentUpdatedAt].filter(Boolean).sort().pop()||null,
     collections:[...new Set([...(existing.collections||[]),...(incoming.collections||[])])],
     synopsis:existing.synopsis && !existing.synopsisGenerated ? existing.synopsis : incoming.synopsis || existing.synopsis,
     synopsisGenerated:existing.synopsis && !existing.synopsisGenerated ? false : !incoming.synopsis && existing.synopsisGenerated,

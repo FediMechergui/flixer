@@ -77,6 +77,16 @@
   const artwork=value=>typeof value==='string'&&/^https:\/\//.test(value)&&!/(?:^|\/)(?:undefined|null|none)(?:\.[a-z]+)?$/i.test(value)?value:null;
   const byAdded = (a, b) => (b.date || "").localeCompare(a.date || "") || a.title.localeCompare(b.title);
   const byUpdated = (a,b) => (b.updatedAt || "").localeCompare(a.updatedAt || "") || byAdded(a,b);
+  // Home rails need only a few winners, not a sorted copy of the entire index.
+  function topItems(items,compare,limit,accept=()=>true){
+    const top=[];if(limit<=0)return top;
+    for(const item of items){
+      if(!accept(item)||top.length===limit&&compare(item,top[top.length-1])>=0)continue;
+      let lo=0,hi=top.length;while(lo<hi){const mid=(lo+hi)>>>1;if(compare(item,top[mid])<0)hi=mid;else lo=mid+1;}
+      top.splice(lo,0,item);if(top.length>limit)top.pop();
+    }
+    return top;
+  }
   const byYearDesc = (a, b) => (+b.year || 0) - (+a.year || 0) || byAdded(a, b);
   const byYearAsc = (a, b) => (+a.year || 0) - (+b.year || 0) || byAdded(a, b);
   const byEpisodes = (a, b) => (b.episodeCount || 0) - (a.episodeCount || 0) || byAdded(a, b);
@@ -98,7 +108,7 @@
     if(window.FlixerCatalogueSource?.enabled())try{const body=await window.FlixerCatalogueSource.title(id);if(body)return {body};}catch(error){console.warn('[flixer] Published title unavailable:',error.message);}
     return getJson(`${DATA_BASE}/data/shows/${encodeURIComponent(encodeURIComponent(id))}.json`,ms);
   }
-  const PROVIDER_NAMES={myflixer:'MyFlixer',fmovies:'FMovies',hdtoday:'HDToday',wco:'WCO',animegg:'AnimeGG',megacartoons:'MegaCartoons',toontales:'ToonTales',myasiantv:'MyAsianTV',multimovies:'MultiMovies',yoturkish:'YoTurkish',dessinanime:'DessinAnime',onepace:'One Pace',youtubeoriginals:'YouTube',youtube:'YouTube',cimafu:'Cimafu',streamtunisie:'StreamTunisie',kirmalk:'Kirmalk',ahwaktv:'AhwakTV',egydead:'EgyDead',tuniflix:'Tuniflix',cinetimes:'Cinetimes',cimatn:'CimaTN',frenchstream:'FrenchStream'};
+  const PROVIDER_NAMES={aloula:'Aloula',myflixer:'MyFlixer',fmovies:'FMovies',hdtoday:'HDToday',wco:'WCO',animegg:'AnimeGG',megacartoons:'MegaCartoons',toontales:'ToonTales',myasiantv:'MyAsianTV',multimovies:'MultiMovies',yoturkish:'YoTurkish',dessinanime:'DessinAnime',onepace:'One Pace',youtubeoriginals:'YouTube',youtube:'YouTube',cimafu:'Cimafu',streamtunisie:'StreamTunisie',kirmalk:'Kirmalk',ahwaktv:'AhwakTV',egydead:'EgyDead',tuniflix:'Tuniflix',cinetimes:'Cinetimes',cimatn:'CimaTN',frenchstream:'FrenchStream'};
   function providersOf(show) {
     const ids=new Set(),seen=new Set();
     const visit=row=>{if(!row||seen.has(row))return;seen.add(row);
@@ -138,9 +148,16 @@
       return {episode:merged,order:order.get(first)};
     }).sort((a,b)=>a.order-b.order).map(group=>group.episode);
   }
+  // Keep in step with shared/freshness.js (covered by shared fixture tests).
+  function contentFreshness(show,now=Date.now()){
+    const valid=value=>{const stamp=Date.parse(value||'');return Number.isFinite(stamp)&&stamp<=now+86400000?new Date(stamp).toISOString():'';};
+    const episode=valid(show.contentUpdatedAt)||valid(show.latestAt),published=valid(show.publishedAt),added=valid(show.firstSeenAt);
+    const content=[episode,published].filter(Boolean).sort().at(-1)||'';
+    return {at:content||added,kind:episode&&episode>=published&&show.kind==='series'?'episodes':published?'release':added?'added':'unknown'};
+  }
   function normalize(s) {
     const type = s.kind === "series" ? "tv" : "movie";
-    const date = String([s.providerUpdatedAt,s.latestAt,s.publishedAt,s.firstSeenAt].filter(Boolean).sort().pop() || "").slice(0,10);
+    const freshness=contentFreshness(s);
     const poster = s.poster || {};
     const episodes = Array.isArray(s.episodes) ? s.episodes : [];
     const tvm = s.tvm || null;
@@ -157,7 +174,8 @@
       title,
       altTitles: s.altTitles || [],
       date: String(s.publishedAt || s.firstSeenAt || "").slice(0,10),
-      updatedAt: [s.latestEpisode?s.providerUpdatedAt:null,s.latestAt,s.publishedAt].filter(Boolean).sort().pop() || "",
+      updatedAt:freshness.at,
+      updateKind:freshness.kind,
       year: s.year ? String(s.year) : "",
       poster: artwork(s.portrait) || artwork(poster.custom) || artwork(poster.default) || artwork(tvm?.img) || posterFor(s.wpId),
       backdrop: artwork(poster.backdrop) || artwork(poster.hq) || artwork(poster.custom) || artwork(s.portrait) || backdropFor(s.wpId),
@@ -178,7 +196,7 @@
       audioLanguages:s.audioLanguages||[],
       collections:s.collections || [],
       episodeCount: s.episodeCount || episodes.length || (type === "movie" ? 1 : 0),
-      firstEpisodeId: episodes[0] ? episodes[0].id : s.firstEpisodeId || s.id,
+      firstEpisodeId:type==='movie'?(s.firstEpisodeId||s.id):episodes[0]?episodes[0].id:s.firstEpisodeId||s.id,
       sourceUrl: s.sourceUrl || (type === "tv" ? `${SOURCE}/series/${s.slug}/` : `${SOURCE}/${s.slug}/`),
       alt: alternate,
       universes: [...new Set([...UNI.detect(title), ...(alternate?UNI.detect(alternate):[]), ...(s._uni || [])])],
@@ -572,6 +590,7 @@
       return { id, name: d ? d.name : base.name, short: d ? d.short : base.short, description: d ? d.description : "", logo: d ? d.logo : null, isLogo: d ? d.isLogo : false, wiki: d ? d.wiki : null, home: d ? d.home : [], services: [...services].sort((a, b) => b[1] - a[1]).map(([name, count]) => ({ name, count })), numbered: !!(d && d.numbered), members, inFlixer: members.filter(m => m.item).length, generatedAt: (d && d.refreshedAt) ? new Date(d.refreshedAt).toISOString() : c.universesAt, live: !!(d && d.refreshedAt) };
     }
     _reindex() {
+      this._homeRails=new Map();
       const c = this._catalog;
       this._normalized ||= new Map();
       this._dirtyItems ||= new Set();
@@ -640,7 +659,7 @@
           const synopsis=r.synopsis||r.blurb;if(synopsis&&(!cur.synopsis||synopsis.length>cur.synopsis.length))cur.synopsis=synopsis;
           if (r.tags && r.tags.length) cur.tags = [...new Set([...(cur.tags || []),...r.tags])];
           if (r.year && (!cur.year||fresh&&sameTitle)) cur.year = r.year;
-          for (const key of ["publishedAt","latestAt","providerUpdatedAt"]) if(r[key]&&(!cur[key]||r[key]>cur[key]))cur[key]=r[key];
+          for (const key of ["publishedAt","latestAt","providerUpdatedAt","contentUpdatedAt"]) if(r[key]&&(!cur[key]||r[key]>cur[key]))cur[key]=r[key];
           for (const key of ["slug","latestEpisode","firstSeenAt","tmdbId","imdbId","firstEpisodeId","originalLanguage"]) if (r[key]&&(!cur[key]||fresh&&sameTitle)) cur[key] = r[key];
           for(const key of ['countries','audioModes','audioLanguages','subtitleLanguages','collections','altTitles'])if(r[key])cur[key]=[...new Set([...(cur[key]||[]),...r[key]])];
           if(r.title&&r.title!==cur.title)cur.altTitles=[...new Set([...(cur.altTitles||[]),r.title])];
@@ -666,7 +685,7 @@
     }
     _persistDelta(rows) {
       const delta = store.get("delta", []);
-      const incoming=new Map(rows.map(r=>[r.id, {id:r.id,kind:r.kind,title:r.title,altTitles:r.altTitles,year:r.year,tags:r.tags,slug:r.slug,wpId:r.wpId,publishedAt:r.publishedAt,latestAt:r.latestAt,latestEpisode:r.latestEpisode,firstEpisodeId:r.firstEpisodeId,providerUpdatedAt:r.providerUpdatedAt,tvm:r.tvm,offerings:r.offerings,versions:r.versions,sourceUrl:r.sourceUrl,poster:r.poster,portrait:r.portrait,tmdbId:r.tmdbId,documentary:r.documentary,originalLanguage:r.originalLanguage,countries:r.countries,audioModes:r.audioModes,collections:r.collections,access:r.access,audioLanguages:r.audioLanguages,subtitleLanguages:r.subtitleLanguages,_catalogRevision:this._rowRevisions?.get(r.id)||Date.now()}]));
+      const incoming=new Map(rows.map(r=>[r.id, {id:r.id,kind:r.kind,title:r.title,altTitles:r.altTitles,year:r.year,tags:r.tags,slug:r.slug,wpId:r.wpId,publishedAt:r.publishedAt,latestAt:r.latestAt,latestEpisode:r.latestEpisode,firstEpisodeId:r.firstEpisodeId,contentUpdatedAt:r.contentUpdatedAt,providerUpdatedAt:r.providerUpdatedAt,tvm:r.tvm,offerings:r.offerings,versions:r.versions,sourceUrl:r.sourceUrl,poster:r.poster,portrait:r.portrait,tmdbId:r.tmdbId,documentary:r.documentary,originalLanguage:r.originalLanguage,countries:r.countries,audioModes:r.audioModes,collections:r.collections,access:r.access,audioLanguages:r.audioLanguages,subtitleLanguages:r.subtitleLanguages,_catalogRevision:this._rowRevisions?.get(r.id)||Date.now()}]));
       store.set("delta",[...incoming.values(),...delta.filter(r=>!incoming.has(r.id))].slice(0,DELTA_CAP));
     }
 
@@ -754,16 +773,19 @@
 
     /* ----- Home rails ----- */
     async trending() {
-      const items=await this.all();
-      return items.slice().sort(byUpdated).slice(0,24);
+      return this._homeRail('recent',byUpdated,24);
     }
-    async nowPlaying() { return (await this.all("movie")).slice().sort(byAdded).slice(0, 14); }
-    async onTheAir() { return (await this.all("tv")).slice().sort(byAdded).slice(0, 14); }
-    async popular(type, n = 14) { return (await this.all(type)).filter(i => i.weight > 0).sort(byWeight).slice(0, n); }
+    async _homeRail(key,compare,limit,accept){
+      const items=await this.all();this._homeRails ||=new Map();
+      if(!this._homeRails.has(key))this._homeRails.set(key,topItems(items,compare,limit,accept));
+      return this._homeRails.get(key).slice();
+    }
+    async nowPlaying() { return this._homeRail('new-movies',byAdded,14,i=>i.type==='movie'); }
+    async onTheAir() { return this._homeRail('new-series',byAdded,14,i=>i.type==='tv'); }
+    async popular(type, n = 14) { return this._homeRail('popular:'+type+':'+n,byWeight,n,i=>(!type||i.type===type)&&i.weight>0); }
     async topRated(type, n = 14) {
-      const list = (await this.all(type)).slice();
-      const rated = list.filter(i => i.rating > 0);
-      return (rated.length ? rated.sort(byRating) : type === "tv" ? list.sort(byEpisodes) : list.sort(byYearDesc)).slice(0, n);
+      const items=await this.all(),rated=items.some(i=>(!type||i.type===type)&&i.rating>0);
+      return this._homeRail('rated:'+type+':'+n,rated?byRating:type==='tv'?byEpisodes:byYearDesc,n,i=>(!type||i.type===type)&&(!rated||i.rating>0));
     }
     async universeRail(id, n = 14) { return (await this.all()).filter(i => i.universes.includes(id)).sort(byWeight).slice(0, n); }
     async topUniverses(n = 4) { const c = await this.catalog(); return [...c.universeCounts].sort((a, b) => b[1] - a[1]).slice(0, n).map(([id, count]) => ({ id, count, ...UNI.byId(id) })); }
@@ -989,6 +1011,7 @@
         const current=this._byId.get(raw.id)||raw,alias=current.episodes?.find(e=>e.offerings?.some(o=>o.id===epId));if(alias)epId=alias.id;
         show=await this._build(current,{guide:false});index=show.episodes.findIndex(e=>e.id===epId);
       }
+      if(index<0&&raw.kind==='series'&&epId===raw.id&&show.episodes.length){index=0;epId=show.episodes[0].id;}
       if (index < 0) throw new Error("Episode not found.");
       const episode=show.episodes[index];
       const sequence=show.episodes.filter(e=>episode.season<=0?e.season===episode.season:e.season>0);
@@ -1059,7 +1082,7 @@
       if (!this.liveEnabled) return { items: localItems, totalPages: 1 };
       if(API_BASE){
         this._searchProviders ||= getJson(`${API_BASE}/api/search?providers=1`,3000).then(({body})=>body.providers).catch(()=>null);
-        const names=[...new Set([...(await this._searchProviders||['myflixer','fmovies','hdtoday','streamtunisie','kirmalk','ahwaktv','egydead','tuniflix','cinetimes','cimatn','animegg','megacartoons','toontales','myasiantv','multimovies','yoturkish','frenchstream','dessinanime']),...(window.Capacitor?.Plugins?.WcoSource?['wco']:[])])];
+        const names=[...new Set([...(await this._searchProviders||['aloula','youtubeoriginals','myflixer','fmovies','hdtoday','streamtunisie','kirmalk','ahwaktv','egydead','tuniflix','cinetimes','cimatn','animegg','megacartoons','toontales','myasiantv','multimovies','yoturkish','frenchstream','dessinanime']),...(window.Capacitor?.Plugins?.WcoSource?['wco']:[])])];
         if(signal?.aborted)return {items:local,totalPages:1};
         const ids=new Set(local.map(i=>i.id));let pending=names.length+1;
         const exact=local.find(item=>[item.title,...(item.altTitles||[])].some(value=>norm(value)===norm(q)));
@@ -1105,6 +1128,13 @@
         if (!servers.length && data.embedUrl) servers.push({ id: 0, name: "Player 1", type: "embed", embedUrl: toAbsolute(data.embedUrl) });
         return servers;
         };
+      const found=new Map(),publish=choices=>{
+        for(const server of choices||[])found.set(server.streamUrl||server.embedUrl||server.videoId||server.id,server);
+        const rows=[...found.values()];if(rows.length&&!signal?.aborted)onSources?.(rows);return rows;
+      };
+      const episode=show.episodes?.find(e=>e.id===id||e.offerings?.some(o=>o.id===id));
+      const ownIds=[...new Set([id,...(episode?.offerings||[]).map(o=>o.id)])].filter(id=>window.FlixerArabicSource?.supports(id));
+      const device=ownIds.length?Promise.allSettled(ownIds.slice(0,5).map(id=>window.FlixerArabicSource.resolve(id,{fresh,signal}))).then(results=>publish(normalizeServers({servers:results.flatMap(row=>row.status==='fulfilled'?row.value:[])}))):null;
       const wco=/^sp:wco:e:[a-z0-9][a-z0-9-]{0,159}:([a-z0-9][a-z0-9-]{0,159})$/.exec(id);
       if(wco&&window.Capacitor?.Plugins?.WcoSource){
         if(signal?.aborted)throw new DOMException('Aborted','AbortError');
@@ -1124,12 +1154,13 @@
         if(fresh)params.set('fresh','1');
         if (show.id) params.set('showId',show.id);
         [show.sourceUrl, ...(show.offerings || []).map(o => o.sourceUrl)].filter(Boolean).forEach(source => params.append('source',source));
-        const full=getJson(`${API_BASE}/api/stream?${params}`,20000,signal).then(({body})=>normalizeServers(body));
+        const remote=getJson(`${API_BASE}/api/stream?${params}`,20000,signal).then(({body})=>publish(normalizeServers(body)));
+        const full=device?Promise.race([remote.then(choices=>choices.length?choices:device).catch(()=>device),device.then(choices=>choices.length?choices:remote)]):remote;
         let servers;
         if(onSources&&!/^sp:frenchstream:/.test(show.id||'')&&(show.tmdbId||show.offerings?.some(o=>o.provider==='fmovies')||/^fm:/.test(id))){
           const quickParams=new URLSearchParams(params);quickParams.set('mode','quick');
           const quick=getJson(`${API_BASE}/api/stream?${quickParams}`,5000,signal).then(({body})=>normalizeServers(body));
-          full.then(choices=>{if(choices.length&&!(signal?.aborted))onSources(choices);}).catch(()=>{});
+          full.then(choices=>{if(choices.length&&!(signal?.aborted))publish(choices);}).catch(()=>{});
           servers=await Promise.race([full.catch(()=>quick),quick.then(choices=>choices.length?choices:full).catch(()=>full)]);
         }else servers=await full;
         if (servers.length) return { servers, via: "api" };

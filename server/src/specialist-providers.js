@@ -1,4 +1,5 @@
 import {OFFICIAL_PROVIDERS,parseOfficialId,officialUrl,officialIdFromUrl,fetchOfficialPage,getOfficialDetails} from './youtube-originals.js';
+import {ALOULA_PROVIDERS,parseAloulaId,aloulaUrl,aloulaIdFromUrl,fetchAloulaPage,getAloulaDetails,resolveAloulaServers} from './aloula.js';
 import {ONEPACE_PROVIDERS,parseOnePaceId,onePaceUrl,fetchOnePacePage,getOnePaceDetails,resolveOnePaceServers} from './onepace.js';
 import { load } from 'cheerio';
 import {artworkUrl} from '../../shared/artwork.js';
@@ -12,6 +13,7 @@ import {WCO_PROVIDERS,parseWcoId,wcoUrl,wcoIdFromUrl,getWcoDetails,fetchWcoPage,
 // Public catalogue/player pages only. IDs reconstruct a fixed origin and a strict
 // path; caller URLs never authorize a fetch or a player destination.
 export const SPECIALISTS = {
+  ...ALOULA_PROVIDERS,
   ...ARABIC_PROVIDERS,
   ...FRENCH_PROVIDERS,
   ...DESSIN_PROVIDERS,
@@ -27,6 +29,7 @@ export const SPECIALISTS = {
 };
 const slugPattern='[a-z0-9][a-z0-9_-]{0,259}';
 export function parseSpecialistId(id){
+  const aloula=parseAloulaId(id);if(aloula)return aloula;
   const wco=parseWcoId(id);if(wco)return wco;
   const official=parseOfficialId(id);if(official)return official;
   const pace=parseOnePaceId(id);if(pace)return pace;
@@ -40,6 +43,7 @@ export function parseSpecialistId(id){
   return {provider:m[1],type:m[2],slug:m[3],...(m[4]?{season:Number(m[4]),number:Number(m[5])}:{})};
 }
 export function specialistUrl(id){
+  const aloula=aloulaUrl(id);if(aloula)return aloula;
   const wco=wcoUrl(id);if(wco)return wco;
   const official=officialUrl(id);if(official)return official;
   const pace=onePaceUrl(id);if(pace)return pace;
@@ -53,6 +57,7 @@ export function specialistUrl(id){
   return `${SPECIALISTS[p.provider].origin}${prefix}${p.slug}${p.provider==='animegg'?'':'/'}`;
 }
 export function specialistIdFromUrl(value){
+  const aloula=aloulaIdFromUrl(value);if(aloula)return aloula;
   const wco=wcoIdFromUrl(value);if(wco)return wco;
   const official=officialIdFromUrl(value);if(official)return official;
   const arabic=arabicIdFromUrl(value);if(arabic)return arabic;
@@ -217,6 +222,7 @@ export function parseSpecialistDetails(id,html){
   return {...result,...pagination($,url,result.episodeCount)};
 }
 export async function getSpecialistDetails(id,{fresh=false}={}){
+  if(parseAloulaId(id))return getAloulaDetails(id,{fresh});
   if(parseWcoId(id))return getWcoDetails(id,{fresh});
   if(parseOfficialId(id))return getOfficialDetails(id);
   if(parseOnePaceId(id))return getOnePaceDetails(id);
@@ -243,6 +249,7 @@ export function specialistJobs({kind,collection='',latest=false}={}){
     .flatMap(([provider,cfg])=>(!cfg.kind&&!kind?['film','series']:[kind||cfg.kind]).map(kind=>({provider,kind,page:1,latest,collection})));
 }
 export async function fetchSpecialistPage({provider,page:pageNum=1,cursor,search,latest=false,kind='series',collection=''}={}){
+  if(provider==='aloula')return fetchAloulaPage({page:pageNum,search,latest,kind,collection});
   if(provider==='wco')return fetchWcoPage({page:pageNum,search,latest,kind,collection});
   if(provider==='youtubeoriginals')return fetchOfficialPage({page:pageNum,search,latest,kind,collection});
   if(provider==='onepace')return fetchOnePacePage({page:pageNum,search,latest,kind});
@@ -375,6 +382,7 @@ export function parseSpecialistServers(id,html){
   return [...new Map(servers.map(s=>[s.embedUrl||s.streamUrl,s])).values()];
 }
 export async function resolveSpecialistServers(id,options={}){
+  if(parseAloulaId(id))return resolveAloulaServers(id,options);
   if(parseWcoId(id))return resolveWcoServers(id,options);
   if(parseOnePaceId(id))return resolveOnePaceServers(id);
   if(parseDessinId(id))return resolveDessinServers(id);

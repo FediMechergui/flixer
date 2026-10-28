@@ -25,6 +25,7 @@
     if(i!==-1)return i;
     if(window.FlixerBrowser?.hasNativeVideo?.()){
       const publicFile=servers.findIndex(s=>{try{return s.provider==='tuniflix'&&new URL(s.embedUrl).hostname==='uqload.vc';}catch{return false;}});if(publicFile>=0)return publicFile;
+      for(const host of ['1vid.xyz','vidmoly.org','vidspeed.org']){const known=servers.findIndex(s=>{try{return s.provider==='cimafu'&&new URL(s.embedUrl).hostname===host;}catch{return false;}});if(known>=0)return known;}
       const hg=servers.findIndex(s=>window.FlixerHgSource?.supports(s));if(hg>=0)return hg;
     }
     return 0;
@@ -136,8 +137,10 @@
       teardownMedia();
       const generation = st.generation;
       const current = () => !st.destroyed && st.generation === generation;
+      let confirmed=false;
       stage.innerHTML = '<div class="player__loading">Player open in the app</div>';
       try { const result=await window.FlixerBrowser.openPlayer(url,{captureMedia:captureMedia===true&&server.captureMedia!==false,bounds:inlineBounds(),startAt:st.resumePosition,onProgress:state=>{
+        if(current()&&state.playing&&!confirmed){confirmed=true;try{localStorage.setItem('flixer:player-preference',JSON.stringify({provider:server.provider,name:server.name,audioMode:server.audioMode,confirmed:true}));}catch{}}
         if(current())reportProgress(state.position,state.duration,state.final===true);
       }});
         if(current()&&result?.played)reportProgress(result.position,result.duration,true);

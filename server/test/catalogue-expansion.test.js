@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import {leanCatalog} from '../src/export-catalog.js';
 import {matchesCollection} from '../../shared/collections.js';
-import {OFFICIAL_CHANNELS,officialEpisode,officialIdFromUrl,officialUrl,mapOfficialVideo} from '../src/youtube-originals.js';
+import {OFFICIAL_CHANNELS,officialEpisode,officialIdFromUrl,officialUrl,mapOfficialVideo,arabicEpisodeNumber} from '../src/youtube-originals.js';
 import {parseOnePaceId,parseOnePaceArcs,parseOnePaceFiles} from '../src/onepace.js';
 test('regional filters distinguish drama, anime and French Canadian origin',()=>{
  assert.equal(matchesCollection({kind:'series',countries:['JP'],tags:['animation']},'jdrama'),false);
@@ -30,3 +30,14 @@ test('One Pace imports actual MP4 episodes and validates file-list identities',(
 });
 
 test('uncertain official editions remain discoverable without combining their episodes',()=>{const row={id:'existing',title:'Example',kind:'series',episodes:[],versions:[{id:'official',collections:['youtube-shows'],episodes:[{id:'abcdefghijk'}]}]};assert.equal(matchesCollection(row,'youtube-shows'),true);const lean=leanCatalog({shows:[row]},'flixer').shows[0];assert.ok(lean.collections.includes('youtube-shows'));assert.equal(lean.episodes.length,0);});
+
+test('official Tunisian films and numbered episodes preserve their source identities',()=>{
+ const channel=OFFICIAL_CHANNELS.find(c=>c.key==='watania'),video={id:'abcdefghijk',durationSec:3600};
+ assert.equal(arabicEpisodeNumber('الحادية والعشرون'),21);assert.equal(arabicEpisodeNumber('١٢'),12);
+ const series=officialEpisode(channel,{...video,title:'شوفلي حل الموسم 2006 الحلقة الثالثة'});
+ assert.equal(series.episodes[0].season,2006);assert.equal(series.episodes[0].number,3);assert.ok(series.altTitles.includes('Choufli Hal'));
+ const unknown=officialEpisode(channel,{...video,title:'الحرقة الحلقة الثانية'});assert.equal(unknown.episodes[0].season,null);
+ const film=officialEpisode(channel,{...video,title:'فيلم باب بنات | Beb Lebnet Film'});
+ assert.equal(film.kind,'film');assert.ok(film.altTitles.includes('Beb Lebnet'));assert.equal(officialIdFromUrl(officialUrl(film.id)),film.id);
+ assert.equal(officialEpisode(channel,{...video,title:'لقطات شوفلي حل : فيلم الموسم 2'}),null);
+});

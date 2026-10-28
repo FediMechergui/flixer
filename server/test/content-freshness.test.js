@@ -1,0 +1,8 @@
+import fs from 'node:fs';import vm from 'node:vm';import test from 'node:test';import assert from 'node:assert/strict';import {contentFreshness} from '../../shared/freshness.js';import {leanCatalog} from '../src/export-catalog.js';
+test('source metadata checks do not become new releases and browser ordering matches exported ordering',()=>{
+ const code=fs.readFileSync(new URL('../../client-terrarium/js/api.js',import.meta.url),'utf8'),start=code.indexOf('  function contentFreshness('),end=code.indexOf('  function normalize(',start),context=vm.createContext({});vm.runInContext(code.slice(start,end)+';globalThis.rank=contentFreshness;',context);
+ const now=Date.parse('2026-10-28T12:00:00Z'),cases=[{kind:'series',latestAt:'2020-01-01',providerUpdatedAt:'2026-10-28',episodesCheckedAt:'2026-10-28',firstSeenAt:'2026-10-28'},{kind:'series',contentUpdatedAt:'2026-10-28',publishedAt:'2020-01-01'},{kind:'film',publishedAt:'2099-01-01',firstSeenAt:'2026-10-27'},{kind:'series',firstSeenAt:'2026-10-27'},{kind:'film',publishedAt:'invalid'}];
+ for(const row of cases)assert.deepEqual(JSON.parse(JSON.stringify(context.rank(row,now))),contentFreshness(row,now));
+ assert.equal(contentFreshness(cases[0],now).at,'2020-01-01T00:00:00.000Z');assert.equal(contentFreshness(cases[1],now).kind,'episodes');assert.equal(contentFreshness(cases[2],now).kind,'added');assert.equal(contentFreshness(cases[4],now).at,'');
+ const contentUpdatedAt='2026-10-28T01:00:00.000Z';assert.equal(leanCatalog({shows:[{id:'test',kind:'series',episodes:[],contentUpdatedAt}]},'flixer').shows[0].contentUpdatedAt,contentUpdatedAt);
+});
