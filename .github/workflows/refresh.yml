@@ -61,7 +61,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: arabic-source-audit
-          path: artifacts/arabic-audit.json
+          path: |
+            artifacts/arabic-audit.json
+            artifacts/official-arabic-import.json
           if-no-files-found: ignore
       - name: Fill missing metadata from provider pages
         if: (github.event_name != 'schedule' && !inputs.latest_only) || github.event.schedule == '17 */2 * * *'

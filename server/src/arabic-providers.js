@@ -283,7 +283,7 @@ export function parseArabicServers(id,html){
   if(p.provider==='ahwaktv')$('[data-embed-url]').each((_,el)=>urls.push($(el).attr('data-embed-url')));
   if(['tuniflix','cimatn'].includes(p.provider))$('iframe[src]').each((_,el)=>urls.push($(el).attr('src')));
   if(p.provider==='cinetimes')$('video source[src],iframe[src*="youtube.com/embed/"]').each((_,el)=>urls.push($(el).attr('src')));
-  if(p.provider==='egydead')$('.watchAreaMaster [data-link],.watchServers [data-link],.serversList [data-link]').each((_,el)=>urls.push($(el).attr('data-link')));
+  if(p.provider==='egydead')$('.watchAreaMaster [data-link],.watchServers [data-link],.serversList [data-link],.mob-servers [data-link]').each((_,el)=>urls.push($(el).attr('data-link')));
   return approvedArabicUrls(p,urls);
 }
 function approvedArabicUrls(p,urls){

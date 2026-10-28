@@ -26,7 +26,7 @@
  function players(s,doc){
   const urls=[];
   if(['tuniflix'].includes(s.provider))doc.querySelectorAll('iframe[src]').forEach(el=>urls.push(el.getAttribute('src')));
-  if(s.provider==='egydead')doc.querySelectorAll('.watchAreaMaster [data-link],.watchServers [data-link],.serversList [data-link]').forEach(el=>urls.push(el.getAttribute('data-link')));
+  if(s.provider==='egydead')doc.querySelectorAll('.watchAreaMaster [data-link],.watchServers [data-link],.serversList [data-link],.mob-servers [data-link]').forEach(el=>urls.push(el.getAttribute('data-link')));
   if(s.provider==='cimafu'){
    const canonical=doc.querySelector('link[rel="canonical"]')?.getAttribute('href');if(canonical){const u=new URL(canonical,s.url),expected=new URL(s.url);if(u.origin!==s.cfg.origin||decodeURIComponent(u.pathname).replace(/watch\/$/,'')!==decodeURIComponent(expected.pathname).replace(/watch\/$/,''))throw Error('Cima4u player identity changed');}
    doc.querySelectorAll('.server_list [data-server]').forEach(el=>urls.push(el.getAttribute('data-server')));

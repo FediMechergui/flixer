@@ -329,12 +329,13 @@
 
     // Continue watching
     const resumeRevision=state.progressRevision||0;
-    const resumeRow = await continueWatchingRow();
+    const resumeRow = continueWatchingRow();
     if (!current()) return;
-    $('#home-rows',view).innerHTML=`<div id="continue-watching">${resumeRow}</div>`+
+    $('#home-rows',view).innerHTML='<div id="continue-watching"></div>'+
       section('Recently updated','Movies and series from all providers',(trend||[]).slice(0,12),{showType:true,link:'#/recent',recent:true})+
       '<div id="home-main-rows"></div><div id="home-extras"></div>';
     state.homeRevision=state.catalogRevision||0;state.homeProgressRevision=resumeRevision;
+    resumeRow.then(html=>{if(current()&&resumeRevision===(state.progressRevision||0))$('#continue-watching',view).innerHTML=html;}).catch(()=>{});
     await new Promise(resolve=>requestAnimationFrame(()=>setTimeout(resolve,0)));
     if(!current())return;
     const rankings=await Promise.allSettled([api.nowPlaying(),api.onTheAir(),api.topRated('movie'),api.topRated('tv'),api.popular('tv',14)]);
