@@ -25,7 +25,7 @@ final class NativePlayerSurface {
     private FullscreenListener fullscreenListener;
     private boolean showing, fullscreen, keptScreenOn;
     private boolean statusWasVisible=true, navigationWasVisible=true;
-    private int previousCutoutMode,previousBarsBehavior;
+    private int previousCutoutMode,previousBarsBehavior,previousOrientation;
     private final android.os.Handler controls=new android.os.Handler(android.os.Looper.getMainLooper());
     private final Runnable hideControls=()->{if(toolbar!=null)toolbar.setVisibility(View.GONE);};
     private final OnBackPressedCallback back = new OnBackPressedCallback(true) {
@@ -61,6 +61,7 @@ final class NativePlayerSurface {
         if(fullscreen==expanded)return;
         androidx.core.view.WindowInsetsControllerCompat bars=androidx.core.view.WindowCompat.getInsetsController(activity.getWindow(),host);
         if(expanded){
+            previousOrientation=activity.getRequestedOrientation();
             androidx.core.view.WindowInsetsCompat insets=androidx.core.view.ViewCompat.getRootWindowInsets(host);
             if(insets!=null){statusWasVisible=insets.isVisible(androidx.core.view.WindowInsetsCompat.Type.statusBars());navigationWasVisible=insets.isVisible(androidx.core.view.WindowInsetsCompat.Type.navigationBars());}
             previousBarsBehavior=bars.getSystemBarsBehavior();
@@ -73,6 +74,7 @@ final class NativePlayerSurface {
             if(android.os.Build.VERSION.SDK_INT>=28){WindowManager.LayoutParams attributes=activity.getWindow().getAttributes();attributes.layoutInDisplayCutoutMode=previousCutoutMode;activity.getWindow().setAttributes(attributes);}
         }
         fullscreen=expanded;
+        activity.setRequestedOrientation(expanded?android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE:previousOrientation);
         if(fullscreenListener!=null)fullscreenListener.changed(expanded);
         if(expanded)revealControls();
         layout();

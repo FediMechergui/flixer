@@ -15,3 +15,31 @@ test('home renders the hero and recent cards before optional ranking or metadata
  vm.runInContext(source.slice(start,end)+';globalThis.render=renderHome;',c);c.render(node());await new Promise(r=>setImmediate(r));
  assert.match(nodes.get('#hero').innerHTML,/Test/);assert.match(nodes.get('#home-rows').innerHTML,/Recently updated:Test/);assert.equal(nodes.get('#continue-watching').innerHTML,'');assert.equal(nodes.get('#home-extras').innerHTML,'');resume('<section>Saved episode</section>');await new Promise(r=>setImmediate(r));assert.match(nodes.get('#continue-watching').innerHTML,/Saved episode/);release([]);
 });
+
+test('a slow ranking cannot hold ready home rows, and old requests cannot replace a different tab',async()=>{
+ const source=fs.readFileSync(new URL('../../client-terrarium/js/app.js',import.meta.url),'utf8'),start=source.indexOf('  async function renderHome('),end=source.indexOf('  /* ---------- Universes:',start);
+ const nodes=new Map(),node=()=>({innerHTML:'',addEventListener(){},remove(){}}),get=key=>{if(!nodes.has(key))nodes.set(key,node());return nodes.get(key);};
+ let release;const pending=new Promise(resolve=>release=resolve),item={id:'ready',title:'Ready',type:'movie',genreIds:[]};
+ const api={trending:async()=>[item],nowPlaying:()=>pending,onTheAir:async()=>[item],topRated:async()=>[],popular:()=>pending,collections:async()=>[],universeList:async()=>[],serviceList:async()=>[],topUniverses:async()=>[]};
+ const state={renderedTab:'home',meta:{genres:{}}},context=vm.createContext({state,api,$:get,$$:()=>[],skelRow:()=>'<loading>',continueWatchingRow:async()=>'',ensureMeta:()=>pending,section:(title,sub,items)=>title+':'+items.map(i=>i.title),esc:String,requestAnimationFrame:fn=>fn(),setTimeout});
+ vm.runInContext(source.slice(start,end)+';globalThis.render=renderHome;',context);
+ const rendering=context.render(node());await new Promise(resolve=>setTimeout(resolve,25));
+ assert.equal(get('#home-row-series').innerHTML,'New series:Ready');
+ assert.match(get('#home-main-rows').innerHTML,/Loading New movies/);
+ state.renderedTab='shows';get('#home-row-movies').innerHTML='Different tab';release([item]);await rendering;await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(get('#home-row-movies').innerHTML,'Different tab');
+});
+
+test('browse displays saved matches before the full index, then waits for unseen indexed titles without repeats',async()=>{
+ const start=apiSource.indexOf('    async discover('),end=apiSource.indexOf('    async genres(',start),compare=(a,b)=>a.rank-b.rank;
+ const context=vm.createContext({PER_PAGE:24,...Object.fromEntries(['byUpdated','byAdded','byYearDesc','byYearAsc','byEpisodes','byTitle','byWeight','byRating'].map(key=>[key,compare]))});
+ vm.runInContext('globalThis.api=new(class{'+apiSource.slice(start,end)+'})();',context);
+ const api=context.api,rows=[{id:'saved',rank:0}];let finishIndex;
+ api.catalog=async()=>{};api.all=async()=>rows;api._indexReady=new Promise(resolve=>finishIndex=resolve);api.liveEnabled=false;
+ let first;const initial=api.discover('movie',{sort:'added'},1).then(value=>first=value);
+ await new Promise(resolve=>setImmediate(resolve));assert.equal(first?.items[0].id,'saved','a saved page must not wait for the full index');await initial;
+ let settled=false;const next=api.discover('movie',{sort:'added'},2).then(value=>{settled=true;return value;});
+ await new Promise(resolve=>setImmediate(resolve));assert.equal(settled,false);
+ rows.push({id:'from-full-index',rank:1});finishIndex();
+ assert.deepEqual(Array.from((await next).items,item=>item.id),['from-full-index']);
+});

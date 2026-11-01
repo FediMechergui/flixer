@@ -35,13 +35,13 @@ test('runtime assets reject corruption, oversized warm-cache reads and untrusted
 });
 
 test('mobile live index pins every chunk to a manifest and rejects partial generations',async()=>{
- const source=fs.readFileSync(new URL('../../client-terrarium/js/api.js',import.meta.url),'utf8'),start=source.indexOf('    async _loadLiveIndex()'),end=source.indexOf('    /* ----- index ----- */',start);assert.ok(start>0&&end>start);
+ const source=fs.readFileSync(new URL('../../client-terrarium/js/api.js',import.meta.url),'utf8'),start=source.indexOf('    async _loadLiveIndex('),end=source.indexOf('    /* ----- index ----- */',start);assert.ok(start>0&&end>start);
  let bad=false;const seen=[],context=vm.createContext({API_BASE:'https://backend.example',URLSearchParams,Promise,getJson:async url=>{const u=new URL(url);seen.push(u.searchParams);if(u.searchParams.get('part')==='manifest')return {body:{product:'flixer',generatedAt:'new',count:2,indexParts:[{key:'index-0000',sha256:'abc'},{key:'index-0001',sha256:'def'}]}};return {body:{product:'flixer',generatedAt:bad?'old':'new',shows:[{id:u.searchParams.get('part')}]}};}});
  vm.runInContext('globalThis.api=new(class{'+source.slice(start,end)+'})();',context);const result=await context.api._loadLiveIndex();assert.equal(result.body.shows.length,2);assert.equal(seen[1].get('hash'),'abc');assert.equal(seen[2].get('hash'),'def');bad=true;context.api._liveIndexParts=new Map();await assert.rejects(context.api._loadLiveIndex(),/generation/);
 });
 
 test('a new publication reuses unchanged mobile index chunks',async()=>{
- const source=fs.readFileSync(new URL('../../client-terrarium/js/api.js',import.meta.url),'utf8'),start=source.indexOf('    async _loadLiveIndex()'),end=source.indexOf('    /* ----- index ----- */',start);let generation='one',parts=0;
+ const source=fs.readFileSync(new URL('../../client-terrarium/js/api.js',import.meta.url),'utf8'),start=source.indexOf('    async _loadLiveIndex('),end=source.indexOf('    /* ----- index ----- */',start);let generation='one',parts=0;
  const context=vm.createContext({API_BASE:'https://backend.example',URLSearchParams,Promise,getJson:async url=>{const u=new URL(url);if(u.searchParams.get('part')==='manifest')return {body:{product:'flixer',generatedAt:generation,count:1,indexParts:[{key:'index-0000',sha256:'unchanged'}]}};parts++;return {body:{product:'flixer',shows:[{id:'retained'}]}};}});
  vm.runInContext('globalThis.api=new(class{'+source.slice(start,end)+'})();',context);await context.api._loadLiveIndex();generation='two';const updated=await context.api._loadLiveIndex();assert.equal(parts,1);assert.equal(updated.body.generatedAt,'two');assert.equal(updated.body.shows[0].id,'retained');
 });
@@ -76,10 +76,28 @@ test('Android background sync uses publication data without crawling providers o
 });
 
 test('live index retries a transient part failure and retains verified chunks across failed updates',async()=>{
- const source=fs.readFileSync(new URL('../../client-terrarium/js/api.js',import.meta.url),'utf8'),start=source.indexOf('    async _loadLiveIndex()'),end=source.indexOf('    /* ----- index ----- */',start),calls=new Map();let broken=false;
+ const source=fs.readFileSync(new URL('../../client-terrarium/js/api.js',import.meta.url),'utf8'),start=source.indexOf('    async _loadLiveIndex('),end=source.indexOf('    /* ----- index ----- */',start),calls=new Map();let broken=false;
  const context=vm.createContext({API_BASE:'https://backend.example',URLSearchParams,Promise,setTimeout,Map,getJson:async url=>{const u=new URL(url),part=u.searchParams.get('part');if(part==='manifest')return {body:{product:'flixer',generatedAt:'new',count:2,indexParts:[{key:'index-0000',sha256:'one'},{key:'index-0001',sha256:'two'}]}};calls.set(part,(calls.get(part)||0)+1);if(part==='index-0001'&&(broken||calls.get(part)===1))throw Error('Temporary network failure');return {body:{product:'flixer',shows:[{id:part}]}};}});
  vm.runInContext('globalThis.api=new(class{'+source.slice(start,end)+'})();',context);assert.equal((await context.api._loadLiveIndex()).body.shows.length,2);assert.equal(calls.get('index-0001'),2);
  context.api._liveIndexParts.delete('two');broken=true;await assert.rejects(context.api._loadLiveIndex(),/network/);assert.equal(context.api._liveIndexParts.has('one'),true);broken=false;assert.equal((await context.api._loadLiveIndex()).body.shows.length,2);assert.equal(calls.get('index-0000'),1,'successful chunks must not download again after a failed update');
+});
+
+test('background index transfers yield to playback and resume cached batches; foreground titles stay available',async()=>{
+ const source=fs.readFileSync(new URL('../../client-terrarium/js/api.js',import.meta.url),'utf8'),start=source.indexOf('    async _loadLiveIndex('),end=source.indexOf('    /* ----- index ----- */',start),calls=[];
+ const window={location:{hash:'#/home'}},document={visibilityState:'visible'};
+ const indexParts=Array.from({length:8},(_,i)=>({key:'index-'+i,sha256:'hash-'+i}));
+ const context=vm.createContext({window,document,API_BASE:'https://backend.example',URLSearchParams,Promise,setTimeout,Map,getJson:async url=>{
+  const part=new URL(url).searchParams.get('part');if(part==='manifest')return {body:{product:'flixer',generatedAt:'new',count:8,indexParts}};
+  calls.push(part);if(part==='index-3')window.location.hash='#/watch/show/episode';
+  return {body:{product:'flixer',generatedAt:'new',shows:[{id:part}]}};
+ }});
+ vm.runInContext('globalThis.api=new(class{'+source.slice(start,end)+'})();',context);
+ await assert.rejects(context.api._loadLiveIndex({background:true}),error=>error.code==='PLAYBACK_BUSY');
+ assert.equal(calls.length,4);assert.equal(context.api._liveIndexParts.size,4);
+ window.location.hash='#/home';const resumed=await context.api._loadLiveIndex({background:true});
+ assert.equal(resumed.body.shows.length,8);assert.equal(calls.length,8,'completed parts are reused after returning from playback');
+ window.location.hash='#/watch/saved/title';const foreground=new context.api.constructor();
+ assert.equal((await foreground._loadLiveIndex()).body.shows.length,8,'saved title lookups must not wait for playback to close');
 });
 
 test('provider packs preserve original French and Arabic episode players independently of merged identities',async t=>{

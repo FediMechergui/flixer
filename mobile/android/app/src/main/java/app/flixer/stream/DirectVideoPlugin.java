@@ -61,7 +61,7 @@ public class DirectVideoPlugin extends Plugin {
             Button next=new Button(getActivity());next.setText("Next");next.setContentDescription("Next source");next.setOnClickListener(v->{reason[0]="next";surface.dismiss();});bar.addView(next);layout.addView(bar);surface.setToolbar(bar);
             DefaultHttpDataSource.Factory http=new DefaultHttpDataSource.Factory().setConnectTimeoutMs(10000).setReadTimeoutMs(15000).setAllowCrossProtocolRedirects(false);
             java.util.Map<String,String> headers=new java.util.HashMap<>();JSObject supplied=call.getObject("headers",new JSObject());
-            for(String name:new String[]{"Referer","User-Agent"}){String value=supplied.optString(name,"");if(!value.isEmpty()&&value.length()<2000&&!value.contains("\r")&&!value.contains("\n"))headers.put(name,value);}
+            for(String name:new String[]{"Referer","User-Agent","Origin","Accept-Language"}){String value=supplied.optString(name,"");if(!value.isEmpty()&&value.length()<2000&&!value.contains("\r")&&!value.contains("\n"))headers.put(name,value);}
             http.setDefaultRequestProperties(headers);
             ExoPlayer media=new ExoPlayer.Builder(getContext()).setMediaSourceFactory(new DefaultMediaSourceFactory(http)).setLoadControl(new DefaultLoadControl.Builder().setBufferDurationsMs(1000,15000,500,1000).build()).build();player=media;
             media.setAudioAttributes(new androidx.media3.common.AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build(),true);

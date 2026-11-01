@@ -6,10 +6,10 @@
   let playbackGeneration=0;
   const dismissPlayers=()=>Promise.allSettled([nativePlayer()?.close?.(),directPlayer()?.close?.()]);
   async function startPlayer(player,options,generation){if(generation!==playbackGeneration)throw Error('Player changed');await dismissPlayers();if(generation!==playbackGeneration)throw Error('Player changed');return player.open(options);}
-  async function openPlayer(value,{captureMedia=true,bounds,startAt=0,onProgress}={}){
+  async function openPlayer(value,{captureMedia=true,bounds,startAt=0,onProgress,headers={}}={}){
     const url=publicUrl(value),player=nativePlayer();if(!url||!player?.open)throw Error('In-app player unavailable');
     const generation=++playbackGeneration,session=String(Date.now())+':'+Math.random(),listener=await player.addListener?.('progress',state=>{if(state.session===session)onProgress?.(state);});
-    try{return await startPlayer(player,{url,captureMedia,bounds,startAt,session},generation);}finally{await listener?.remove();}
+    try{return await startPlayer(player,{url,captureMedia,bounds,startAt,session,headers},generation);}finally{await listener?.remove();}
   }
   async function openMedia(server,{title,startAt,onProgress,bounds}={}){
     const url=publicUrl(server.rawStreamUrl||server.streamUrl),player=directPlayer();if(!url||!player?.open)throw Error('Native video unavailable');

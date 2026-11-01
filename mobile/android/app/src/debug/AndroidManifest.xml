@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
         <activity android:name="app.flixer.stream.PlayerAuditActivity"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation"
             android:exported="true" android:theme="@style/AppTheme.NoActionBarLaunch" />
     </application>
 </manifest>

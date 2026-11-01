@@ -16,3 +16,8 @@ test('observed OK author blocks and disabled-embed pages fail over instead of id
  for(const text of ['The author of this video has not been found or is blocked','Embeds disabled2'])assert.deepEqual(messages(text),['missing']);
  assert.deepEqual(messages('A documentary discussing why Embeds disabled2 appears on websites.'),[]);
 });
+
+test('explicit HDToday host failures advance while synopsis and loading text stay intact',()=>{
+ for(const text of ['Unable to play media.','Movie not found on available servers.'])assert.deepEqual(messages(text),['missing']);
+ for(const text of ['Fetching, one moment...','The story follows a technician who is unable to play media.'])assert.deepEqual(messages(text),[]);
+});

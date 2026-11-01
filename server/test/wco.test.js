@@ -79,7 +79,7 @@ test('WCO failures try another source, keep the reason when exhausted and ignore
   let reject,failed=0;const pending=new Promise((_,r)=>reject=r),played=[];
   const servers=[{provider:'wco',type:'wco',id:'wco',name:'WCO',embedUrl:origin+'/episode'},...(mode==='alternative'?[{provider:'other',id:'other',name:'Other',type:'mp4',streamUrl:'https://media.example/video.mp4'}]:[])];
   const st={generation:0,destroyed:false,attempted:new Set(),sourceErrors:new Map(),idx:0},notice={hidden:true};
-  const context=vm.createContext({st,servers,notice,root:{},$:()=>({}),renderBar:()=>{},teardownMedia:()=>st.generation++,showNotice:()=>notice.hidden=false,showError:()=>failed++,openDirectPlayer:s=>played.push(s.id),clearTimeout:()=>{},setTimeout:fn=>{fn();return 1},window:{FlixerBrowser:{hasNativeVideo:()=>true,hasNativePlayer:()=>true},FlixerWcoSource:{supports:()=>true,resolve:()=>pending,failureMessage:()=> 'WCO is at capacity'}}});
+  const context=vm.createContext({setState:()=>{},st,servers,notice,root:{},$:()=>({}),renderBar:()=>{},teardownMedia:()=>st.generation++,showNotice:()=>notice.hidden=false,showError:()=>failed++,openDirectPlayer:s=>played.push(s.id),clearTimeout:()=>{},setTimeout:fn=>{fn();return 1},window:{FlixerBrowser:{hasNativeVideo:()=>true,hasNativePlayer:()=>true},FlixerWcoSource:{supports:()=>true,resolve:()=>pending,failureMessage:()=> 'WCO is at capacity'}}});
   vm.runInContext(loadCode+failoverCode+';globalThis.start=load;',context);context.start(0);
   if(mode==='cancelled')st.generation++;if(mode==='destroyed')st.destroyed=true;
   reject(Object.assign(Error('capacity'),{code:'WCO_CAPACITY'}));await new Promise(r=>setImmediate(r));
@@ -91,7 +91,7 @@ test('WCO failures try another source, keep the reason when exhausted and ignore
 test('the final player error stops the resolving notice and escapes provider failure text',()=>{
  const player=fs.readFileSync(new URL('../../client-terrarium/js/player.js',import.meta.url),'utf8'),start=player.indexOf('    function showError('),end=player.indexOf('\n    /* Fullscreen:',start);
  const st={sourceErrors:new Map([['wco','WCO at capacity <unsafe>']])},stage={innerHTML:''},notice={hidden:false};
- const context=vm.createContext({st,stage,notice,opts:{},servers:[],teardownMedia:()=>{},clearTimeout:()=>{},esc:s=>s.replace(/</g,'&lt;').replace(/>/g,'&gt;'),$:()=>null});
+ const context=vm.createContext({setState:()=>{},st,stage,notice,opts:{},servers:[],teardownMedia:()=>{},clearTimeout:()=>{},esc:s=>s.replace(/</g,'&lt;').replace(/>/g,'&gt;'),$:()=>null});
  vm.runInContext(player.slice(start,end)+';showError();',context);
  assert.equal(notice.hidden,true);assert.match(stage.innerHTML,/WCO at capacity &lt;unsafe&gt;/);assert.ok(!stage.innerHTML.includes('<unsafe>'));
 });

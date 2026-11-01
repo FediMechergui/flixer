@@ -11,7 +11,7 @@ import {matchesCollection} from '../../shared/collections.js';
 import { DATA_DIR, readJson } from './store.js';
 import { mergeLibrary, mergeShow, episodeOfferings, showOfferings, titleKey } from './merge-library.js';
 import { getFmoviesDetails, parseFmoviesId, searchFmovies, fmoviesServers, FMOVIES_BASE, fetchFmoviesPage } from './fmovies.js';
-import { documentedTvServers, getHdtodayDetails, parseHdtodayId, searchHdtoday, resolveHdtodayServers, HDTODAY_BASE, fetchHdtodayPage } from './hdtoday.js';
+import { documentedMovieServers, documentedTvServers, getHdtodayDetails, parseHdtodayId, searchHdtoday, resolveHdtodayServers, HDTODAY_BASE, fetchHdtodayPage } from './hdtoday.js';
 import { getTitleDetails, searchContent, resolveMyflixerStream, fetchMovies, fetchSeries } from './myflixer.js';
 import { SPECIALISTS,parseSpecialistId, specialistIdFromUrl, specialistUrl, getSpecialistDetails, searchSpecialists, specialistJobs, fetchSpecialistPage, resolveSpecialistServers } from './specialist-providers.js';
 
@@ -313,7 +313,9 @@ export async function unifiedStream(id,{showId,source,prefix='/api/stream',catal
     const identity=server.streamUrl||server.embedUrl||(server.type==='dessinanime'?`dessinanime:${server.playerId}`:`youtube:${server.videoId}`);if(!seen.has(identity)){seen.add(identity);servers.push(server);}
   }
   for(const provider of new Set(servers.filter(server=>server.cached).map(server=>server.provider)))providerErrors.push({provider,error:'Source revalidation failed; cached player links retained',cached:true});
-  if(title.kind==='series')for(const server of documentedTvServers({tmdbId:title.tmdbId || title.offerings?.find(o=>o.provider==='fmovies')?.tmdbId,season:episode.season,number:episode.number})){
+  const tmdbId=title.tmdbId || title.offerings?.find(o=>o.provider==='fmovies')?.tmdbId;
+  const alternatives=title.kind==='series'?documentedTvServers({tmdbId,season:episode.season,number:episode.number}):product==='flixer'&&title.kind==='film'?documentedMovieServers({tmdbId}):[];
+  for(const server of alternatives){
     if(!seen.has(server.embedUrl)){seen.add(server.embedUrl);servers.push(server);}
   }
   return {id,showId:title.id,servers,streamUrl:servers.find(s=>s.type==='hls')?.streamUrl||null,providerErrors};

@@ -365,8 +365,9 @@
     today() { return new Date().toISOString().slice(0, 10); }
     setSettings(s) { this.settings = s || {}; }
 
-    async _loadLiveIndex() {
-      if(!this._liveIndexRequest)this._liveIndexRequest=this._readLiveIndex().finally(()=>{this._liveIndexRequest=null;});
+    async _loadLiveIndex({background=false}={}) {
+      if(!this._liveIndexRequest){this._liveIndexBackground=background;this._liveIndexRequest=this._readLiveIndex().finally(()=>{this._liveIndexRequest=null;});}
+      else if(!background)this._liveIndexBackground=false;
       return this._liveIndexRequest;
     }
     async _readLiveIndex() {
@@ -382,6 +383,11 @@
         previous.set(part.sha256,body);while(previous.size>512)previous.delete(previous.keys().next().value);return response;
       };
       for(let i=0;i<manifest.indexParts.length;i+=4){
+        // Finish the current small batch, then give playback the connection.
+        // Foreground lookups remain available for a saved title outside the bootstrap.
+        if(this._liveIndexBackground&&(/^#\/watch\//.test(window.location?.hash||'')||document.visibilityState==='hidden')){
+          const error=new Error('Background catalogue deferred during playback');error.code='PLAYBACK_BUSY';throw error;
+        }
         const batch=manifest.indexParts.slice(i,i+4);
         const parts=await Promise.all(batch.map(load));
         for(let n=0;n<parts.length;n++){const body=parts[n].body;if(body.product!=='flixer'||body.generatedAt&&body.generatedAt!==manifest.generatedAt||!Array.isArray(body.shows))throw Error('Inconsistent live catalogue generation');next.set(batch[n].sha256,body);shows.push(...body.shows);}
@@ -695,10 +701,11 @@
       const tick = () => {if(window.location && /^#\/watch\//.test(window.location.hash))return;this.sync().catch(() => {});};
       setTimeout(tick, 1500);
       this._timer = setInterval(tick, SYNC_EVERY);
-      document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && Date.now() - this._lastSync > SYNC_EVERY / 2) tick(); });
+      document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && (this._snapshotDeferred || Date.now() - this._lastSync > SYNC_EVERY / 2)) {this._snapshotDeferred=false;tick();} });
+      window.addEventListener('hashchange',()=>{if(this._snapshotDeferred&&!/^#\/watch\//.test(window.location?.hash||'')){this._snapshotDeferred=false;tick();}});
     }
     async sync() {
-      if (this._syncing || !this._catalog) return 0;
+      if (this._syncing || !this._catalog || /^#\/watch\//.test(window.location?.hash||'')) return 0;
       this._syncing = true;
       let added = 0;
       try {
@@ -743,11 +750,11 @@
           store.set('homeSnapshot',home);this._reindex();window.dispatchEvent(new CustomEvent('flixer:catalog',{detail:{updated:true}}));
         }
         if(Date.parse(status.generatedAt)<=Date.parse(this._fullIndexAt||0))return;
-        const {body}=await this._loadLiveIndex();
+        const {body}=await this._loadLiveIndex({background:true});
         if(body.product!=='flixer'||!Array.isArray(body.shows))throw new Error('Wrong product index');
         await this._mergeIndex(body.shows,body.generatedAt||status.generatedAt);this._fullIndexAt=body.generatedAt||status.generatedAt;this._reindex();
         window.dispatchEvent(new CustomEvent('flixer:catalog',{detail:{updated:true}}));
-      })().catch(error=>{this._lastSnapshotCheck=0;throw error;}).finally(()=>{this._snapshotRequest=null;});
+      })().catch(error=>{this._lastSnapshotCheck=0;if(error.code==='PLAYBACK_BUSY'){this._snapshotDeferred=true;return;}throw error;}).finally(()=>{this._snapshotRequest=null;});
       return this._snapshotRequest;
     }
 
@@ -799,7 +806,7 @@
 
     /* ----- Browse ----- */
     async discover(type, f, page = 1) {
-      await this.catalog(); await this._indexReady;
+      await this.catalog();
       this._browseSessions ||= new Map();
       const key=JSON.stringify([type,f]);
       if(page===1 || !this._browseSessions.has(key)) this._browseSessions.set(key,{seen:new Set(),remotePage:0,totalPages:1,buffer:[]});
@@ -839,6 +846,9 @@
       return list.slice().sort(sorters[f.sort] || byAdded);
       };
       let list=filterList(cachedList);
+      // Paint matching bootstrap titles immediately. Only an exhausted or empty
+      // local selection needs to wait for the complete bundled index.
+      if(!list.some(i=>!session.seen.has(i.id))&&this._indexReady){await this._indexReady;list=filterList(await this.all(type));}
       // Cached pages render immediately while each provider advances in the background.
       // Wait for the network only when no matching saved titles remain.
       if(!list.some(i=>!session.seen.has(i.id))&&session.pending){await session.pending;list=filterList(await this.all(type));}

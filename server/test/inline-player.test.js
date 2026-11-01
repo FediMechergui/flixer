@@ -16,8 +16,10 @@ test('native playback carries inline geometry and closes an older surface before
  const window={Capacitor:{isNativePlatform:()=>true,Plugins:{PlayerView:plugin}}};
  vm.runInNewContext(source,{window,URL,Promise});
  const bounds={x:12,y:180,width:336,height:189,viewportWidth:360};
- await window.FlixerBrowser.openPlayer('https://vidfast.pro/movie/12',{bounds});
+ const headers={'User-Agent':'Source mobile player',Referer:'https://source.example/'};
+ await window.FlixerBrowser.openPlayer('https://vidfast.pro/movie/12',{bounds,headers});
  assert.deepEqual(events.slice(0,2),['close','open']);assert.equal(requests[0].bounds,bounds);
+ assert.equal(requests[0].headers,headers);
  await window.FlixerBrowser.updatePlayerBounds({...bounds,y:80});assert.equal(events.at(-1).bounds.y,80);
  await window.FlixerBrowser.fullscreenPlayer();assert.equal(events.at(-1).fullscreen,true);
 });

@@ -21,14 +21,17 @@
         if(index>=0)return index;
       }
     }catch{}
-    const i = servers.findIndex(s => s.type==='youtube'||s.videoId||s.type==='file'||s.type==='mp4'||s.type==='hls'||s.type==='dessinanime');
+    const i = servers.findIndex(s => s.type==='youtube'||s.videoId||s.type==='file'||s.type==='mp4'||s.type==='hls');
     if(i!==-1)return i;
     if(window.FlixerBrowser?.hasNativeVideo?.()){
+      const documented=servers.findIndex(s=>s.resolution==='documented-provider-route'&&/^https:\/\/vidfast\.(?:pro|vc)\//.test(s.embedUrl||''));
+      if(documented>=0)return documented;
       const publicFile=servers.findIndex(s=>{try{return s.provider==='tuniflix'&&new URL(s.embedUrl).hostname==='uqload.vc';}catch{return false;}});if(publicFile>=0)return publicFile;
       for(const host of ['1vid.xyz','vidmoly.org','vidspeed.org']){const known=servers.findIndex(s=>{try{return s.provider==='cimafu'&&new URL(s.embedUrl).hostname===host;}catch{return false;}});if(known>=0)return known;}
       const hg=servers.findIndex(s=>window.FlixerHgSource?.supports(s));if(hg>=0)return hg;
     }
-    return 0;
+    const lazy=servers.findIndex(s=>s.type==='dessinanime');
+    return lazy>=0?lazy:0;
   }
 
   let hlsReady;
@@ -64,6 +67,7 @@
 
     container.innerHTML = `<div class="player" tabindex="-1">
       <div class="player__bar">
+        <div class="player__source-info"><span class="player__state" data-player-state role="status" aria-live="polite">Opening player</span><span class="player__source-count" data-source-count></span></div>
         <div class="player__servers" id="pl-servers" role="group" aria-label="Playback sources"></div>
         <button type="button" class="btn btn--ghost btn--sm" data-browser-player>Play in app</button>
         <button type="button" class="player__fs" data-refresh-sources aria-label="Refresh sources" title="Refresh sources">&#8635;</button>
@@ -88,20 +92,24 @@
     boundsObserver?.observe(stage);
 
     function renderBar() {
+      $('[data-source-count]',root).textContent=`${servers.length} source${servers.length===1?'':'s'}`;
       if (!servers.length) { bar.hidden = true; return; }
       bar.hidden = false;
       bar.innerHTML = `<span class="player__bar-title"><i class="dot"></i>Server</span>` +
-        servers.map((s, i) => `<button type="button" class="player__srv ${i === st.idx ? "is-active" : ""}" data-i="${i}" aria-pressed="${i === st.idx}" title="Switch to ${esc(s.name)}">${esc(s.name)}</button>`).join("");
+        servers.map((s, i) => `<button type="button" class="player__srv ${i === st.idx ? "is-active" : ""} ${st.failed?.has(s)?'is-unavailable':''}" data-i="${i}" aria-pressed="${i === st.idx}" title="${st.failed?.has(s)?'Unavailable on this attempt. Retry':'Switch to'} ${esc(s.name)}">${esc(s.name)}${st.failed?.has(s)?' · retry':''}</button>`).join("");
       $$("[data-i]", bar).forEach(b => b.addEventListener("click", () => {
         const index=+b.dataset.i;
         load(index);
       }));
       const active = $(".is-active", bar);
-      if (active && active.scrollIntoView) active.scrollIntoView({ inline: "nearest", block: "nearest" });
+      // Scroll this strip only: scrollIntoView can move the entire title page.
+      if(active){const left=active.offsetLeft-bar.offsetLeft;if(left<bar.scrollLeft)bar.scrollLeft=left;else if(left+active.offsetWidth>bar.scrollLeft+bar.clientWidth)bar.scrollLeft=left+active.offsetWidth-bar.clientWidth;}
     }
 
+    function setState(label){$('[data-player-state]',root).textContent=label;}
+
     function showNotice(text, persistent = false) {
-      notice.innerHTML = `<span class="spinner"></span><span>${esc(text)}</span>${persistent?'<button type="button" aria-label="Dismiss player notice" data-dismiss-notice>Close</button>':''}`;
+      notice.innerHTML = `${persistent?'':'<span class="spinner"></span>'}<span>${esc(text)}</span>${persistent?'<button type="button" aria-label="Dismiss player notice" data-dismiss-notice>Close</button>':''}`;
       $('[data-dismiss-notice]',notice)?.addEventListener('click',()=>{notice.hidden=true;});
       notice.hidden = false;
       clearTimeout(st.noticeTimer);
@@ -139,21 +147,21 @@
       const current = () => !st.destroyed && st.generation === generation;
       let confirmed=false;
       stage.innerHTML = '<div class="player__loading">Player open in the app</div>';
-      try { const result=await window.FlixerBrowser.openPlayer(url,{captureMedia:captureMedia===true&&server.captureMedia!==false,bounds:inlineBounds(),startAt:st.resumePosition,onProgress:state=>{
-        if(current()&&state.playing&&!confirmed){confirmed=true;try{localStorage.setItem('flixer:player-preference',JSON.stringify({provider:server.provider,name:server.name,audioMode:server.audioMode,confirmed:true}));}catch{}}
+      try { const result=await window.FlixerBrowser.openPlayer(url,{headers:server.headers,captureMedia:captureMedia===true&&server.captureMedia!==false,bounds:inlineBounds(),startAt:st.resumePosition,onProgress:state=>{
+        if(current()&&state.playing&&!confirmed){confirmed=true;setState('Playing · '+server.name);notice.hidden=true;try{localStorage.setItem('flixer:player-preference',JSON.stringify({provider:server.provider,name:server.name,audioMode:server.audioMode,confirmed:true}));}catch{}}
         if(current())reportProgress(state.position,state.duration,state.final===true);
       }});
         if(current()&&result?.played)reportProgress(result.position,result.duration,true);
         if(current()&&result?.reason==='media'&&window.FlixerBrowser.hasNativeVideo?.()){
           const media=result.media;
-          if(media&&['mp4','hls','dash'].includes(media.format)&&window.FlixerBrowser.publicUrl(media.url))return openDirectPlayer({...server,type:media.format,streamUrl:media.url,rawStreamUrl:media.url,startAt:media.position,headers:{Referer:media.sourceOrigin+'/'},nativeFallbackEmbed:true});
+          if(media&&['mp4','hls','dash'].includes(media.format)&&window.FlixerBrowser.publicUrl(media.url))return openDirectPlayer({...server,type:media.format,streamUrl:media.url,rawStreamUrl:media.url,startAt:media.position,headers:{...server.headers,Referer:media.sourceOrigin+'/',...(media.userAgent?{'User-Agent':media.userAgent}:{})},nativeFallbackEmbed:true});
           return openNativePlayer(false);
         }
         if(current()&&result?.reason==='ended'){opts.onEnded?.();return;}
         if(current()&&['failed','next'].includes(result?.reason)){failover();return;}
         if(current()&&result?.reason==='closed'){opts.onExit?.();return;}
       }
-      catch (e) { if (current()) showNotice(e.message, true); }
+      catch (e) { if (current()) {st.sourceErrors.set(server.id||server.name,server.name+': '+e.message);failover();return;} }
       if (current()) stage.innerHTML = '<div class="player__loading">Choose a source above to continue.</div>';
     }
 
@@ -183,7 +191,7 @@
         const result=await window.FlixerBrowser.openMedia(server,{title:opts.title,startAt:server.startAt??st.resumePosition,bounds:inlineBounds(),onProgress:state=>{
           if(!current())return;
           if(state.playing){try{localStorage.setItem('flixer:player-preference',JSON.stringify({provider:server.provider,name:server.name,audioMode:server.audioMode,confirmed:true}));}catch{}}
-          if(state.playing)played=true;
+          if(state.playing){played=true;setState('Playing · '+server.name);notice.hidden=true;}
           if(played)reportProgress(state.position,state.duration,state.final===true);
         }});
         if(!current())return;
@@ -198,6 +206,7 @@
     function load(i, automatic = false) {
       if (st.destroyed) return;
       if (!automatic) {st.attempted.clear();st.sourceErrors.clear();}
+      st.failed?.delete(servers[i]);
       st.attempted.add(i);
       st.idx = i;st.recovering=false;
       // Native embed players open automatically; source selection can reopen one.
@@ -206,6 +215,7 @@
       teardownMedia();
       const s = servers[i];
       if (!s) return showError();
+      setState('Opening · '+s.name);
       if(s.type==='wco'){
         const generation=st.generation;showNotice('Resolving source video...',true);
         if(!window.FlixerBrowser?.hasNativeVideo?.()||!window.FlixerWcoSource?.supports(s))return failover();
@@ -310,6 +320,9 @@
     function failover() {
       if (st.destroyed) return;
       const cur = servers[st.idx];
+      (st.failed ||= new Set()).add(cur);
+      renderBar();
+      setState('Trying another source');
       clearTimeout(st.startupTimer);
       clearTimeout(st.switchTimer);
       // Wrap around so a preferred middle server cannot skip earlier alternatives.
@@ -326,6 +339,7 @@
 
     function showError() {
       teardownMedia();
+      setState('Sources unavailable');
       notice.hidden=true;clearTimeout(st.noticeTimer);
       if(opts.onDiscover&&!st.recoveryTried){
         st.recoveryTried=true;st.recovering=true;const generation=st.generation;let timer;

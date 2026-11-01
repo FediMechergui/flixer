@@ -8,7 +8,7 @@
   --line-strong: rgba(234, 240, 235, 0.16);
   --text: #EAF0EB;
   --muted: #94A399;
-  --faint: #5F6E64;
+  --faint: #8B9A90;
   --amber: #F3B257;
   --amber-ink: #2A1B05;
   --fern: #7CCB95;
@@ -138,17 +138,17 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .meta b { color: var(--text); font-weight: 500; }
 
 /* ---------- Sections and rows ---------- */
-.section { margin-top: 28px; }
+.section { margin-top: 32px; }
 .section__head {
   display: flex; align-items: baseline; justify-content: space-between;
-  padding: 0 var(--gutter); margin-bottom: 12px;
+  padding: 0 var(--gutter); margin-bottom: 12px; gap: 12px;
 }
 .section__title {
   font-family: var(--display); font-variation-settings: "opsz" 48;
   font-weight: 600; font-size: 20px; letter-spacing: -0.02em; margin: 0;
 }
-.section__sub { display: block; margin-top: 2px; }
-.section__link { color: var(--amber); font-size: 13px; font-weight: 500; }
+.section__sub { display: block; margin-top: 4px; font-family: var(--body); font-size: 13px; line-height: 1.4; letter-spacing: 0; text-transform: none; }
+.section__link { color: var(--amber); font-size: 13px; font-weight: 600; min-height: 44px; display: inline-flex; align-items: center; flex-shrink: 0; }
 
 .row {
   display: flex; gap: 10px; overflow-x: auto; padding: 4px var(--gutter) 8px;
@@ -160,10 +160,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 /* ---------- Poster card ---------- */
 .card {
-  width: 124px; position: relative; text-align: left;
+  width: 132px; position: relative; text-align: left;
   display: block; color: inherit;
 }
-.row .card { width: 124px; }
+.row .card { width: clamp(124px, 34vw, 150px); }
 .card__art {
   position: relative; aspect-ratio: 2 / 3; border-radius: var(--radius-sm); overflow: hidden;
   background: var(--surface);
@@ -190,7 +190,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   background: rgba(12,18,16,.78); color: var(--muted);
 }
 .card__title {
-  margin: 8px 0 0; font-size: 13px; font-weight: 500; line-height: 1.3;
+  margin: 9px 0 0; font-size: 14px; font-weight: 500; line-height: 1.35;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .card__meta { margin-top: 2px; font-family: var(--mono); font-size: 11px; color: var(--faint); }
@@ -210,7 +210,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .hero {
   position: relative; margin: 0 var(--gutter);
   border-radius: 20px; overflow: hidden;
-  aspect-ratio: 4 / 5; max-height: 520px;
+  aspect-ratio: 1 / 1; min-height: 330px; max-height: 440px;
   background: var(--surface);
   isolation: isolate;
 }
@@ -227,7 +227,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .hero__eyebrow { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
 .hero__eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--fern); box-shadow: 0 0 0 4px rgba(124,203,149,.18); }
 .hero__title {
-  font-size: clamp(30px, 9vw, 44px); margin: 0 0 8px;
+  font-size: clamp(28px, 8vw, 38px); margin: 0 0 8px; line-height: 1.1;
   text-wrap: balance;
 }
 .hero__meta { margin-bottom: 14px; }
@@ -236,9 +236,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   color: var(--muted); font-size: 13.5px; margin: 0 0 14px;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
-.hero__dots { position: absolute; top: 14px; right: 14px; display: flex; gap: 5px; }
-.hero__dots span { width: 6px; height: 6px; border-radius: 3px; background: rgba(234,240,235,.35); transition: width .3s var(--ease), background .3s; }
-.hero__dots span.is-on { width: 18px; background: var(--amber); }
+.hero__dots { position: absolute; top: 10px; right: 10px; display: flex; align-items: center; background: rgba(12,18,16,.8); border: 1px solid var(--line-strong); border-radius: 12px; }
+.hero__dots button { width: 44px; height: 44px; display: grid; place-items: center; }
+.hero__position { font-size: 12px; color: var(--text); min-width: 32px; text-align: center; font-variant-numeric: tabular-nums; }
+.boot-loading { display: flex; align-items: center; gap: 10px; padding: 16px var(--gutter); color: var(--muted); font-size: 14px; }
 
 /* ---------- Buttons ---------- */
 .btn {

@@ -34,8 +34,11 @@ public class PlayerViewPlugin extends Plugin {
         "vidsrc.sh", "vsembed.ru", "sv2.nontongo.stream", "www.animegg.org", "abysscdn.com", "rozgarlelo.modiplay.xyz", "streams.iqsmartgames.com", "embed.vidrift.net", "vidout.pages.dev", "embed.filmu.in", "vidbolt.xyz", "youtube.com", "www.youtube.com", "www.youtube-nocookie.com", "embos.top", "mxdrop.click", "mixdrop.top", "hgcloud.to", "vkvideo.ru", "www.ok.ru", "ok.ru", "s1.hdup400.com", "vidzy.cc", "vidzy.org", "rufiiguta.com", "engifuosi.com", "kitraskimisi.com", "tukipasti.com", "player.mediadelivery.net", "playmogo.com", "watch.easyvidplayer.com", "vidcore.io", "vidcore.net", "vidsrc.mov", "vidsrc.fyi", "embed.vidsrc.si", "vidfast.pro", "vidup.to", "vidrock.net", "vidnest.fun", "vidlink.pro", "111movies.net", "multiembed.mov", "mappletv.uk", "moviesapi.to", "vidapi.xyz", "player.vidlove.cc", "mixdrop.ps", "cybervynx.com", "1vid.xyz", "vidmoly.org", "vidspeed.org", "www.mp4upload.com", "bysesukior.com", "bysetayico.com", "doodstream.com", "cima.easyvidplayer.com", "zumivids.com", "cimatnwatchingg.blogspot.com", "embedmaster.link", "fsvid.lol", "kokoflix.lol", "trakx.lol", "uqload.vc", "voe.sx", "doodstream.com", "player.vimeo.com", "www.dailymotion.com", "geo.dailymotion.com", "audinifer.com", "morencius.com", "watch.strp2p.site", "app.videas.fr", "www.vidspeed.org", "uqload.net", "movearnpre.com", "dingtezuni.com", "q7v3k8m2p1.top"
     ));
     // Observed HTTPS destinations of existing provider player redirects.
-    static { HOSTS.add("vidfast.vc"); HOSTS.add("sv4.nontongo.day"); HOSTS.add("hglamioz.com"); HOSTS.add("hgplaycdn.com"); HOSTS.add("derricknationtop.com"); }
-    static Set<String> playerOrigins(){Set<String> origins=new HashSet<>();for(String host:HOSTS)origins.add("https://"+host);origins.add("https://*.medmedia03.wiki");return origins;}
+    static { HOSTS.add("vidfast.vc"); HOSTS.add("streamingnow.mov"); HOSTS.add("sv4.nontongo.day"); HOSTS.add("hglamioz.com"); HOSTS.add("hgplaycdn.com"); HOSTS.add("derricknationtop.com"); }
+    static Set<String> playerOrigins(){Set<String> origins=new HashSet<>();for(String host:HOSTS)origins.add("https://"+host);origins.add("https://*.medmedia03.wiki");
+        // Observed VidSrc content frame. Telemetry only: this does not authorize
+        // new top-level navigation or expose the app's Capacitor bridge.
+        origins.add("https://stellarconductornexus.com");return origins;}
     private boolean approved(String value) {
         if (value == null || value.length() > 3000) return false;
         try { Uri u = Uri.parse(value); String host = u.getHost();
@@ -72,6 +75,16 @@ public class PlayerViewPlugin extends Plugin {
             WebView web = new WebView(getActivity()); playerWebView = web; web.setBackgroundColor(Color.BLACK);
             web.setDownloadListener((target,userAgent,contentDisposition,mimeType,length)->{});
             WebSettings settings = web.getSettings(); settings.setJavaScriptEnabled(true); settings.setDomStorageEnabled(true); settings.setAllowFileAccess(false); settings.setAllowContentAccess(false); settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW); settings.setMediaPlaybackRequiresUserGesture(false); settings.setSupportMultipleWindows(true); settings.setJavaScriptCanOpenWindowsAutomatically(false);
+            // Apply source context to the WebView itself, so media subrequests also
+            // use the published User-Agent rather than only the initial document.
+            java.util.Map<String,String> headers=new java.util.HashMap<>();
+            JSObject requestedHeaders=call.getObject("headers");
+            if(requestedHeaders!=null)for(String key:Arrays.asList("Referer","Origin","User-Agent","Accept-Language")){
+                String value=requestedHeaders.optString(key,"");
+                if(!value.isEmpty()&&value.length()<2048&&!value.contains("\r")&&!value.contains("\n")){
+                    if("User-Agent".equals(key))settings.setUserAgentString(value);else headers.put(key,value);
+                }
+            }
             android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(web,true);
             if(WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT))WebViewCompat.addDocumentStartJavaScript(web,PlayerAdBlock.script(getContext()),playerOrigins());
             // Health messages only; remote pages never receive Capacitor's app bridge.
@@ -92,7 +105,7 @@ public class PlayerViewPlugin extends Plugin {
                             }
                         }
                         if(captureMedia&&"public-media".equals(data.optString("type"))&&"https".equals(uri.getScheme())&&uri.getHost()!=null&&uri.getUserInfo()==null&&uri.getPort()==-1&&Arrays.asList("mp4","hls","dash").contains(format)){
-                            media.put("url",target);media.put("format",format);media.put("position",Math.max(0,data.optDouble("position",0)));media.put("sourceOrigin",origin.toString());reason[0]="media";dialog.dismiss();
+                            media.put("url",target);media.put("format",format);media.put("position",Math.max(0,data.optDouble("position",0)));media.put("sourceOrigin",origin.toString());media.put("userAgent",settings.getUserAgentString());reason[0]="media";dialog.dismiss();
                         }
                     }catch(Exception ignored){}
                 });
@@ -106,9 +119,9 @@ public class PlayerViewPlugin extends Plugin {
                 @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) { return request.isForMainFrame() && !approved(request.getUrl().toString()); }
                 @Override public void onPageStarted(WebView view,String target,android.graphics.Bitmap favicon){challengeDocument[0]=false;title.setText(Uri.parse(target).getHost());}
                 @Override public void onPageFinished(WebView view,String target){
-                    // A completed page may play through a cross-origin frame whose
-                    // clock we cannot observe. Do not close it for missing telemetry.
-                    if(!challengeDocument[0]){if(!observableFile)watchdog.removeCallbacks(startupTimeout);verifying[0]=false;}
+                    // Document load is not video playback. Keep the bounded startup
+                    // deadline until a content clock or playing signal arrives.
+                    if(!challengeDocument[0])verifying[0]=false;
                 }
                 @Override public void onReceivedHttpError(WebView view,WebResourceRequest request,android.webkit.WebResourceResponse response){
                     if(!request.isForMainFrame()||response.getStatusCode()<400)return;
@@ -129,9 +142,11 @@ public class PlayerViewPlugin extends Plugin {
                 private CustomViewCallback callback;
                 @Override public void onShowCustomView(View view, CustomViewCallback cb) {
                     if (video != null) { cb.onCustomViewHidden(); return; }
-                    video=view;callback=cb;web.setVisibility(View.GONE);stage.addView(view,new FrameLayout.LayoutParams(-1,-1));dialog.setFullscreen(true);
+                    // A host may request a custom video view on autoplay. Fit it to
+                    // the existing inline surface; only Flixer's button expands it.
+                    video=view;callback=cb;web.setVisibility(View.GONE);stage.addView(view,new FrameLayout.LayoutParams(-1,-1));
                 }
-                @Override public void onHideCustomView() { if(video!=null){stage.removeView(video);video=null;web.setVisibility(View.VISIBLE);CustomViewCallback cb=callback;callback=null;dialog.setFullscreen(false);if(cb!=null)cb.onCustomViewHidden();} }
+                @Override public void onHideCustomView() { if(video!=null){stage.removeView(video);video=null;web.setVisibility(View.VISIBLE);CustomViewCallback cb=callback;callback=null;if(cb!=null)cb.onCustomViewHidden();} }
                 @Override public boolean onCreateWindow(WebView view, boolean isDialog, boolean isUserGesture, android.os.Message resultMsg) { return false; }
                 @Override public boolean onJsAlert(WebView view,String target,String message,android.webkit.JsResult result){result.cancel();return true;}
                 @Override public boolean onJsConfirm(WebView view,String target,String message,android.webkit.JsResult result){result.cancel();return true;}
@@ -139,7 +154,7 @@ public class PlayerViewPlugin extends Plugin {
             });
             stage.addView(web,new FrameLayout.LayoutParams(-1,-1)); dialog.setContentView(layout);
             dialog.setOnDismissListener(d -> { watchdog.removeCallbacksAndMessages(null);web.stopLoading();web.loadUrl("about:blank");stage.removeAllViews();web.destroy();playerWebView=null;playerDialog=null;JSObject result=new JSObject();result.put("reason",reason[0]);result.put("played",played[0]);result.put("media",media);result.put("position",latest[0]);result.put("duration",latest[1]);call.resolve(result); });
-            dialog.show();watchdog.postDelayed(startupTimeout,observableFile?30000:60000);web.loadUrl(url);
+            dialog.show();watchdog.postDelayed(startupTimeout,observableFile?30000:60000);web.loadUrl(url,headers);
         });
     }
     @PluginMethod public void close(PluginCall call) { getActivity().runOnUiThread(() -> { if(playerDialog!=null)playerDialog.dismiss();call.resolve(); }); }

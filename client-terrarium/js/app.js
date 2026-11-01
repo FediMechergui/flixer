@@ -302,7 +302,7 @@
       const genres = s.genreIds.slice(0, 2).map(g => genreName(s.type, g)).filter(Boolean).join(", ");
       hero.innerHTML = `<img class="hero__bg" src="${esc(s.backdrop || s.poster)}" alt="" ${s.poster && s.backdrop !== s.poster ? `onerror="this.onerror=null;this.src='${esc(s.poster)}';this.onerror=()=>this.remove()"` : ""}>
         <div class="hero__shade"></div>
-        <div class="hero__dots" aria-hidden="true">${slides.map((_, j) => `<span class="${j === i ? "is-on" : ""}"></span>`).join("")}</div>
+        <div class="hero__dots" role="group" aria-label="Featured titles"><button type="button" data-slide="${(i+slides.length-1)%slides.length}" aria-label="Previous featured title">${ICON.prev}</button><span class="hero__position">${i+1} / ${slides.length}</span><button type="button" data-slide="${(i+1)%slides.length}" aria-label="Next featured title">${ICON.next}</button></div>
         <div class="hero__body">
           <div class="hero__eyebrow"><span class="dot"></span><span class="eyebrow">${isFresh(s) ? "Just added" : "Featured"} · ${s.type === "tv" ? "Series" : "Film"}</span></div>
           <h1 class="h-display hero__title">${esc(s.title)}</h1>
@@ -315,16 +315,15 @@
           </div>
         </div>`;
       $("[data-save]", hero).addEventListener("click", e => { toggleList(s); e.currentTarget.classList.toggle("is-on", inList(s)); });
+      $$('[data-slide]',hero).forEach((button,position)=>button.addEventListener('click',()=>{idx=Number(button.dataset.slide);paintHero(idx);$$('[data-slide]',hero)[position]?.focus({preventScroll:true});}));
       // Lean index entries have no synopsis: fetch it live and fill it in while the slide is up.
-      if (!s.overview && !$("#sheet-root > .detail")) api.details(s.type, s.id).then(d => { if (d.overview && slides[idx] === s) { s.overview = d.overview; const p = $(".hero__overview", hero); if (p) p.textContent = d.overview; } }).catch(() => {});
+      if (!s.overview && !$("#sheet-root > .detail")) api.details(s.type, s.id).then(d => { if (current() && d.overview && slides[idx] === s) { s.overview = d.overview; const p = $(".hero__overview", hero); if (p) p.textContent = d.overview; } }).catch(() => {});
     }
     if (slides.length) {
       paintHero(0);
       let x0 = null;
       hero.addEventListener("touchstart", e => { x0 = e.touches[0].clientX; }, { passive: true });
-      hero.addEventListener("touchend", e => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; if (Math.abs(dx) > 40) { idx = (idx + (dx < 0 ? 1 : slides.length - 1)) % slides.length; paintHero(idx); restart(); } x0 = null; });
-      const restart = () => { clearInterval(state.heroTimer); state.heroTimer = setInterval(() => { if($("#sheet-root > .detail"))return;idx = (idx + 1) % slides.length; paintHero(idx); }, 7000); };
-      restart();
+      hero.addEventListener("touchend", e => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; if (Math.abs(dx) > 40) { idx = (idx + (dx < 0 ? 1 : slides.length - 1)) % slides.length; paintHero(idx); } x0 = null; });
     } else hero.remove();
 
     // Continue watching
@@ -338,12 +337,17 @@
     resumeRow.then(html=>{if(current()&&resumeRevision===(state.progressRevision||0))$('#continue-watching',view).innerHTML=html;}).catch(()=>{});
     await new Promise(resolve=>requestAnimationFrame(()=>setTimeout(resolve,0)));
     if(!current())return;
-    const rankings=await Promise.allSettled([api.nowPlaying(),api.onTheAir(),api.topRated('movie'),api.topRated('tv'),api.popular('tv',14)]);
-    if(!current())return;
-    const [now,air,topM,topT,popularTv]=rankings.map(row=>row.status==='fulfilled'?row.value:[]);
-    $('#home-main-rows',view).innerHTML=section('Popular series','TVmaze popularity',popularTv,{rating:true})+
-      section('New movies','Latest additions',now,{link:'#/movies'})+section('New series','Latest additions',air,{link:'#/shows'})+
-      section('Top rated series','TVmaze rating',topT,{rating:true})+section('Recent releases','Films by release year',topM,{genre:true});
+    const rows=[
+      ['popular','Popular series','Popular on TVmaze',()=>api.popular('tv',14),{rating:true}],
+      ['movies','New movies','Latest additions',()=>api.nowPlaying(),{link:'#/movies'}],
+      ['series','New series','Latest additions',()=>api.onTheAir(),{link:'#/shows'}],
+      ['rated','Top rated series','Rated on TVmaze',()=>api.topRated('tv'),{rating:true}],
+      ['releases','Recent releases','Films by release year',()=>api.topRated('movie'),{genre:true}]
+    ];
+    $('#home-main-rows',view).innerHTML=rows.map(([id,title])=>`<div id="home-row-${id}"><section class="section" aria-label="Loading ${title}"><div class="section__head"><h2 class="section__title">${title}</h2></div>${skelRow(5)}</section></div>`).join('');
+    rows.forEach(([id,title,sub,fetchItems,options])=>Promise.resolve().then(fetchItems).then(items=>{
+      if(current())$(`#home-row-${id}`,view).innerHTML=section(title,sub,items,options);return items;
+    }).catch(()=>{if(current())$(`#home-row-${id}`,view).innerHTML='';return [];}));
     const extras=await Promise.allSettled([api.collections(),api.universeList(),api.serviceList(40),api.topUniverses(3),ensureMeta('movie'),ensureMeta('tv')]);
     if(!current())return;
     const [collections=[],allUniverses=[],services=[],topUni=[]]=extras.map(row=>row.status==='fulfilled'?row.value:undefined);
@@ -359,13 +363,12 @@
       <div class="ulogos">${universes.map(u => `<a class="utile" href="#/universe/${esc(u.id)}" title="${esc(u.name)}">${u.logo ? `<img src="${esc(u.logo)}" alt="${esc(u.short)}" loading="lazy" onerror="this.outerHTML='<span class=\\'utile__mono\\'>'+this.alt.replace(/</g,'')+'</span>'">` : `<span class="utile__mono">${esc(u.short)}</span>`}<span class="utile__n">${u.count} titles</span></a>`).join("")}</div></section>` : "";
     const serviceRow = services.length ? `<section class="section fade-in"><div class="section__head"><div><h2 class="section__title">Streaming services</h2><span class="section__sub eyebrow">Where Flixer's series air or stream · tap to browse</span></div><a class="section__link" href="#/shows" data-svc-all>All series</a></div>
       <div class="ulogos">${services.map(s => `<a class="utile utile--svc" href="#/shows" data-svc="${esc(s.name)}" title="${esc(s.name)}">${s.logo ? `<img src="${esc(s.logo)}" alt="${esc(s.name)}" loading="lazy" onerror="this.outerHTML='<span class=\\'utile__mono\\'>'+this.alt.replace(/</g,'')+'</span>'">` : `<span class="utile__mono">${esc(s.name)}</span>`}<span class="utile__n">${s.count} series</span></a>`).join("")}</div></section>` : "";
-    const uniRails = (await Promise.allSettled(topUni.map(async u => section(u.name, `${u.count} titles in Flixer`, await api.universeRail(u.id, 14), { showType: true, rating: true })))).flatMap(row=>row.status==='fulfilled'?[row.value]:[]);
-    if (!current()) return;
-
     $("#home-extras",view).innerHTML =
       collectionRow + genreRow + universeRow + serviceRow +
-      uniRails.join("") +
-      section("Longest series", "Most episodes available", topT, { genre: true });
+      '<div id="home-universe-rails"></div>';
+    Promise.allSettled(topUni.map(async u => section(u.name, `${u.count} titles in Flixer`, await api.universeRail(u.id,14),{showType:true,rating:true}))).then(rails=>{
+      if(current())$('#home-universe-rails',view).innerHTML=rails.flatMap(row=>row.status==='fulfilled'?[row.value]:[]).join('');
+    });
 
     $$("[data-collection]", view).forEach(b => b.addEventListener("click", () => {
       state.filters.all = Object.assign(defaultFilters(), { collection:b.dataset.collection }); saveFilters(); state.renderedTab = null;
@@ -863,13 +866,13 @@
     const request = new AbortController(); state.streamRequest = request;
     const el = document.createElement("div"); el.className = "detail watch"; el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true");
     el.innerHTML = `<button class="detail__back" data-back aria-label="Back">${ICON.back}</button>
-      <div class="watch__player"><div class="player"><div class="player__loading"><span class="spinner"></span>Finding sources…</div></div></div>
+      <div class="watch__player"><div class="player"><div class="player__stage"><div class="player__loading"><span class="spinner"></span>Finding sources…</div></div></div></div>
       <div class="detail__body" id="watch-info"><div class="skel skel-line" style="width:60%;height:24px"></div><div class="skel skel-line" style="width:35%"></div></div>`;
     r.appendChild(el); syncRoot();
     $("[data-back]", el).addEventListener("click", goBack);
 
     let ctx;
-    try { ctx = await api.episode(showId, epId); await ensureMeta(ctx.show.type); }
+    try { ctx = await api.episode(showId, epId); }
     catch (e) { $("#watch-info", el).innerHTML = emptyState("Could not open this episode", e.message, `<a class="btn btn--primary" href="#/home">Home</a>`); return; }
     if (!el.isConnected) return;
     const { show, episode, prev, next, index, total } = ctx;

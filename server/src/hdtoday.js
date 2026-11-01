@@ -149,6 +149,15 @@ export function parseHdtodayPlayer(html) {
   } catch { return null; }
 }
 const playerCache = new Map();
+export function documentedMovieServers({tmdbId}={}) {
+  if(!Number.isSafeInteger(Number(tmdbId))||Number(tmdbId)<1)return [];
+  const id=Number(tmdbId);
+  return [
+    {id:'vidsrc:movie',name:'VidSrc',provider:'vidsrc',embedUrl:`https://vidsrc.mov/embed/movie/${id}`},
+    {id:'vidfast:movie',name:'VidFast',provider:'vidfast',embedUrl:`https://vidfast.pro/movie/${id}?autoPlay=true`},
+    {id:'vidlink:movie',name:'VidLink',provider:'vidlink',embedUrl:`https://vidlink.pro/movie/${id}?autoplay=true&title=true`},
+  ].map(server=>({...server,type:'embed',sandbox:null,resolution:'documented-provider-route',availability:'unverified'}));
+}
 export function documentedTvServers({tmdbId,season,number}={}) {
   if(!Number.isSafeInteger(Number(tmdbId)) || Number(tmdbId)<1 || !Number.isInteger(season) || season<0 || !Number.isInteger(number) || number<1)return [];
   const slot=`${Number(tmdbId)}/${season}/${number}`;

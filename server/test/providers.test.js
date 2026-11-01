@@ -195,3 +195,15 @@ test('verified TV episodes retain direct providers when HDToday is unavailable',
   assert.ok(result.servers.every(s=>!s.embedUrl.includes('hdtoday.sx')));
   assert.equal(await unifiedStream('fm:e:108978:99:99',{showId:show.id,catalog:{shows:[show]},product:'flixer',resolveTitle:async()=>show}),null);
 });
+
+test('verified films retain independently named alternatives and unknown films do not receive guessed identities',async()=>{
+ const show={id:'fm:m:693134',kind:'film',tmdbId:693134,title:'Dune: Part Two',episodes:[{id:'fm:m:693134',season:1,number:1}]};
+ const lookup=film=>unifiedStream(film.id,{catalog:{product:'flixer',shows:[film]},product:'flixer',resolveTitle:async()=>film,resolveMyflixer:async()=>({servers:[]})});
+ const result=await lookup(show),alternatives=result.servers.filter(s=>['vidsrc','vidfast','vidlink'].includes(s.provider));
+ assert.equal(alternatives.length,3);
+ assert.ok(alternatives.every(s=>s.embedUrl.includes('/movie/693134')&&s.availability==='unverified'));
+ assert.ok(alternatives.every(s=>!s.name.includes('HDToday')&&!s.name.includes('FMovies')));
+ const unknown=await lookup({...show,id:'mf:m:unknown',tmdbId:null,episodes:[{id:'mf:m:unknown',season:1,number:1}]});
+ assert.equal(unknown.servers.filter(s=>['vidsrc','vidfast','vidlink'].includes(s.provider)).length,0);
+ assert.equal(await unifiedStream('fm:m:999999',{showId:show.id,catalog:{product:'flixer',shows:[show]},product:'flixer',resolveTitle:async()=>show}),null);
+});

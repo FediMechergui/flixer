@@ -1,7 +1,15 @@
 import { safeRemoteFetch } from './stream-security.js';
 import {artworkUrl} from '../../shared/artwork.js';
 
-export const FMOVIES_BASE = 'https://www.f-movies.org';
+export const FMOVIES_BASE = 'https://www.f-moviess.org';
+const pageOrigins=new Set([FMOVIES_BASE,'https://www.f-movies.org']);
+// Old catalogue snapshots and saved links remain valid after the publisher move.
+export function fmoviesPageUrl(value){
+  const url=new URL(value,FMOVIES_BASE);
+  if(!pageOrigins.has(url.origin)||url.username||url.password)throw new Error('Invalid FMovies page');
+  url.hostname=new URL(FMOVIES_BASE).hostname;
+  return url;
+}
 export const FMOVIES_GENRES = {
   28:'action',12:'adventure',16:'animation',35:'comedy',80:'crime',99:'documentary',18:'drama',10751:'family',14:'fantasy',36:'history',27:'horror',10402:'music',9648:'mystery',10749:'romance',878:'sci-fi',10770:'tv-movie',53:'thriller',10752:'war',37:'western',10759:'action',10762:'kids',10763:'news',10764:'reality',10765:'sci-fi',10766:'soap',10767:'talk',10768:'war',
 };
@@ -52,16 +60,15 @@ export function parseFmoviesList(html, { kind = 'film', documentary = false, gen
   return { items:[...items.values()], page:Number(pagination[1]) || page, totalPages:Number(pagination[2]) };
 }
 async function request(path) {
-  const url = new URL(path, FMOVIES_BASE);
-  if (url.origin !== FMOVIES_BASE) throw new Error('Invalid FMovies page');
+  const url = fmoviesPageUrl(path);
   let error;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const response = await safeRemoteFetch(url.href, { timeoutMs:7000,headers:{'User-Agent':'Mozilla/5.0', Accept:'text/html,application/json'} });
       if (!response.ok) { await response.body?.cancel(); throw new Error(`FMovies HTTP ${response.status}`); }
-      if (new URL(response.url).origin !== FMOVIES_BASE) throw new Error('Unexpected FMovies redirect');
+      if (!pageOrigins.has(new URL(response.url).origin)) { await response.body?.cancel(); throw new Error('Unexpected FMovies redirect'); }
       return await response.text();
-    } catch (e) { error = e; if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1))); }
+    } catch (e) { error = e; if (attempt < 1) await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1))); }
   }
   throw error;
 }
@@ -95,8 +102,7 @@ export async function fetchFmoviesPage({ kind = 'film', documentary = false, pag
   return result;
 }
 export function parseFmoviesDetails(html, sourceUrl) {
-  const url = new URL(sourceUrl, FMOVIES_BASE);
-  if (url.origin !== FMOVIES_BASE) throw new Error('Invalid title origin');
+  const url = fmoviesPageUrl(sourceUrl);
   const route = /^\/(movie|tv)\/[^/]+-(\d+)\/?$/.exec(url.pathname);
   if (!route) throw new Error('Invalid FMovies title URL');
   let data;
