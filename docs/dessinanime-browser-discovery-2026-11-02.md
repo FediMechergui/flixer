@@ -1,5 +1,9 @@
 # DessinAnime episode discovery, 2 November 2026
 
+Operational update: [the independent GitHub-hosted browser runner](github-browser-runner.md)
+now handles scheduled collection. The checks below document the initial mapping
+and publication investigation.
+
 Normal interactive Chrome, using a fresh isolated profile, loaded the source's
 episode pages successfully on the local connection. Ordinary same-origin browser
 requests then returned the actual server-rendered episode guides and player IDs.
