@@ -61,6 +61,13 @@ jobs:
         timeout-minutes: 8
         continue-on-error: true
         run: xvfb-run -a node scripts/collect-dessinanime-browser.js --launch --pages 60 --titles 4 --latest --write-cache
+      - name: Retain completed DessinAnime pages after interrupted collection
+        if: always()
+        continue-on-error: true
+        run: |
+          if [ -f artifacts/dessin-browser-metadata.json ]; then
+            node scripts/import-dessinanime-metadata.js artifacts/dessin-browser-metadata.json --browser
+          fi
       - name: Preserve DessinAnime discovery report
         if: always()
         uses: actions/upload-artifact@v4

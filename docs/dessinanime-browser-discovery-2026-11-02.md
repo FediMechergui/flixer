@@ -50,6 +50,10 @@ listings can no longer downgrade a mapped title and erase its episodes on a
 later merge. Newer empty-player checks prevent an old seed from resurrecting
 removed players.
 
+The checkpoint is imported in a separate workflow step as well, so a browser
+step timeout can retain pages completed before the timeout. A new browser first
+loads the ordinary homepage before navigating to its selected title.
+
 ## Verification
 
 All 306 server regression tests passed. The new tests cover exact source identity binding, sparse episode

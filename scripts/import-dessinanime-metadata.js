@@ -12,5 +12,5 @@ export function importDessinMetadata(report,{cache=readJson('providers-flixer.js
 if(process.argv[1]&&import.meta.url===pathToFileURL(path.resolve(process.argv[1])).href){
  const file=process.argv[2];if(!file)throw Error('Pass the reviewed metadata JSON file');
  if(!fs.existsSync(file))throw Error('DessinAnime metadata file not found');
- console.log('[dessin-import]',JSON.stringify(importDessinMetadata(JSON.parse(fs.readFileSync(file,'utf8')),{hashKey:'dessinReviewedHash'})));
+ console.log('[dessin-import]',JSON.stringify(importDessinMetadata(JSON.parse(fs.readFileSync(file,'utf8')),{hashKey:process.argv.includes('--browser')?'dessinBrowserHash':'dessinReviewedHash'})));
 }

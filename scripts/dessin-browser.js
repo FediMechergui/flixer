@@ -26,8 +26,14 @@ export async function connectDessinBrowser(port){
  return {
   async warmup(url){
    if(new URL(url).origin!==DESSIN_ORIGIN)throw Error('Invalid DessinAnime browser page');
-   await send('Page.enable');await send('Page.navigate',{url});
-   for(let attempt=0;attempt<25;attempt++){await pause(1000);const ready=await evaluate('location.origin==="https://dessinanime.cc"&&document.readyState!=="loading"&&document.querySelector("h1")&&!/Just a moment|Access denied/i.test(document.title)');if(ready)return true;}return false;
+   await send('Page.enable');
+   // Let the normal homepage finish loading before visiting a protected title,
+   // rather than interrupting the source's ordinary startup sequence.
+   for(const destination of [DESSIN_ORIGIN+'/',url]){
+    await send('Page.navigate',{url:destination});let ready=false;
+    for(let attempt=0;attempt<25;attempt++){await pause(1000);ready=await evaluate('location.origin==="https://dessinanime.cc"&&document.readyState!=="loading"&&!!document.querySelector("h1")&&!/Just a moment|Access denied/i.test(document.title)');if(ready)break;}
+    if(!ready)return false;
+   }return true;
   },
   async readPage(url){
    const u=new URL(url);if(u.origin!==DESSIN_ORIGIN||u.username||u.password||u.search||u.hash||!/^\/(?:tv|movie)\//.test(u.pathname))throw Error('Invalid DessinAnime metadata destination');
