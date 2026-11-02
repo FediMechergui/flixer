@@ -42,6 +42,9 @@ and release year. The new alternative stays labelled Frembed. Existing verified
 ## Validation and remaining limitations
 
 - All 318 backend tests passed, including eight new integration regressions.
+  A subsequent hosted-access correction passed 25 targeted tests, including a
+  ninth regression for cached identity fallback when both source pages and
+  source search return 403.
 - Live API checks: Le Petit Prince (2015) returns Frembed in unified playback;
   Avatar has 61 episodes across three seasons; French title search returns the
   correct film; Frembed's updated animation listing includes episode markers.
@@ -59,6 +62,10 @@ and release year. The new alternative stays labelled Frembed. Existing verified
 - No video proxy, Netlify keepalive, additional refresh deployment loop or
   self-hosted GitHub runner is introduced. Background collection remains on the
   existing GitHub-hosted workflow schedule.
+
+The first production checks exposed a hosted-only `.cc` search denial. The
+fallback was corrected to use an existing source snapshot before requesting
+source search, while keeping independent identity/year verification mandatory.
 
 Sources: [Frembed API](https://frembed.uno/api-docs),
 [animation updates](https://frembed.uno/tv-show?genre=animation&orderBy=updated_at&orderDirection=desc),

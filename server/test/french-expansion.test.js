@@ -4,11 +4,18 @@ import {parseFrembedId,frembedIdFromUrl,parseFrembedList,parseFrembedDetails,fre
 import {parseDessinNetId,dessinNetIdFromUrl,parseDessinNetList,parseDessinNetDetails,parseDessinNetPlayers} from '../src/dessinanimenet.js';
 import {specialistJobs,parseSpecialistId,specialistIdFromUrl} from '../src/specialist-providers.js';
 import {mergeLibrary} from '../src/merge-library.js';
-import {mergeDessinPlayback} from '../src/dessinanime.js';
+import {mergeDessinPlayback,getDessinDetails} from '../src/dessinanime.js';
 
 const seriesId='sp:frembed:s:246';
 const episode=(epi=1,version='VF')=>({title:'Avatar: The Last Airbender',tmdb:'246',sa:1,epi,version,link:`https://frembed.uno/embed/serie/246?sa=1&epi=${epi}`});
 const api=items=>({status:200,result:{items}});
+test('hosted DessinAnime search denial cannot prevent a verified alternative for an existing source title',async()=>{
+  const id='sp:dessinanime:m:309809-le-petit-prince',requests=[];
+  const saved={id,title:'Le Petit Prince',year:2015,kind:'film',episodes:[],access:'catalogue-only',offerings:[{provider:'dessinanime',id,availability:'catalogue-only'}]};
+  const alternative=parseFrembedDetails('sp:frembed:m:309809',api([{tmdb:'309809',title:'The Little Prince',year:'2015',version:'French',link:frembedUrl('sp:frembed:m:309809')}]));
+  const result=await getDessinDetails(id,{readSnapshot:async()=>saved,readPage:async url=>{requests.push(url);throw Error('DessinAnime HTTP 403');},resolveAlternative:async requested=>{assert.equal(requested,'sp:frembed:m:309809');return alternative;}});
+  assert.equal(requests.length,1);assert.equal(result.access,'public');assert.equal(result.episodes[0].offerings[0].provider,'frembed');assert.equal(saved.episodes.length,0);
+});
 test('Frembed rejects absent titles, wrong identity, forged players and invalid episode coordinates',()=>{
   assert.equal(parseFrembedDetails(seriesId,api([])),null);
   for(const source of [{...episode(),tmdb:'456'},{...episode(),link:'https://evil.org/player'},{...episode(),epi:2},{...episode(),sa:null}])assert.throws(()=>parseFrembedDetails(seriesId,api([source])));

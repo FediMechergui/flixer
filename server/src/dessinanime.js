@@ -27,19 +27,21 @@ export async function fetchDessinPage({page=1,cursor,kind='series',search,collec
   return {items,page,totalPages:data.length===36?page+1:page,hasNext:!search&&data.length===36,nextCursor:!search&&data.length===36?data.at(-1).id:null};
 }
 export function verifiedDessinAlias(row,candidate){const p=parseDessinId(row.id),hint=p&&Number(p.slug.split('-')[0]);return !!(p&&candidate.tmdbId===hint&&candidate.kind===row.kind&&row.year&&Number(candidate.year)===Number(row.year));}
-export async function getDessinDetails(id,{fresh=false}={}){
+export async function getDessinDetails(id,{fresh=false,readSnapshot=dessinSnapshot,readPage=request,resolveAlternative=getFrembedDetails}={}){
   const p=parseDessinId(id);if(!p||p.type==='e')throw Error('Invalid DessinAnime ID');
-  const saved=await dessinSnapshot(id);
+  const saved=await readSnapshot(id);
   if(saved?.episodes?.length&&!fresh)return saved;
-  try{return parseDessinPage(id,await request(dessinUrl(id)),saved);}catch(error){if(saved?.episodes?.length)return {...saved,providerErrors:[{provider:'dessinanime',error:error.message}]};}
+  try{return parseDessinPage(id,await readPage(dessinUrl(id)),saved);}catch(error){if(saved?.episodes?.length)return {...saved,providerErrors:[{provider:'dessinanime',error:error.message}]};}
   // Search is an anonymous public endpoint. Do not substitute a challenge page
   // for an episode guide or invent French players from the catalogue slug.
-  const query=p.slug.replace(/^\d+-/,'').replaceAll('-',' '),data=JSON.parse(await request(`/api/search?${new URLSearchParams({q:query})}`));
-  let row=parseDessinCatalogue(data).find(item=>item.id===id);if(!row)throw Error('DessinAnime title not found in public search');
-  if(saved)row=mergeShow(saved,row);
+  let row=saved?.id===id&&saved.kind===(p.type==='m'?'film':'series')?saved:null;
+  // Hosted source search can be blocked too. A validated cached source identity
+  // is enough to check alternatives; it must not depend on another challenge.
+  if(!row){const query=p.slug.replace(/^\d+-/,'').replaceAll('-',' '),data=JSON.parse(await readPage(`/api/search?${new URLSearchParams({q:query})}`));row=parseDessinCatalogue(data).find(item=>item.id===id);}
+  if(!row)throw Error('DessinAnime title not found in public search');
   // Use a confirmed alternative provider, not a fabricated DessinAnime player.
   // The API must independently confirm kind, TMDB identity and release year.
-  try{const hint=Number(p.slug.split('-')[0]);if(Number.isSafeInteger(hint)&&hint>0){const candidate=await getFrembedDetails(`sp:frembed:${p.type}:${hint}`,{fresh});if(verifiedDessinAlias(row,candidate))return mergeDessinPlayback(row,candidate);}}catch{}
+  try{const hint=Number(p.slug.split('-')[0]);if(Number.isSafeInteger(hint)&&hint>0){const candidate=await resolveAlternative(`sp:frembed:${p.type}:${hint}`,{fresh});if(verifiedDessinAlias(row,candidate))return mergeDessinPlayback(row,candidate);}}catch{}
   const candidates=await searchFmovies(row.title).catch(()=>[]);
   const match=candidates.find(candidate=>verifiedDessinAlias(row,candidate));
   if(match){row={...row,tmdbId:match.tmdbId,altTitles:[...new Set([match.title,...(match.altTitles||[])])].filter(title=>title!==row.title),synopsis:match.synopsis,tags:match.tags,originalLanguage:match.originalLanguage||match.lang};if(match.tags.includes('animation'))row.collections.push('french-cartoons');}
