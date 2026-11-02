@@ -67,6 +67,16 @@ The first production checks exposed a hosted-only `.cc` search denial. The
 fallback was corrected to use an existing source snapshot before requesting
 source search, while keeping independent identity/year verification mandatory.
 
+Production deployment `6ae879721a1cc43fd5e2c0d1` includes that correction. Hosted
+checks returned HTTP 200 for both provider searches, Avatar's 61-episode guide,
+Ben 10's 46-episode guide and Avatar's stream endpoint. Le Petit Prince's `.cc`
+title endpoint now returns one film episode, `access: public`, both source
+offerings, and no provider errors; its stream endpoint includes Frembed. These
+are API/discovery results, not a claim of completed video playback.
+
+The existing APK consumes these provider descriptors without a rebuild. Normal
+GitHub data refreshes update the saved catalogue without a Netlify deployment.
+
 Sources: [Frembed API](https://frembed.uno/api-docs),
 [animation updates](https://frembed.uno/tv-show?genre=animation&orderBy=updated_at&orderDirection=desc),
 [DessinAnime.net](https://dessinanime.net/category/animation),
