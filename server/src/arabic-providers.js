@@ -18,7 +18,11 @@ export const ARABIC_PROVIDERS={
 };
 const clean=x=>String(x||'').replace(/\s+/g,' ').trim();
 const dedupe=rows=>[...new Map(rows.map(r=>[r.id,r])).values()];
-const fixed=(value,origin)=>{try{const u=new URL(value,origin);return u.origin===origin&&!u.username&&!u.password?u:null;}catch{return null;}};
+// Retain saved source identities while following these verified publisher moves.
+// An arbitrary redirect or lookalike domain never becomes an approved source.
+export const ARABIC_ORIGIN_MOVES={'https://tv10.egydead.live':'https://a1.egydead.media','https://kirmalk.com':'https://kirmalk.art'};
+export function currentArabicUrl(value){const u=new URL(value);const next=ARABIC_ORIGIN_MOVES[u.origin];if(next)u.host=new URL(next).host;return u.href;}
+const fixed=(value,origin,base=origin)=>{try{const u=new URL(value,base);if(ARABIC_ORIGIN_MOVES[origin]===u.origin)u.host=new URL(origin).host;return u.origin===origin&&!u.username&&!u.password?u:null;}catch{return null;}};
 export function parseArabicId(id){
   const cimafu=parseCimafuId(id);if(cimafu)return cimafu;
   const m=/^sp:(streamtunisie|kirmalk|ahwaktv|egydead|tuniflix|cinetimes|cimatn):([sme]):([A-Za-z0-9_-]{1,300})(?::([1-9]\d{0,3}))?$/.exec(String(id));
@@ -84,6 +88,7 @@ export async function arabicSnapshot(id){
   return savedRows.get(id)||savedEpisodes.get(id)||null;
 }
 export async function arabicPage(url,{view=false,fresh=false}={}){
+  url=currentArabicUrl(url);
   const key=`${view}:${url}`,old=cache.get(key);if(!fresh&&old&&Date.now()-old.at<120000)return old.promise;
   const promise=(async()=>{
     const r=await safeRemoteFetch(url,{timeoutMs:6500,method:view?'POST':'GET',body:view?'View=1':undefined,headers:{'User-Agent':'Flixer/1.6 (public catalogue metadata)',Accept:'text/html',...(view?{'Content-Type':'application/x-www-form-urlencoded'}:{})}});
@@ -98,7 +103,7 @@ function row(id,title,poster,{collection='',country=null}={}){
   const year=Number(/\b((?:19|20)\d{2})\b/.exec(title)?.[1])||null;
   const theatre=/مسرحي[ةه]|مسرحيات/.test(title)||collection==='plays';
   const english=/\bFilm\s+(.+)$/i.exec(title)?.[1];
-  if(english)title=title.replace(/\s*\bFilm\s+.+$/i,'');
+  if(english&&clean(title.slice(0,title.search(/\bFilm\s+/i))))title=title.replace(/\s*\bFilm\s+.+$/i,'');
   title=clean(title).replace(/^(?:مشاهدة\s+)?(?:فيلم|مسلسل|مسرحية)\s+/,'').replace(/\s+(?:كامل\s+)?HD\s*$/i,'').replace(/\s*\(?\b(?:19|20)\d{2}\b\)?\s*$/,'').replace(/[\s–-]+$/,'').trim();
   const arabic=p.provider!=='kirmalk'||collection==='egyptian'||collection==='plays'||country==='EG';
   const collections=[...(arabic?['arabic']:[]),...(collection?[collection]:[]),...(theatre?['plays']:[])];
@@ -281,16 +286,17 @@ export function parseArabicServers(id,html){
     $('link[itemprop="embedUrl"]').each((_,el)=>urls.push($(el).attr('href')));
   }
   if(p.provider==='ahwaktv')$('[data-embed-url]').each((_,el)=>urls.push($(el).attr('data-embed-url')));
+  if(p.provider==='ahwaktv')$('.brooks_player iframe[src]').each((_,el)=>urls.push($(el).attr('src')));
   if(['tuniflix','cimatn'].includes(p.provider))$('iframe[src]').each((_,el)=>urls.push($(el).attr('src')));
   if(p.provider==='cinetimes')$('video source[src],iframe[src*="youtube.com/embed/"]').each((_,el)=>urls.push($(el).attr('src')));
   if(p.provider==='egydead')$('.watchAreaMaster [data-link],.watchServers [data-link],.serversList [data-link],.mob-servers [data-link]').each((_,el)=>urls.push($(el).attr('data-link')));
-  return approvedArabicUrls(p,urls);
+  return approvedArabicUrls(p,urls,arabicUrl(id));
 }
-function approvedArabicUrls(p,urls){
+function approvedArabicUrls(p,urls,sourceUrl){
   const direct=urls.filter(value=>safeTunisianFile(value)||(p.provider==='cinetimes'?pSafeCommons(value):p.provider==='streamtunisie'&&safeSourceHls(value))).map((url,i)=>({id:`${p.provider}:direct:${i}`,provider:p.provider,name:`${ARABIC_PROVIDERS[p.provider].name} - direct video`,type:p.provider==='cinetimes'||safeTunisianFile(url)?'file':'hls',streamUrl:url}));
   return [...direct,...[...new Set(urls)].flatMap((value,i)=>{try{const u=new URL(value);if(u.protocol!=='https:'||u.username||u.password||u.port||!embedHosts.has(u.hostname))return [];
     const videoId=['www.youtube.com','www.youtube-nocookie.com','youtube.com'].includes(u.hostname)?/^\/embed\/([\w-]{11})/.exec(u.pathname)?.[1]:null;
-    return [{id:`${p.provider}:${i}`,provider:p.provider,name:`${ARABIC_PROVIDERS[p.provider].name} - ${videoId?'YouTube':u.hostname}`,type:videoId?'youtube':'embed',...(videoId?{videoId}:{embedUrl:u.href,sandbox:null})}];
+    return [{id:`${p.provider}:${i}`,provider:p.provider,name:`${ARABIC_PROVIDERS[p.provider].name} - ${videoId?'YouTube':u.hostname}`,type:videoId?'youtube':'embed',...(videoId?{videoId}:{embedUrl:u.href,sandbox:null,headers:{Referer:currentArabicUrl(sourceUrl)}})}];
   }catch{return [];}})];
 }
 export function ahwakPlaybackLink(html){const $=load(html),href=$('#video-wrapper #play-video[href],#video-wrapper a.controls-play-pause-big[href]').first().attr('href'),url=fixed(href,ARABIC_PROVIDERS.ahwaktv.origin);return url&&url.pathname==='/see.php'&&/^[A-Za-z0-9_-]{1,100}$/.test(url.searchParams.get('vid')||'')?url.href:null;}
@@ -315,7 +321,7 @@ export async function cinetimesCommonsServers(html,{fetchJson=async url=>{
 }
 export function egydeadWatchLink(id,html){
  const p=parseArabicId(id);if(p?.provider!=='egydead'||p.type==='s')return null;const base=new URL(arabicUrl(id)),expected=base.pathname.replace(/\/$/,'')+'/watch/',$=load(html);
- for(const el of $('.watchNow a[href]').toArray())try{const u=new URL($(el).attr('href'),base);if(u.origin===base.origin&&u.pathname===expected&&!u.search&&!u.hash&&!u.username&&!u.password&&u.port==='')return u.href;}catch{}
+ for(const el of $('.watchNow a[href]').toArray())try{const u=fixed($(el).attr('href'),base.origin,base.href);if(u&&u.pathname===expected&&!u.search&&!u.hash&&u.port==='')return u.href;}catch{}
  return null;
 }
 export async function resolveArabicServers(id,{fresh=false,transport,fetchPage=arabicPage,readSnapshot=arabicSnapshot}={}){
@@ -330,8 +336,8 @@ export async function resolveArabicServers(id,{fresh=false,transport,fetchPage=a
   }
   if(parseArabicId(id)?.provider==='cimatn'){
     const data=await cimaWatchData(await arabicPage(arabicUrl(id),{fresh})),p=parseArabicId(id);
-    const entries=p.type==='e'?data?.episodes?.[p.number]:data?.servers;
-    const players=approvedPlayers(id,entries||[]);
+    const entries=p.type==='e'?data?.episodes?.[p.number]:cimaMovieEntries(data);
+    const players=approvedPlayers(id,entries||[]).map(server=>({...server,...(data?.sourceUrl?{headers:{Referer:data.sourceUrl}}:{})}));
     if(data?.sourceUrl&&/^https:\/\/cimatnwatchingg\.blogspot\.com\/p\/[a-z0-9-]+\.html$/.test(data.sourceUrl))players.push({id:'cimatn:original-page',provider:'cimatn',name:'CimaTN - original player page',type:'browser',embedUrl:data.sourceUrl,sandbox:null});
     return players;
   }
@@ -380,27 +386,45 @@ export function dataLiteral(html,name){
   }return null;
 }
 function approvedPlayers(id,entries){
-  return approvedArabicUrls(parseArabicId(id),entries.filter(x=>typeof x?.url==='string').map(x=>x.url));
+  return approvedArabicUrls(parseArabicId(id),entries.filter(x=>typeof x?.url==='string').map(x=>x.url),arabicUrl(id));
 }
 export function safeTunisianFile(value){try{const u=new URL(value);return u.protocol==='https:'&&u.hostname==='video.wixstatic.com'&&!u.username&&!u.password&&!u.port&&/^\/video\/[a-f0-9_]+\/(?:[0-9]+p\/)?mp4\/file\.mp4$/.test(u.pathname);}catch{return false;}}
 function pSafeCommons(value){try{const u=new URL(value);return u.protocol==='https:'&&u.hostname==='upload.wikimedia.org'&&!u.username&&!u.password&&!u.port&&/\.(?:webm|mp4)$/.test(u.pathname);}catch{return false;}}
 function safeSourceHls(value){try{const u=new URL(value);if(u.protocol!=='https:'||u.hostname!=='s2.savefiles.com'||u.username||u.password||u.port||!u.pathname.endsWith('.m3u8'))return false;const start=Number(u.searchParams.get('s')),duration=Number(u.searchParams.get('e'));return !start||!duration||(start+duration)*1000>Date.now();}catch{return false;}}
 export async function cimaWatchData(html,{fetchPage=arabicPage}={}){
-  const slug=/const\s+watchPageSlug\s*=\s*["']([a-z0-9-]+)["']/.exec(html)?.[1]||/pageUrl\.includes\(["']([a-z0-9-]+)["']\)/.exec(html)?.[1];if(!slug)return null;
-  // CimaTN now publishes the watch pages on its own blog. The former
-  // cimatnwatchingg blog and its feed return 404 even when the title is live.
-  const origin=ARABIC_PROVIDERS.cimatn.origin,base=origin+'/feeds/pages/default?alt=json&max-results=150';
+  // Ignore Blogger's document-wide subscription links. Only the title's own
+  // watch-button configuration identifies which feed holds its playable data.
+  const $=load(html),scripts=$('script:not([src])').toArray().map(el=>$(el).text());
+  const config=scripts.find(text=>/(?:watchPageSlug|WATCH_PAGE_SLUG)\s*=|pageUrl\.includes\(/.test(text))||(html.includes('<')?'':html);
+  let slug=/const\s+(?:watchPageSlug|WATCH_PAGE_SLUG)\s*=\s*["']([a-z0-9-]+)["']/.exec(config)?.[1]||/pageUrl\.includes\(\s*["']([a-z0-9-]+)["']\s*\)/.exec(config)?.[1];
+  if(!slug){const $=load(html),watch=$('.BTNSDownWatch a.watch[href]').toArray().map(el=>fixed($(el).attr('href'),ARABIC_PROVIDERS.cimatn.origin)).filter(u=>u&&!u.search&&!u.hash&&/^\/p\/[a-z0-9-]+\.html$/.test(u.pathname));const links=[...new Set(watch.map(u=>u.pathname))];if(links.length===1)slug=links[0].slice(3,-5);}
+  if(!slug)return null;
+  // Films and series use different publisher blogs. Only follow a feed named
+  // on this title's page and verified as part of the source, never arbitrary URLs.
+  const published=/https:\/\/[a-z0-9.-]+\/+feeds\/(pages|posts)\/default\b/i.exec(config);
+  const trusted=new Set([ARABIC_PROVIDERS.cimatn.origin,'https://cimatnwatchedd.blogspot.com','https://cimatnwatchinggg.blogspot.com','https://cimatunisaaaa.blogspot.com','https://cimatunisaaa.blogspot.com']);
+  const origin=published?new URL(published[0]).origin:ARABIC_PROVIDERS.cimatn.origin,feedType=published?.[1]||'pages';
+  if(!trusted.has(origin))throw new Error('CimaTN watch feed origin is not verified');
+  const base=origin+`/feeds/${feedType}/default?alt=json&max-results=150`;
   const feed=JSON.parse(await fetchPage(base));
   const total=Number(feed.feed?.openSearch$totalResults?.$t||0);
   const more=await collectArabicPages(Array.from({length:Math.max(0,Math.ceil(total/150)-1)},(_,i)=>151+i*150),start=>fetchPage(`${base}&start-index=${start}`).then(JSON.parse));
   if(more.some(r=>r.status==='rejected'))throw new Error('CimaTN watch feed incomplete');
   const entries=[...(feed.feed?.entry||[]),...more.flatMap(r=>r.value.feed?.entry||[])];
   const candidates=new Map();
-  for(const entry of entries)for(const link of entry.link||[])try{const u=new URL(link.href);if(link.rel==='alternate'&&u.origin===origin&&!u.username&&!u.password&&!u.search&&!u.hash&&new RegExp(`^/p/${slug}(?:-[a-z0-9-]+)?\\.html$`).test(u.pathname))candidates.set(u.href,{entry,sourceUrl:u.href});}catch{}
-  const exact=candidates.get(`${origin}/p/${slug}.html`),match=exact||(candidates.size===1?[...candidates.values()][0]:null);if(!match)return null;
+  const prefix=feedType==='posts'?'/\\d{4}/\\d{2}/':'/p/';
+  for(const entry of entries)for(const link of entry.link||[])try{const u=new URL(link.href);if(link.rel==='alternate'&&u.origin===origin&&!u.username&&!u.password&&!u.search&&!u.hash&&new RegExp(`^${prefix}${slug}(?:-[a-z0-9-]+)?\\.html$`).test(u.pathname))candidates.set(u.href,{entry,sourceUrl:u.href});}catch{}
+  const exact=[...candidates.values()].filter(c=>new URL(c.sourceUrl).pathname.endsWith('/'+slug+'.html')),match=exact.length===1?exact[0]:candidates.size===1?[...candidates.values()][0]:null;if(!match)return null;
   const {entry,sourceUrl}=match;
   const body=entry.content?.$t||'',series=dataLiteral(body,'seriesData');
-  return series?{...series,sourceUrl}:{servers:dataLiteral(body,'servers')||[],sourceUrl};
+  return series?{...series,sourceUrl}:{servers:dataLiteral(body,'servers')||[],sourceUrl,sourceTitle:entry.title?.$t||''};
+}
+export function cimaMovieEntries(data){
+  const entries=data?.servers||[],name=value=>clean(value).normalize('NFKC').replace(/[أإآ]/g,'ا').replace(/[\u064b-\u065f]/g,'');
+  const title=name(data?.sourceTitle),specific=entry=>typeof entry?.name==='string'&&/^[\u0600-\u06ff]+(?:\s+[\u0600-\u06ff]+)+$/.test(name(entry.name))&&!/مشغل|سيرفر|السيرفر|جودة/.test(entry.name);
+  // A published movie page can advertise another film as a second option.
+  // Filter clearly named cross-promotions only when its own named option exists.
+  return entries.some(e=>specific(e)&&title.includes(name(e.name)))?entries.filter(e=>!specific(e)||title.includes(name(e.name))):entries;
 }
 async function getCimaDetails(id){
   const p=parseArabicId(id),html=await arabicPage(arabicUrl(id)),item=parseArabicDetails(id,html),data=await cimaWatchData(html);
@@ -416,17 +440,19 @@ export function cimaEpisodeEntries(data){
   const available=data?.availableEpisodes==null?null:Number(data.availableEpisodes);
   return Object.entries(data?.episodes||{}).filter(([key,servers])=>/^[1-9]\d*$/.test(key)&&(available===null||Number(key)<=available)&&Array.isArray(servers)&&servers.length);
 }
-async function fetchCimaPage({kind,page,search}){
+export async function fetchCimaPage({kind,page,search,fetchPage=arabicPage}){
   const label=kind==='series'?'مسلسلات تونسية':'أفلام تونسية',origin=ARABIC_PROVIDERS.cimatn.origin;
   // This small catalogue has many posts whose own watch pages are missing.
   // Filter a complete feed batch before paginating, so page one is usable.
   const url=`${origin}/feeds/posts/default${search?'':'/-/'+encodeURIComponent(label)}?alt=json&max-results=150&start-index=${(page-1)*150+1}${search?'&q='+encodeURIComponent(search):''}`;
-  const data=JSON.parse(await arabicPage(url)),feed=data.feed;if(!feed)throw new Error('CimaTN feed unavailable');
-  const items=[];
+  const data=JSON.parse(await fetchPage(url)),feed=data.feed;if(!feed)throw new Error('CimaTN feed unavailable');
+  const items=[],providerErrors=[],feeds=new Map();
+  const fetchWatchPage=url=>{if(!feeds.has(url))feeds.set(url,fetchPage(url));return feeds.get(url);};
   for(const entry of feed.entry||[]){
     const source=entry.link?.find(l=>l.rel==='alternate')?.href,id=arabicId('cimatn',kind==='series'?'s':'m',source);if(!id)continue;
-    const body=entry.content?.$t||'',watch=await cimaWatchData(body);
-    const playable=kind==='series'?Object.keys(watch?.episodes||{}).length>0:!!watch?.servers?.length;
+    const body=entry.content?.$t||'';let watch=null;
+    try{watch=await cimaWatchData(body,{fetchPage:fetchWatchPage});}catch(error){providerErrors.push({provider:'cimatn',id,error:error.message});}
+    const playable=kind==='series'?cimaEpisodeEntries(watch).length>0:approvedPlayers(id,cimaMovieEntries(watch)).length>0;
     const item=row(id,entry.title.$t,entry.media$thumbnail?.url?.replace('/s72-c/','/s640/'),{collection:'tunisian',country:'TN'});
     item.access=playable?'public':'catalogue-only';item.synopsis=parseArabicDetails(id,body).synopsis||'';
     item.publishedAt=entry.published?.$t;item.providerUpdatedAt=entry.updated?.$t;item.originalLanguage=null;
@@ -434,5 +460,5 @@ async function fetchCimaPage({kind,page,search}){
     const match=/year[^>]*>\s*((?:19|20)\d{2})/i.exec(body),tagYear=entry.category?.find(c=>/^(?:19|20)\d{2}$/.test(c.term))?.term;item.year=tagYear?Number(tagYear):match?Number(match[1]):item.year;
     items.push(item);
   }
-  const totalPages=Math.max(1,Math.ceil(Number(feed.openSearch$totalResults?.$t||feed.entry?.length||0)/150));return {items,page,totalPages,hasNext:page<totalPages,unavailablePosts:(feed.entry||[]).length-items.length};
+  const totalPages=Math.max(1,Math.ceil(Number(feed.openSearch$totalResults?.$t||feed.entry?.length||0)/150));return {items,page,totalPages,hasNext:page<totalPages,unavailablePosts:items.filter(item=>item.access==='catalogue-only').length,providerErrors};
 }

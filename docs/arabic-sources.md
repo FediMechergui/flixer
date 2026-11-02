@@ -1,5 +1,9 @@
 ﻿# Arabic providers for the Flixer APK
 
+Latest investigation: [2 November 2026 playback and coverage results](arabic-playback-2026-11-02/README.md).
+It covers current publisher moves, CimaTN's separate film feeds and official
+Bab El Hara alternatives. The dated checks below describe earlier behavior.
+
 Checked 15 October 2026. Implementation: `server/src/arabic-providers.js`.
 The APK is the product; hosted APIs and catalogue data support its search,
 playback and automatic updates. Dahsha remains separate and documentary-only.

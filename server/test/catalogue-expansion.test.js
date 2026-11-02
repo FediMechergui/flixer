@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import {leanCatalog} from '../src/export-catalog.js';
 import {matchesCollection} from '../../shared/collections.js';
-import {OFFICIAL_CHANNELS,officialEpisode,officialIdFromUrl,officialUrl,mapOfficialVideo,arabicEpisodeNumber} from '../src/youtube-originals.js';
+import {OFFICIAL_CHANNELS,officialEpisode,officialIdFromUrl,officialUrl,mapOfficialVideo,arabicEpisodeNumber,officialSearchQuery} from '../src/youtube-originals.js';
 import {parseOnePaceId,parseOnePaceArcs,parseOnePaceFiles} from '../src/onepace.js';
 test('regional filters distinguish drama, anime and French Canadian origin',()=>{
  assert.equal(matchesCollection({kind:'series',countries:['JP'],tags:['animation']},'jdrama'),false);
@@ -40,4 +40,12 @@ test('official Tunisian films and numbered episodes preserve their source identi
  const film=officialEpisode(channel,{...video,title:'فيلم باب بنات | Beb Lebnet Film'});
  assert.equal(film.kind,'film');assert.ok(film.altTitles.includes('Beb Lebnet'));assert.equal(officialIdFromUrl(officialUrl(film.id)),film.id);
  assert.equal(officialEpisode(channel,{...video,title:'لقطات شوفلي حل : فيلم الموسم 2'}),null);
+});
+
+test('producer Bab El Hara uploads preserve actual Arabic seasons and searchable Latin aliases',()=>{
+ const channel=OFFICIAL_CHANNELS.find(c=>c.key==='ajart'),video={id:'Cadfhi55dRg',durationSec:2948,title:'مسلسل باب الحارة الجزء الاول الحلقة 1 الأولى | Bab Al Harra Season 1 HD'};
+ const row=officialEpisode(channel,video);assert.equal(row.title,'باب الحارة');assert.equal(row.episodes[0].season,1);assert.equal(row.episodes[0].number,1);assert.ok(row.altTitles.includes('Bab El Hara'));assert.ok(row.collections.includes('arabic'));assert.ok(!row.collections.includes('tunisian'));
+ assert.equal(officialEpisode(channel,{...video,title:'باب الحارة ملخص الحلقة 1'}),null);assert.equal(officialEpisode(channel,{...video,durationSec:120}),null);
+ const numeric=officialEpisode(channel,{...video,title:'مسلسل باب الحارة 2 الحلقة 4 الرابعة بطولة سامر المصري'});assert.equal(numeric.id,row.id);assert.equal(numeric.episodes[0].season,2);assert.equal(numeric.episodes[0].number,4);
+ for(const query of ['Bab El Hara','Bab Al-Hara','Bab Al Harra'])assert.equal(officialSearchQuery(query),'باب الحارة');assert.equal(officialSearchQuery('Choufli Hal'),'Choufli Hal');
 });

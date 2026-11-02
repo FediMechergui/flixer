@@ -3,10 +3,11 @@ import {runtimeProviderSnapshot} from './runtime-source.js';
 ﻿import {Innertube} from 'youtubei.js';
 import {createHash} from 'node:crypto';
 import {parseDuration} from './text.js';
-import {matchesSearch} from '../../shared/search.js';
+import {matchesSearch,normalizeSearch} from '../../shared/search.js';
 import {matchesCollection} from '../../shared/collections.js';
 import {mergeShow} from './merge-library.js';
 export const OFFICIAL_CHANNELS=[
+ {key:'ajart',id:'UCeuEvvfHa4BFK21xB6RXJXA',name:'Aj Art Production',format:'arabic',min:1200,language:'ar',countries:['SY'],collections:['arabic'],archiveQuery:'الحلقة',tags:['drama']},
  {key:'watania',id:'UCdvWVsmQBROkgcGzVep73oA',name:'Watania Replay',format:'arabic',min:600,language:'ar',countries:['TN'],collections:['arabic','tunisian'],archiveQuery:'الحلقة',tags:['drama']},
  {key:'glitch',id:'UCn_FAXem2-e3HQvmK-mOH4g',name:'GLITCH',format:'glitch',min:600,language:'en',tags:['animation','comedy']},
  {key:'olydri',id:'UCdHXMcWxwZr2qQpdCCOcSkw',name:'Noob & Olydri',format:'noob',min:90,language:'fr',countries:['FR'],tags:['comedy','fantasy']},
@@ -44,17 +45,20 @@ export function officialEpisode(channel,video){const title=String(video.title||'
    let prefix=m[1].replace(/^(?:مسلسل|سيتكوم|سلسلة|برنامج)\s+/,'').trim();const seasonMatch=/(?:الموسم|الجزء)\s+([^|:–—-]+)/.exec(prefix);
    season=seasonMatch?arabicEpisodeNumber(seasonMatch[1]):null;number=arabicEpisodeNumber(m[2]);
    if(seasonMatch)prefix=prefix.replace(seasonMatch[0],'');show=prefix.replace(/[\s|:–—-]+$/,'').trim();
+   const babSeason=/^باب الحارة\s+([1-9]\d?)$/.exec(show);if(babSeason){show='باب الحارة';season=Number(babSeason[1]);}
    if(show==='شوفلي حل')altTitles=['Choufli Hal','Choufli 7al'];
+   if(show==='باب الحارة')altTitles=['Bab El Hara','Bab Al Hara','Bab Al-Hara','Bab Al Harra'];
   }
   }
  }
  if(!show||!number||season<0)return null;const hash=createHash('sha256').update(show.normalize('NFKC').toLowerCase()).digest('hex').slice(0,16),id=`sp:youtubeoriginals:${kind==='film'?'m':'s'}:${channel.key}-${hash}`,sub=/english sub|eng\s*sub|engsub/i.test(title),dub=/english dub|eng\s*dub/i.test(title),collections=['youtube-shows',...(channel.collections||[]),...(channel.language==='fr'?['french','french-series']:[]),...(channel.tags.includes('anime')?['anime']:[])];const offering={provider:'youtube',id:video.id,channelId:channel.id,sourceProvider:'youtubeoriginals',name:'YouTube - '+channel.name+(channel.regional?' (region availability varies)':'')};const episode={id:video.id,title,season,number,durationSec:video.durationSec,sourceUrl:'https://www.youtube.com/watch?v='+video.id,thumbs:{custom:video.thumb||`https://i.ytimg.com/vi/${video.id}/hqdefault.jpg`},audioModes:dub?['dub']:sub?['sub']:[],audioLanguages:dub?['en']:[],subtitleLanguages:sub?['en']:[],offerings:[offering]};return {id,title:show,altTitles,kind,year:channel.format==='noob'?2008:null,sourceUrl:officialUrl(id),channelId:'youtubeoriginals',originalLanguage:channel.language||null,countries:channel.countries||[],tags:channel.tags,collections,poster:{custom:episode.thumbs.custom},portrait:episode.thumbs.custom,providerMetadata:true,documentary:false,access:'public',episodes:[episode],episodeCount:1,audioModes:episode.audioModes,offerings:[{provider:'youtubeoriginals',id,sourceUrl:officialUrl(id)}]};}
 const discovered=new Map();
+export function officialSearchQuery(search){return /^bab (?:al |el )?har{1,2}a$/.test(normalizeSearch(search))?'باب الحارة':search;}
 export async function fetchOfficialPage({page=1,latest=false,kind='series',search,collection='',channelKey}={}){
  const channels=OFFICIAL_CHANNELS.filter(channel=>(!channelKey||channel.key===channelKey)&&(kind!=='film'||channel.format==='arabic')&&matchesCollection({kind:'series',collections:['youtube-shows',...(channel.collections||[])],originalLanguage:channel.language,countries:channel.countries,tags:channel.tags},collection));
  if(!channels.length)return {items:[],page,totalPages:1,hasNext:false};
  const rows=new Map(),results=await Promise.allSettled(channels.map(async channel=>{
-  const sourceQuery=search||(!latest?(kind==='film'?'فيلم':channel.archiveQuery):'')||'',p=await pageFor(channel,latest?1:page,sourceQuery);if(!p)return false;
+  const sourceQuery=officialSearchQuery(search)||(!latest?(kind==='film'?'فيلم':channel.archiveQuery):'')||'',p=await pageFor(channel,latest?1:page,sourceQuery);if(!p)return false;
   const nodes=p.videos?.length?p.videos:p.page?.contents_memo?.get('LockupView')||[];
   for(const node of nodes){const row=officialEpisode(channel,mapOfficialVideo(node));if(!row||row.kind!==kind)continue;const old=rows.get(row.id);rows.set(row.id,old?mergeShow(old,row):row);const cached=discovered.get(row.id);discovered.set(row.id,cached?mergeShow(cached,row):row);}
   return p.has_continuation;

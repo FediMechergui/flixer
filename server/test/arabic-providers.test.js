@@ -1,9 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {parseArabicId,arabicId,arabicUrl,parseArabicList,parseArabicDetails,parseArabicServers,dataLiteral,collectArabicPages,cimaEpisodeEntries,ahwakPlaybackLink,cinetimesCommonsServers,egydeadWatchLink,resolveArabicServers} from '../src/arabic-providers.js';
+import {parseArabicId,arabicId,arabicUrl,parseArabicList,parseArabicDetails,parseArabicServers,dataLiteral,collectArabicPages,cimaEpisodeEntries,ahwakPlaybackLink,cinetimesCommonsServers,egydeadWatchLink,resolveArabicServers,currentArabicUrl} from '../src/arabic-providers.js';
 import {specialistUrl,specialistJobs} from '../src/specialist-providers.js';
 import {unifiedTitle,discoverLibrary} from '../src/library-service.js';
 import {mergeShow} from '../src/merge-library.js';
+test('verified Arabic publisher moves preserve saved IDs and title-specific watch destinations',()=>{
+ const old='https://tv10.egydead.live/film/';assert.equal(currentArabicUrl(old),'https://a1.egydead.media/film/');assert.equal(arabicId('egydead','m',currentArabicUrl(old)),arabicId('egydead','m',old));
+ const id=arabicId('egydead','m',old);assert.equal(egydeadWatchLink(id,'<div class="watchNow"><a href="https://a1.egydead.media/film/watch/">Play</a></div>'),old+'watch/');
+ assert.equal(currentArabicUrl('https://kirmalk.com/watch.php?vid=123'),'https://kirmalk.art/watch.php?vid=123');assert.equal(arabicId('kirmalk','m','https://kirmalk.art/watch.php?vid=123'),'sp:kirmalk:m:123');assert.equal(arabicId('kirmalk','m','https://kirmalk.art.attacker.example/watch.php?vid=123'),null);
+ const rows=parseArabicServers('sp:ahwaktv:e:test','<div class="brooks_player"><iframe src="https://www.ok.ru/videoembed/123"></iframe></div><aside><iframe src="https://uqload.vc/embed-ad.html"></iframe></aside>');assert.equal(rows.length,1);assert.equal(rows[0].embedUrl,'https://www.ok.ru/videoembed/123');
+});
 
 test('Tuniflix preserves the source release year and short alternate titles',()=>{
   const item=parseArabicDetails('sp:tuniflix:m:the-needle','<h1>الإبرة</h1><span class="Date">2023</span><div class="Description"><p>A long source synopsis about the film and its characters.</p><p>ibra</p><p>الابرة</p><p>https://unrelated.example/ad</p></div>');

@@ -1,0 +1,310 @@
+{
+  "at": "2026-11-02T08:30:00.271Z",
+  "startedAt": "2026-11-02T08:10:25.365Z",
+  "finishedAt": "2026-11-02T08:23:58.700Z",
+  "complete": true,
+  "outcomes": {
+    "player_error": 7,
+    "playback_confirmed": 4,
+    "no_advancing_video": 1
+  },
+  "appVersion": "1.6.29-audit",
+  "appVersions": [
+    "1.6.29-audit"
+  ],
+  "scope": "Every returned server for the provider/type/language sample matrix, using the production player; not every catalogue episode.",
+  "preparationComplete": true,
+  "samples": 7,
+  "total": 12,
+  "tested": 12,
+  "confirmed": 4,
+  "previouslyConfirmed": 0,
+  "providers": [
+    {
+      "provider": "tuniflix",
+      "samples": 3,
+      "returned": 6,
+      "sourceServers": 6,
+      "tested": 6,
+      "confirmed": 3,
+      "confirmedSource": 3,
+      "lookupIssues": []
+    },
+    {
+      "provider": "cimatn",
+      "samples": 2,
+      "returned": 4,
+      "sourceServers": 4,
+      "tested": 4,
+      "confirmed": 0,
+      "confirmedSource": 0,
+      "lookupIssues": []
+    },
+    {
+      "provider": "youtubeoriginals",
+      "samples": 1,
+      "returned": 1,
+      "sourceServers": 1,
+      "tested": 1,
+      "confirmed": 1,
+      "confirmedSource": 1,
+      "lookupIssues": []
+    },
+    {
+      "provider": "ahwaktv",
+      "samples": 1,
+      "returned": 1,
+      "sourceServers": 1,
+      "tested": 1,
+      "confirmed": 0,
+      "confirmedSource": 0,
+      "lookupIssues": []
+    }
+  ],
+  "routes": [
+    {
+      "case": 1,
+      "provider": "tuniflix",
+      "serverProvider": "tuniflix",
+      "title": "بيت الحس",
+      "kind": "film",
+      "server": "Tuniflix - watch.strp2p.site",
+      "host": "watch.strp2p.site",
+      "type": "embed",
+      "testedAt": "2026-11-02T08:13:35.691Z",
+      "appVersion": "1.6.29-audit",
+      "appSha256": "80a032eb969b65299ae833c6d34296974a811c497793646e328617caeb37fe78",
+      "status": "player_error",
+      "ms": 42632,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
+      "httpStatuses": []
+    },
+    {
+      "case": 2,
+      "provider": "tuniflix",
+      "serverProvider": "tuniflix",
+      "title": "بيت الحس",
+      "kind": "film",
+      "server": "Tuniflix - uqload.vc",
+      "host": "uqload.vc",
+      "type": "embed",
+      "testedAt": "2026-11-02T08:23:45.910Z",
+      "appVersion": "1.6.29-audit",
+      "appSha256": "80a032eb969b65299ae833c6d34296974a811c497793646e328617caeb37fe78",
+      "status": "playback_confirmed",
+      "ms": 12582,
+      "proof": {
+        "start": 0.133333,
+        "end": 3.291294,
+        "duration": 6756.928,
+        "transport": "webview"
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 3,
+      "provider": "tuniflix",
+      "serverProvider": "tuniflix",
+      "title": "النافورة",
+      "kind": "film",
+      "server": "Tuniflix - watch.strp2p.site",
+      "host": "watch.strp2p.site",
+      "type": "embed",
+      "testedAt": "2026-11-02T08:17:00.133Z",
+      "appVersion": "1.6.29-audit",
+      "appSha256": "80a032eb969b65299ae833c6d34296974a811c497793646e328617caeb37fe78",
+      "status": "player_error",
+      "ms": 34342,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
+      "httpStatuses": []
+    },
+    {
+      "case": 4,
+      "provider": "tuniflix",
+      "serverProvider": "tuniflix",
+      "title": "النافورة",
+      "kind": "film",
+      "server": "Tuniflix - uqload.vc",
+      "host": "uqload.vc",
+      "type": "embed",
+      "testedAt": "2026-11-02T08:17:40.473Z",
+      "appVersion": "1.6.29-audit",
+      "appSha256": "80a032eb969b65299ae833c6d34296974a811c497793646e328617caeb37fe78",
+      "status": "playback_confirmed",
+      "ms": 27667,
+      "proof": {
+        "start": 0.175,
+        "end": 3.514036,
+        "duration": 6191.583,
+        "transport": "webview"
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 5,
+      "provider": "tuniflix",
+      "serverProvider": "tuniflix",
+      "title": "الإبرة",
+      "kind": "film",
+      "server": "Tuniflix - watch.strp2p.site",
+      "host": "watch.strp2p.site",
+      "type": "embed",
+      "testedAt": "2026-11-02T08:18:56.682Z",
+      "appVersion": "1.6.29-audit",
+      "appSha256": "80a032eb969b65299ae833c6d34296974a811c497793646e328617caeb37fe78",
+      "status": "player_error",
+      "ms": 39174,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
+      "httpStatuses": []
+    },
+    {
+      "case": 6,
+      "provider": "tuniflix",
+      "serverProvider": "tuniflix",
+      "title": "الإبرة",
+      "kind": "film",
+      "server": "Tuniflix - uqload.vc",
+      "host": "uqload.vc",
+      "type": "embed",
+      "testedAt": "2026-11-02T08:19:36.148Z",
+      "appVersion": "1.6.29-audit",
+      "appSha256": "80a032eb969b65299ae833c6d34296974a811c497793646e328617caeb37fe78",
+      "status": "playback_confirmed",
+      "ms": 15323,
+      "proof": {
+        "start": 0.277947,
+        "end": 4.063711,
+        "duration": 6985.28,
+        "transport": "webview"
+      },
+      "errors": [
+        "CONFIRM YOU ARE NOT A ROBOT\n\nClick the button\n\nI'm not a robot"
+      ],
+      "httpStatuses": []
+    },
+    {
+      "case": 7,
+      "provider": "cimatn",
+      "serverProvider": "cimatn",
+      "title": "ابرة The Needle",
+      "kind": "film",
+      "server": "CimaTN - vkvideo.ru",
+      "host": "vkvideo.ru",
+      "type": "embed",
+      "testedAt": "2026-11-02T08:14:18.828Z",
+      "appVersion": "1.6.29-audit",
+      "appSha256": "80a032eb969b65299ae833c6d34296974a811c497793646e328617caeb37fe78",
+      "status": "no_advancing_video",
+      "ms": 46471,
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 8,
+      "provider": "cimatn",
+      "serverProvider": "cimatn",
+      "title": "ابرة The Needle",
+      "kind": "film",
+      "server": "CimaTN - player.mediadelivery.net",
+      "host": "player.mediadelivery.net",
+      "type": "embed",
+      "testedAt": "2026-11-02T08:21:35.459Z",
+      "appVersion": "1.6.29-audit",
+      "appSha256": "80a032eb969b65299ae833c6d34296974a811c497793646e328617caeb37fe78",
+      "status": "player_error",
+      "ms": 64683,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
+      "httpStatuses": []
+    },
+    {
+      "case": 9,
+      "provider": "cimatn",
+      "serverProvider": "cimatn",
+      "title": "ابرة The Needle",
+      "kind": "film",
+      "server": "CimaTN - app.videas.fr",
+      "host": "app.videas.fr",
+      "type": "embed",
+      "testedAt": "2026-11-02T08:17:34.723Z",
+      "appVersion": "1.6.29-audit",
+      "appSha256": "80a032eb969b65299ae833c6d34296974a811c497793646e328617caeb37fe78",
+      "status": "player_error",
+      "ms": 5444,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
+      "httpStatuses": []
+    },
+    {
+      "case": 10,
+      "provider": "cimatn",
+      "serverProvider": "cimatn",
+      "title": "دار العرس Dar El 3ers HDCAM",
+      "kind": "film",
+      "server": "CimaTN - player.mediadelivery.net",
+      "host": "player.mediadelivery.net",
+      "type": "embed",
+      "testedAt": "2026-11-02T08:22:40.370Z",
+      "appVersion": "1.6.29-audit",
+      "appSha256": "80a032eb969b65299ae833c6d34296974a811c497793646e328617caeb37fe78",
+      "status": "player_error",
+      "ms": 65290,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
+      "httpStatuses": []
+    },
+    {
+      "case": 12,
+      "provider": "youtubeoriginals",
+      "serverProvider": "youtube",
+      "title": "باب الحارة",
+      "kind": "series",
+      "server": "YouTube - Aj Art Production",
+      "host": "www.youtube.com",
+      "type": "youtube",
+      "testedAt": "2026-11-02T08:21:08.369Z",
+      "appVersion": "1.6.29-audit",
+      "appSha256": "80a032eb969b65299ae833c6d34296974a811c497793646e328617caeb37fe78",
+      "status": "playback_confirmed",
+      "ms": 19927,
+      "proof": {
+        "start": 0,
+        "end": 3.973048,
+        "duration": 3060.541,
+        "transport": "webview"
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 13,
+      "provider": "ahwaktv",
+      "serverProvider": "ahwaktv",
+      "title": "باب الحارة",
+      "kind": "series",
+      "server": "AhwakTV - www.ok.ru",
+      "host": "www.ok.ru",
+      "type": "embed",
+      "testedAt": "2026-11-02T08:21:28.463Z",
+      "appVersion": "1.6.29-audit",
+      "appSha256": "80a032eb969b65299ae833c6d34296974a811c497793646e328617caeb37fe78",
+      "status": "player_error",
+      "ms": 6781,
+      "errors": [
+        "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
+      ],
+      "httpStatuses": []
+    }
+  ]
+}
