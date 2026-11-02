@@ -1,0 +1,118 @@
+[
+  {
+    "title": "Les Simpson",
+    "episodeId": "sp:dessinanime:e:456-les-simpson:1:2",
+    "detailsStatus": 200,
+    "titleId": "mf:s:the-simpsons-dcm6v",
+    "mappedEpisodes": 95,
+    "detailsMs": 2740,
+    "status": 200,
+    "dessinServers": [
+      {
+        "id": "dessinanime:1106666",
+        "type": "dessinanime",
+        "playerId": 1106666
+      },
+      {
+        "id": "dessinanime:144008",
+        "type": "dessinanime",
+        "playerId": 144008
+      },
+      {
+        "id": "dessinanime:2210418",
+        "type": "embed"
+      }
+    ],
+    "ms": 669
+  },
+  {
+    "title": "Bluey",
+    "episodeId": "sp:dessinanime:e:82728-bluey:1:4",
+    "detailsStatus": 200,
+    "titleId": "mf:s:bluey",
+    "mappedEpisodes": 92,
+    "detailsMs": 1807,
+    "status": 200,
+    "dessinServers": [
+      {
+        "id": "dessinanime:133294",
+        "type": "dessinanime",
+        "playerId": 133294
+      }
+    ],
+    "ms": 449
+  },
+  {
+    "title": "Avatar : Le Dernier Maître de l'air",
+    "episodeId": "sp:dessinanime:e:246-avatar-le-dernier-maitre-de-lair:1:1",
+    "detailsStatus": 200,
+    "titleId": "sp:dessinanime:s:246-avatar-le-dernier-maitre-de-lair",
+    "mappedEpisodes": 18,
+    "detailsMs": 1082,
+    "status": 200,
+    "dessinServers": [
+      {
+        "id": "dessinanime:1511590",
+        "type": "dessinanime",
+        "playerId": 1511590
+      },
+      {
+        "id": "dessinanime:132353",
+        "type": "dessinanime",
+        "playerId": 132353
+      }
+    ],
+    "ms": 573
+  },
+  {
+    "title": "Fullmetal Alchemist : Brotherhood",
+    "episodeId": "sp:dessinanime:e:31911-fullmetal-alchemist-brotherhood:1:1",
+    "detailsStatus": 200,
+    "titleId": "mf:s:fullmetal-alchemist-brotherhood",
+    "mappedEpisodes": 21,
+    "detailsMs": 1873,
+    "status": 200,
+    "dessinServers": [
+      {
+        "id": "dessinanime:2271469",
+        "type": "dessinanime",
+        "playerId": 2271469
+      }
+    ],
+    "ms": 454
+  },
+  {
+    "title": "Miraculous, les aventures de Ladybug et Chat Noir",
+    "episodeId": "sp:dessinanime:e:65334-miraculous-les-aventures-de-ladybug-et-chat-noir:0:1",
+    "detailsStatus": 200,
+    "titleId": "sp:dessinanime:s:65334-miraculous-les-aventures-de-ladybug-et-chat-noir",
+    "mappedEpisodes": 91,
+    "detailsMs": 805,
+    "status": 200,
+    "dessinServers": [
+      {
+        "id": "dessinanime:2227614",
+        "type": "dessinanime",
+        "playerId": 2227614
+      }
+    ],
+    "ms": 522
+  },
+  {
+    "title": "‎Avatar Aang, le dernier maître de l'air",
+    "episodeId": "sp:dessinanime:m:980431-la-legende-de-aang-le-dernier-maitre-de-lair",
+    "detailsStatus": 200,
+    "titleId": "sp:dessinanime:m:980431-la-legende-de-aang-le-dernier-maitre-de-lair",
+    "mappedEpisodes": 1,
+    "detailsMs": 1013,
+    "status": 200,
+    "dessinServers": [
+      {
+        "id": "dessinanime:2245757",
+        "type": "dessinanime",
+        "playerId": 2245757
+      }
+    ],
+    "ms": 520
+  }
+]

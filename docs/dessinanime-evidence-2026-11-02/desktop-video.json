@@ -1,0 +1,20 @@
+[
+  {
+    "playerId": 1106666,
+    "time": 1.720701,
+    "duration": 1391.125,
+    "readyState": 2,
+    "width": 960,
+    "height": 720,
+    "error": null
+  },
+  {
+    "playerId": 133294,
+    "time": 5.784009,
+    "duration": 433.237914,
+    "readyState": 4,
+    "width": 1280,
+    "height": 720,
+    "error": null
+  }
+]

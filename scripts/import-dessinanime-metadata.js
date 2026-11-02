@@ -1,9 +1,11 @@
 import fs from 'node:fs';import {pathToFileURL} from 'node:url';import path from 'node:path';import {createHash} from 'node:crypto';
 import {readJson,writeJson} from '../server/src/store.js';import {validateDessinMetadata,mergeDessinMetadata} from '../server/src/dessin-collection.js';
 
-export function importDessinMetadata(report,{cache=readJson('providers-flixer.json',{items:[]}),persist=true,hashKey='dessinMetadataHash'}={}){
+export function importDessinMetadata(report,{cache,persist=true,hashKey='dessinMetadataHash'}={}){
  if(report?.format!==1||!Array.isArray(report.items))throw Error('Invalid DessinAnime metadata report');
  for(const row of report.items)validateDessinMetadata(row);
+ if(!report.items.length)return {items:0,unchanged:true};
+ cache??=readJson('providers-flixer.json',{items:[]});
  const hash=createHash('sha256').update(JSON.stringify(report.items)).digest('hex');if(cache[hashKey]===hash)return {items:report.items.length,unchanged:true};
  const items=new Map(cache.items.map(row=>[row.id,row]));for(const row of report.items)items.set(row.id,mergeDessinMetadata(items.get(row.id),row));
  cache.items=[...items.values()];cache[hashKey]=hash;cache.lastRefreshAt=new Date().toISOString();if(persist)writeJson('providers-flixer.json',cache);

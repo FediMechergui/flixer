@@ -52,11 +52,12 @@ removed players.
 
 The checkpoint is imported in a separate workflow step as well, so a browser
 step timeout can retain pages completed before the timeout. A new browser first
-loads the ordinary homepage before navigating to its selected title.
+loads the ordinary homepage before navigating to its selected title. Empty
+reports exit before loading or rewriting the large provider cache.
 
 ## Verification
 
-All 306 server regression tests passed. The new tests cover exact source identity binding, sparse episode
+All 307 server regression tests passed. The new tests cover exact source identity binding, sparse episode
 numbering, page limits, interrupted collection, resumed accumulation, retained
 players, authoritative empty player lists, and validation before importing.
 
@@ -68,6 +69,38 @@ advanced to 1.72 seconds (960×720), and Bluey S1E4 player 133294 advanced to
 5.78 seconds (1280×720), during separate 12-second checks. Neither reported a
 media error, although Simpson was buffering at the final sample. These short
 checks do not establish sustained playback or successful Android playback.
-Browser-runner and hosted API results are recorded below after publication.
+The sanitized [desktop video results](dessinanime-evidence-2026-11-02/desktop-video.json)
+and [six source API/media probes](dessinanime-evidence-2026-11-02/media-probes.json)
+contain no transient media URLs.
+
+## Hosted publication
+
+[Refresh 41426018999](https://github.com/FediMechergui/flixer/actions/runs/41426018999)
+completed successfully, publishing catalogue version `2026-11-02T10:13:05.690Z`.
+Backend deploy `6ae860b45a4484834d1c6cb2` serves the corresponding code changes
+on Netlify. No Vercel deployment or new APK was used for this data update.
+
+The production API returned HTTP 200 title records and episode stream responses
+for all six sampled titles, retaining all 318 source episode/film mappings.
+Samples were Les Simpson S1E2, Bluey S1E4, Avatar S1E1, Brotherhood S1E1,
+Miraculous special S0E1, and the Aang film. Each stream response contained its
+actual deferred DessinAnime player ID(s). Source identity survived merging into the existing
+Myflixer titles for Simpson, Bluey and Brotherhood. The six stream endpoint
+requests took 449–669 ms; separate title retrieval took 805–2740 ms. These are
+individual request measurements, not a general latency benchmark.
+
+[Hosted results](dessinanime-evidence-2026-11-02/hosted-results.json) record each
+episode ID, source player IDs, counts and timings. API resolution alone does not
+prove playback of every player.
+
+The first GitHub runner browser attempt still required verification and collected
+zero pages. The reviewed mappings were retained and published successfully.
+Local browser discovery is confirmed; fresh discovery on GitHub is still blocked.
+The homepage-first retry in
+[scheduled run 41427923643](https://github.com/FediMechergui/flixer/actions/runs/41427923643)
+also stopped for verification with zero collected pages. Its metadata import
+retained the published mappings. The rest of that scheduled historical refresh
+continues independently. The source-specific collector can resume locally when
+ordinary browser access is available; no automated verification solving is used.
 
 Source: [DessinAnime](https://dessinanime.cc/).

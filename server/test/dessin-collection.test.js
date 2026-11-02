@@ -70,3 +70,9 @@ test('a success timestamp without its cached players never suppresses rediscover
  const report=await collectDessinMetadata({titles:[row],pageBudget:2,readPage:async url=>({status:200,url,html:url===dessinUrl(id)?html(guide):episode(1)})});
  assert.equal(report.items[0].episodes[0].id,eid(1));
 });
+
+test('an empty browser report does not rewrite or mutate the provider cache',()=>{
+ const cache={items:[catalogue],lastRefreshAt:'2026-10-01T00:00:00Z'};const before=JSON.stringify(cache);
+ assert.deepEqual(importDessinMetadata({format:1,items:[]},{cache,persist:false}),{items:0,unchanged:true});
+ assert.equal(JSON.stringify(cache),before);
+});
