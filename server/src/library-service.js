@@ -1,6 +1,7 @@
 import {runtimeTitle as readPackedTitle,runtimeEpisode as readPackedEpisodeTitle,runtimeLibrary} from './runtime-source.js';
 import {hosted} from './hosting.js';
 import {FRENCH_STREAM_ORIGIN,getFrenchDetails} from './french-providers.js';
+import {frembedOfferingFor} from './frembed.js';
 import { mergeCachedProviders } from './provider-sync.js';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -293,6 +294,9 @@ export async function unifiedStream(id,{showId,source,prefix='/api/stream',catal
   if(!episode)return null;
   if(product==='dahsha'&&(!base || title.providerMetadata || /^(fm|hd):/.test(title.id))&&title.documentary!==true)return null;
   const offers=episodeOfferings(episode);
+  if(product==='flixer'&&!quick&&!offers.some(o=>o.provider==='frembed')){
+    const alternative=frembedOfferingFor(title,episode);if(alternative)offers.push(alternative);
+  }
   const results=await Promise.allSettled(offers.map(async o=>{
     if(quick&&o.provider!=='dessinanime'&&(o.provider==='myflixer'||specialistUrl(o.id)))return [];
     if(quick&&o.provider==='hdtoday'&&!title.tmdbId&&!title.offerings?.some(o=>o.provider==='fmovies'&&o.tmdbId))return [];

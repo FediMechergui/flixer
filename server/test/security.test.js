@@ -2,6 +2,22 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { proxyUrl, verifyProxy, isPublicAddress, safeRemoteFetch, validMediaId, scriptJson, escapeHtml } from '../src/stream-security.js';
 import { handleStreamProxy, handleEmbedPlayer, rewriteM3u8 } from '../src/myflixer.js';
+import https from 'node:https';
+import {EventEmitter} from 'node:events';
+import {PassThrough} from 'node:stream';
+
+test('manual source redirect inspection never contacts its destination or weakens initial address checks',async t=>{
+  let calls=0;
+  t.mock.method(https,'request',(_url,options,callback)=>{
+    calls++;assert.equal(typeof options.lookup,'function');
+    const request=new EventEmitter();request.end=()=>{const response=new PassThrough();response.statusCode=302;response.headers={location:'http://127.0.0.1/private'};callback(response);response.end();};return request;
+  });
+  const response=await safeRemoteFetch('https://8.8.8.8/player',{manualRedirect:true,redirects:0});
+  assert.equal(response.status,302);assert.equal(response.headers.get('location'),'http://127.0.0.1/private');await response.body.cancel();assert.equal(calls,1);
+  await assert.rejects(safeRemoteFetch('https://8.8.8.8/player'),/Private/);assert.equal(calls,2);
+  await assert.rejects(safeRemoteFetch('https://8.8.8.8/player',{redirects:0}),/Too many/);assert.equal(calls,3);
+  await assert.rejects(safeRemoteFetch('https://127.0.0.1/private',{manualRedirect:true}),/Private/);assert.equal(calls,3);
+});
 
 test('proxy tokens reject modified destinations, signatures and expired requests', () => {
   const url = new URL(proxyUrl('https://example.com/api/stream', 'https://cdn.example/video?a=1%25'));

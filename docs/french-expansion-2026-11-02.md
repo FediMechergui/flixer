@@ -1,5 +1,7 @@
 # French animation sources — 2 November 2026
 
+Follow-up: [individual servers, missing-host diagnosis and Android checks](french-player-followup-2026-11-02.md).
+
 Flixer now has separate adapters for Frembed and DessinAnime.net, alongside the
 existing DessinAnime.cc and French Stream adapters. This is backend work; it does
 not change the existing APK's inline/fullscreen behaviour or Dahsha's scope.

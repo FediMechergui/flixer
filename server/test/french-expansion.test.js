@@ -5,10 +5,31 @@ import {parseDessinNetId,dessinNetIdFromUrl,parseDessinNetList,parseDessinNetDet
 import {specialistJobs,parseSpecialistId,specialistIdFromUrl} from '../src/specialist-providers.js';
 import {mergeLibrary} from '../src/merge-library.js';
 import {mergeDessinPlayback,getDessinDetails} from '../src/dessinanime.js';
+import {frembedOfferingFor,parseFrembedRoutes,frembedHostServer} from '../src/frembed.js';
+import {unifiedStream} from '../src/library-service.js';
 
 const seriesId='sp:frembed:s:246';
 const episode=(epi=1,version='VF')=>({title:'Avatar: The Last Airbender',tmdb:'246',sa:1,epi,version,link:`https://frembed.uno/embed/serie/246?sa=1&epi=${epi}`});
 const api=items=>({status:200,result:{items}});
+test('Frembed free server links bind to the requested title, episode, language and source server ID',()=>{
+  const link={id:21687,lang:'vf',label:'Uqload',host:{slug:'uqload'},url:'/api/stream?type=serie&tmdb=246&sa=1&epi=1&server=id:21687'};
+  const data={tmdb:'246',sa:1,epi:1,links:[link]},id='sp:frembed:e:246:1:1';
+  const routes=parseFrembedRoutes(id,data);assert.equal(routes.length,1);
+  const host=frembedHostServer(routes[0],'https://uqload.vc/embed-u330rs2rktmh.html');assert.equal(host.name,'Frembed · VF · Uqload');assert.deepEqual(host.audioLanguages,['fr']);assert.equal(host.type,'embed');
+  assert.throws(()=>parseFrembedRoutes('sp:frembed:e:246:1:2',data),/identity/);
+  for(const change of [{premium:true},{url:link.url.replace('epi=1','epi=2')},{url:link.url+'&tmdb=999'},{url:link.url.replace('id:21687','id:1')},{url:'https://evil.org'+link.url}])assert.deepEqual(parseFrembedRoutes(id,{...data,links:[{...link,...change}]}),[]);
+  for(const location of ['https://uqload.vc.evil.org/embed-x.html','https://127.0.0.1/e/private','https://user@uqload.vc/embed-x.html','https://uqload.vc/account'])assert.equal(frembedHostServer(routes[0],location),null);
+  const dubbed=frembedHostServer({...routes[0],language:'vostfr'},host.embedUrl);assert.equal(dubbed.audioLanguages,undefined);assert.deepEqual(dubbed.subtitleLanguages,['fr']);
+});
+test('verified French titles discover missing Frembed offerings without inventing episode coordinates',async()=>{
+  const show={id:'sp:dessinanime:s:246-avatar',kind:'series',title:'Avatar',tmdbId:246,collections:['french'],offerings:[{provider:'dessinanime',id:'sp:dessinanime:s:246-avatar'}],episodes:[{id:'sp:dessinanime:e:246-avatar:2:3',season:2,number:3,offerings:[{provider:'dessinanime',id:'sp:dessinanime:e:246-avatar:2:3'}]}]};
+  const requests=[],resolveSpecialist=async id=>{requests.push(id);return id==='sp:frembed:e:246:2:3'?[{id:'verified',provider:'frembed',type:'embed',embedUrl:frembedUrl(id)}]:[];};
+  const args={product:'flixer',catalog:{shows:[show]},showId:show.id,resolveTitle:async()=>show,resolveSpecialist};
+  const result=await unifiedStream(show.episodes[0].id,args);assert.ok(result.servers.some(s=>s.provider==='frembed'));assert.equal(requests.filter(id=>id==='sp:frembed:e:246:2:3').length,1);assert.equal(show.episodes[0].offerings.length,1);
+  requests.length=0;await unifiedStream(show.episodes[0].id,{...args,quick:true});assert.equal(requests.includes('sp:frembed:e:246:2:3'),false);
+  const unavailable=await unifiedStream(show.episodes[0].id,{...args,resolveSpecialist:async()=>[]});assert.equal(unavailable.servers.some(s=>s.provider==='frembed'),false);
+  assert.equal(frembedOfferingFor({...show,tmdbId:null},show.episodes[0]),null);assert.equal(frembedOfferingFor(show,{number:3}),null);assert.equal(frembedOfferingFor(show,{season:1,number:0}),null);assert.equal(frembedOfferingFor({...show,collections:[],offerings:[]},show.episodes[0]),null);
+});
 test('hosted DessinAnime search denial cannot prevent a verified alternative for an existing source title',async()=>{
   const id='sp:dessinanime:m:309809-le-petit-prince',requests=[];
   const saved={id,title:'Le Petit Prince',year:2015,kind:'film',episodes:[],access:'catalogue-only',offerings:[{provider:'dessinanime',id,availability:'catalogue-only'}]};
@@ -61,6 +82,11 @@ test('DessinAnime.net broken search slugs require unique source title plus match
 test('DessinAnime.net maps public Xtremestream frames to inline HLS and rejects untrusted hosts',()=>{
   const parsed=parseDessinNetPlayers('<iframe src="https://lecteur1.xtremestream.co/player/index.php?data=Abc123"></iframe><iframe src="https://emmmmbed.com/embed/21laX8xe"></iframe><iframe src="https://lecteur1.xtremestream.co.evil.org/player/index.php?data=abc"></iframe><iframe src="https://127.0.0.1/private"></iframe>');
   assert.equal(parsed.length,3);assert.equal(parsed[0].type,'hls');assert.equal(parsed[0].streamUrl,'https://lecteur1.xtremestream.co/player/xs1.php?data=Abc123');assert.equal(parsed[0].headers.Referer,'https://lecteur1.xtremestream.co/');assert.equal(parsed[2].embedUrl,'https://emmmmbed.com/embed/21laX8xe');
+});
+test('the currently advertised Xtremestream.xyz host keeps source request headers for native HLS',()=>{
+  const servers=parseDessinNetPlayers('<iframe src="https://lecteur1.xtremestream.xyz/player/index.php?data=0e01938fc48a2cfb5f2217fbfb00722d"></iframe>');
+  assert.equal(servers[0].type,'hls');assert.equal(servers[0].streamUrl,'https://lecteur1.xtremestream.xyz/player/xs1.php?data=0e01938fc48a2cfb5f2217fbfb00722d');assert.equal(servers[0].headers.Referer,'https://lecteur1.xtremestream.xyz/');assert.ok(servers[0].headers['User-Agent']);
+  for(const bad of ['https://lecteur1.xtremestream.xyz.evil.org/player/index.php?data=abc','https://user@lecteur1.xtremestream.xyz/player/index.php?data=abc','https://lecteur1.xtremestream.xyz/player/private.php?data=abc'])assert.deepEqual(parseDessinNetPlayers(`<iframe src="${bad}"></iframe>`),[]);
 });
 test('both French sources participate in the provider registry and cartoon refresh scopes',()=>{
   const jobs=specialistJobs({collection:'french-cartoons'});for(const provider of ['frembed','dessinanimenet'])assert.deepEqual(jobs.filter(j=>j.provider===provider).map(j=>j.kind),['film','series']);

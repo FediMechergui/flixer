@@ -55,7 +55,7 @@ export function isPublicAddress(address) {
 }
 
 // Pin the validated DNS result to the connection, and revalidate every redirect.
-export async function safeRemoteFetch(input, { headers = {}, redirects = 5, timeoutMs=30000, method='GET',body } = {}) {
+export async function safeRemoteFetch(input, { headers = {}, redirects = 5, timeoutMs=30000, method='GET',body,manualRedirect=false } = {}) {
   const url = new URL(input);
   if(!['GET','HEAD','POST'].includes(method))throw new Error('Unsupported upstream method');
   if(body!==undefined && (method!=='POST'||typeof body!=='string'||Buffer.byteLength(body)>10000))throw new Error('Invalid upstream request body');
@@ -76,7 +76,9 @@ export async function safeRemoteFetch(input, { headers = {}, redirects = 5, time
     request.on('error', reject);
     request.end(body);
   });
-  if ([301,302,303,307,308].includes(upstream.statusCode) && upstream.headers.location) {
+  // A provider resolver can inspect Location without making a request to it.
+  // The initial connection still uses the same public-address validation/pinning.
+  if ([301,302,303,307,308].includes(upstream.statusCode) && upstream.headers.location && manualRedirect!==true) {
     upstream.destroy();
     if (redirects <= 0) throw new Error('Too many media redirects');
     const nextMethod=upstream.statusCode===303 || ([301,302].includes(upstream.statusCode) && method==='POST')?'GET':method;

@@ -1,6 +1,7 @@
 import {load} from 'cheerio';
 import {artworkUrl} from '../../shared/artwork.js';
 import {frenchSourceRequest} from './french-source-request.js';
+import {safeRemoteFetch} from './stream-security.js';
 
 export const FREMBED_ORIGIN='https://frembed.uno';
 export const FREMBED_PROVIDERS={frembed:{name:'Frembed',origin:FREMBED_ORIGIN,kind:null,collections:['french','french-cartoons']}};
@@ -61,5 +62,53 @@ export async function resolveFrembedServers(id,options={}){
   const p=parseFrembedId(id);if(!p||p.type==='s')return [];
   const data=JSON.parse(await request(`/api/public/v1/${p.type==='m'?'movies':'tv'}/${p.slug}${p.type==='e'?`?sa=${p.season}&epi=${p.number}`:''}`,options));
   const detail=parseFrembedDetails(`sp:frembed:${p.type==='m'?'m':'s'}:${p.slug}`,data),episode=detail?.episodes.find(e=>e.id===id);if(!episode)return [];
-  return [{id:`frembed:${id}`,provider:'frembed',name:`Frembed${episode.audioLanguages?.includes('fr')?' · VF':''}${episode.subtitleLanguages?.includes('fr')?' · VOSTFR':''}`,type:'embed',embedUrl:episode.sourceUrl,sourceOrigin:FREMBED_ORIGIN,sandbox:null,audioLanguages:episode.audioLanguages,subtitleLanguages:episode.subtitleLanguages}];
+  const fallback={id:`frembed:${id}`,provider:'frembed',name:'Frembed · All servers',type:'embed',embedUrl:episode.sourceUrl,sourceOrigin:FREMBED_ORIGIN,sandbox:null,audioLanguages:episode.audioLanguages,subtitleLanguages:episode.subtitleLanguages};
+  // These are the ordinary free player's own requests, not premium endpoints.
+  const params=new URLSearchParams({id:p.slug,...(p.type==='e'?{sa:String(p.season),epi:String(p.number)}:{}),idType:'tmdb'});
+  const referer=`${FREMBED_ORIGIN}/${p.type==='m'?'films':'series'}?${params}`;
+  try{
+    const payload=JSON.parse(await request(`/api/${p.type==='m'?'films':'series'}?${params}`,{...options,referer}));
+    const routes=parseFrembedRoutes(id,payload),resolved=await Promise.allSettled(routes.slice(0,8).map(route=>resolveHostRoute(route,{...options,referer})));
+    const hosts=[...new Map(resolved.flatMap(result=>result.status==='fulfilled'&&result.value?[result.value]:[]).map(server=>[server.embedUrl,server])).values()];
+    return [...hosts,fallback];
+  }catch{return [fallback];}
+}
+
+const hostFamilies={voe:new Set(['voe.sx','derricknationtop.com']),dood:new Set(['doodstream.com','dood.to','dood.watch','playmogo.com']),uqload:new Set(['uqload.vc','uqload.net','uqload.co'])};
+export function parseFrembedRoutes(id,data){
+  const p=parseFrembedId(id);if(!p||p.type==='s'||String(data?.tmdb)!==p.slug||data.error||data.is_visible===false||p.type==='e'&&(data.sa!==p.season||data.epi!==p.number))throw Error('Frembed server identity mismatch');
+  if(!Array.isArray(data.links))return [];
+  const seen=new Set(),out=[];
+  for(const link of data.links){try{
+    if(link.premium||link.vip||link.requiresAuth||!Number.isSafeInteger(link.id)||link.id<1||!['vf','vff','vfq','vostfr','vo'].includes(link.lang))continue;
+    const u=new URL(link.url,FREMBED_ORIGIN),q=u.searchParams;
+    if(u.origin!==FREMBED_ORIGIN||u.username||u.password||u.hash||u.pathname!=='/api/stream'||q.get('type')!==(p.type==='m'?'movie':'serie')||q.get('tmdb')!==p.slug||q.get('server')!==`id:${link.id}`)continue;
+    const keys=p.type==='e'?['type','tmdb','sa','epi','server']:['type','tmdb','server'];
+    if([...q.keys()].some(k=>!keys.includes(k))||keys.some(k=>q.getAll(k).length!==1)||p.type==='e'&&(q.get('sa')!==String(p.season)||q.get('epi')!==String(p.number))||seen.has(link.id))continue;
+    seen.add(link.id);out.push({id:`frembed:${id}:${link.id}`,url:u.href,host:link.host?.slug,name:clean(link.label||link.host?.name||'Player').slice(0,60),language:link.lang});
+  }catch{}}return out;
+}
+export function frembedHostServer(route,location){
+  try{const u=new URL(location);if(u.protocol!=='https:'||u.username||u.password||u.port||!hostFamilies[route.host]?.has(u.hostname))return null;
+    if(route.host==='uqload'?!/^\/embed-[a-z0-9]+\.html$/i.test(u.pathname):!/^\/e\/[a-z0-9]+\/?$/i.test(u.pathname))return null;
+    return {id:route.id,provider:'frembed',name:`Frembed · ${route.language.toUpperCase()} · ${route.name}`,type:'embed',embedUrl:u.href,sourceOrigin:FREMBED_ORIGIN,sandbox:null,...languages(route.language),headers:{Referer:FREMBED_ORIGIN+'/'},resolution:'source-player-link'};
+  }catch{return null;}
+}
+const hostCache=new Map();
+async function resolveHostRoute(route,{fresh=false,referer}={}){
+  const old=hostCache.get(route.url);if(!fresh&&old&&Date.now()-old.at<120000)return old.promise;
+  const promise=(async()=>{const r=await safeRemoteFetch(route.url,{manualRedirect:true,redirects:0,timeoutMs:4500,headers:{Referer:referer,'User-Agent':'Mozilla/5.0'}});await r.body?.cancel();return [301,302,303,307,308].includes(r.status)?frembedHostServer(route,r.headers.get('location')):null;})();
+  hostCache.set(route.url,{at:Date.now(),promise});if(hostCache.size>100)hostCache.delete(hostCache.keys().next().value);
+  try{return await promise;}catch(error){if(hostCache.get(route.url)?.promise===promise)hostCache.delete(route.url);throw error;}
+}
+
+// Ask the public availability API for a verified French title even before its
+// historical catalogue page has been crawled. Coordinates must come from the
+// existing episode guide; this does not create or advertise unavailable players.
+export function frembedOfferingFor(title,episode){
+  if(!title||!episode||!Number.isSafeInteger(title.tmdbId)||title.tmdbId<1)return null;
+  const french=title.originalLanguage==='fr'||(title.collections||[]).some(c=>c==='french'||c==='french-cartoons')||(title.offerings||[]).some(o=>['dessinanime','dessinanimenet','frenchstream','frembed'].includes(o.provider));
+  if(!french)return null;
+  const id=title.kind==='film'?`sp:frembed:m:${title.tmdbId}`:title.kind==='series'&&Number.isInteger(episode.season)&&Number.isInteger(episode.number)?`sp:frembed:e:${title.tmdbId}:${episode.season}:${episode.number}`:null;
+  return parseFrembedId(id)?{provider:'frembed',id}:null;
 }
