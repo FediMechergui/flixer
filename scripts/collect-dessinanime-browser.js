@@ -2,10 +2,14 @@ import fs from 'node:fs';import path from 'node:path';
 import {readJsonItems} from '../server/src/json-files.js';import {DATA_DIR} from '../server/src/store.js';
 import {parseDessinId,dessinUrl,fetchDessinPage} from '../server/src/dessinanime.js';import {collectDessinMetadata,mergeDessinMetadata} from '../server/src/dessin-collection.js';
 import {launchDessinBrowser,connectDessinBrowser} from './dessin-browser.js';import {importDessinMetadata} from './import-dessinanime-metadata.js';
+import {validateDessinArtifact} from './dessin-artifacts.js';
 const args=process.argv.slice(2),option=(name,fallback)=>args.includes(name)?args[args.indexOf(name)+1]:fallback,port=Number(option('--port','9237')),pageBudget=Number(option('--pages','48')),limit=Number(option('--titles','4'));
 if(!Number.isSafeInteger(limit)||limit<1||limit>100||!Number.isSafeInteger(pageBudget)||pageBudget<1||pageBudget>500)throw Error('Invalid DessinAnime collection limits');
 const out=path.resolve(option('--out','artifacts/dessin-browser-metadata.json'));fs.mkdirSync(path.dirname(out),{recursive:true});
-const source=path.join(DATA_DIR,'providers-flixer.json'),deployment=new URL('../server/deployment-dessinanime.json',import.meta.url),rows=fs.existsSync(source)?readJsonItems(source,r=>!!parseDessinId(r.id)):JSON.parse(fs.readFileSync(deployment,'utf8'));
+const seed=option('--seed',''),source=path.join(DATA_DIR,'providers-flixer.json'),deployment=new URL('../server/deployment-dessinanime.json',import.meta.url);
+if(seed&&fs.statSync(seed).size>32*1024*1024)throw Error('DessinAnime seed exceeds size limit');
+const rows=seed?validateDessinArtifact(JSON.parse(fs.readFileSync(seed,'utf8')),'seed').items:fs.existsSync(source)?readJsonItems(source,r=>!!parseDessinId(r.id)):JSON.parse(fs.readFileSync(deployment,'utf8'));
+if(!rows.length)throw Error('No DessinAnime titles available for collection');
 const byId=new Map(rows.map(r=>[r.id,r]));if(fs.existsSync(out)){const previous=JSON.parse(fs.readFileSync(out,'utf8'));for(const row of previous.items||[])byId.set(row.id,mergeDessinMetadata(byId.get(row.id),row));}
 const requested=option('--ids','').split(',').filter(Boolean);let titles;
 if(requested.length){titles=[];for(const id of requested){const p=parseDessinId(id);if(!p||p.type==='e')throw Error('Invalid DessinAnime source title');let row=byId.get(id);if(!row){const page=await fetchDessinPage({search:p.slug.replace(/^\d+-/,'').replaceAll('-',' ')});row=page.items.find(r=>r.id===id);}if(!row)throw Error('Unknown DessinAnime source title: '+id);titles.push(row);}}

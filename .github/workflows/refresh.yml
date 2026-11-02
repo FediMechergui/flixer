@@ -23,7 +23,7 @@ on:
         type: boolean
         default: false
       dessin_browser_backfill:
-        description: 'Continue DessinAnime discovery using a normal isolated browser'
+        description: 'Export a fresh source seed for the independent DessinAnime browser runner'
         type: boolean
         default: false
 
@@ -33,6 +33,7 @@ concurrency:
 
 permissions:
   contents: write
+  actions: read
 
 jobs:
   refresh:
@@ -56,24 +57,25 @@ jobs:
         run: node scripts/import-reviewed-sources.js
       - name: Apply reviewed DessinAnime episode metadata
         run: node scripts/import-dessinanime-metadata.js server/seeds/dessinanime-reviewed.json
-      - name: Continue permitted DessinAnime browser discovery
-        if: inputs.dessin_browser_backfill || github.event.schedule == '17 */2 * * *'
-        timeout-minutes: 8
-        continue-on-error: true
-        run: xvfb-run -a node scripts/collect-dessinanime-browser.js --launch --pages 60 --titles 4 --latest --write-cache
-      - name: Retain completed DessinAnime pages after interrupted collection
-        if: always()
+      - name: Load independent DessinAnime browser discoveries
+        run: node scripts/dessin-artifacts.js metadata
+      - name: Merge validated DessinAnime browser discoveries
         continue-on-error: true
         run: |
-          if [ -f artifacts/dessin-browser-metadata.json ]; then
-            node scripts/import-dessinanime-metadata.js artifacts/dessin-browser-metadata.json --browser
+          if [ -f artifacts/dessin-worker-metadata.json ]; then
+            node scripts/import-dessinanime-metadata.js artifacts/dessin-worker-metadata.json --browser
           fi
-      - name: Preserve DessinAnime discovery report
-        if: always()
+      - name: Export lightweight DessinAnime catalogue seed
+        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '17 */2 * * *'
+        run: node scripts/dessin-artifacts.js export
+      - name: Share source seed with the browser runner
+        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '17 */2 * * *'
         uses: actions/upload-artifact@v4
         with:
-          name: dessinanime-source-metadata
-          path: artifacts/dessin-browser-metadata.json
+          name: dessinanime-catalogue-seed
+          path: artifacts/dessin-catalogue-seed.json
+          retention-days: 1
+          compression-level: 9
           if-no-files-found: ignore
       - name: Continue official Arabic and Tunisian source backfill
         if: inputs.official_backfill || (github.event_name != 'schedule' && !inputs.latest_only) || github.event.schedule == '17 */2 * * *'

@@ -1,0 +1,51 @@
+name: DessinAnime browser collection
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '25 */2 * * *'
+
+concurrency:
+  group: dessin-browser
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  collect:
+    # Standard hosted runner: free compute for this public repository.
+    runs-on: windows-latest
+    timeout-minutes: 12
+    env:
+      APP_PRODUCT: flixer
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install source parser dependencies
+        run: npm ci --prefix server
+      - name: Verify the collector and metadata handoff
+        if: github.event_name == 'workflow_dispatch'
+        run: node --test server/test/dessin-artifacts.test.js server/test/dessin-collection.test.js server/test/dessinanime-playback.test.js
+      - name: Load the source-only catalogue seed
+        run: node scripts/dessin-artifacts.js seed
+      - name: Read permitted episode pages in normal Chrome
+        timeout-minutes: 8
+        continue-on-error: true
+        run: node scripts/collect-dessinanime-browser.js --launch --seed artifacts/dessin-input.json --pages 60 --titles 4 --latest
+      - name: Report source access and collection coverage
+        if: always()
+        run: node scripts/dessin-artifacts.js summarize
+      - name: Preserve validated source metadata
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dessinanime-browser-metadata
+          path: artifacts/dessin-browser-metadata.json
+          retention-days: 1
+          compression-level: 9
+          if-no-files-found: ignore

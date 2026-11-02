@@ -7,6 +7,7 @@ export function validateDessinMetadata(row){
  const p=parseDessinId(row?.id);
  if(!p||p.type==='e'||row.kind!==(p.type==='m'?'film':'series')||row.sourceUrl!==dessinUrl(row.id)||!row.title)throw Error('Invalid DessinAnime title identity');
  if(!Number.isFinite(Date.parse(row.detailsFetchedAt)))throw Error('Missing DessinAnime verification time');
+ if(!Array.isArray(row.episodes)||!Array.isArray(row.sourceGuide))throw Error('Missing DessinAnime episode arrays');
  const guide=new Map((row.sourceGuide||[]).map(e=>[e.id,e]));
  for(const episode of guide.values()){const ep=parseDessinId(episode.id);if(!ep||parent(episode.id)!==row.id||episode.sourceUrl!==dessinUrl(episode.id)||row.kind==='series'&&(ep.type!=='e'||ep.season!==episode.season||ep.number!==episode.number))throw Error('Invalid DessinAnime source guide');}
  for(const episode of row.episodes||[]){const ep=parseDessinId(episode.id),slot=guide.get(episode.id);
