@@ -63,3 +63,23 @@ Other existing virtual devices were not deleted or reset.
 
 Background refreshes remain on GitHub-hosted runners. Only backend code changes
 require a deployment; no new APK is required for these server descriptors.
+
+## Production publication
+
+Code commit `11727d1` was pushed to `main` and published in Netlify deployment
+[`6ae891b5f6990d6744c22f00`](https://app.netlify.com/projects/flixer-api-fedimechergui/deploys/6ae891b5f6990d6744c22f00).
+The deployed health endpoint returned HTTP 200 with `ok: true`.
+
+Fresh hosted stream checks returned HTTP 200 for all three sampled titles:
+
+- Le Petit Prince: individual VF Voe and VF Dood choices plus the source selector
+  and existing alternatives, in 5.2 seconds.
+- Avatar S1E1: individual VF Uqload plus merged Myflixer, MultiMovies,
+  French Stream, FMovies and existing alternatives, in 10.8 seconds.
+- Scooby-Doo Halloween: native HLS descriptor plus its Xtremestream iframe,
+  in 8.3 seconds.
+
+These are single fresh-request observations, not latency benchmarks or playback
+confirmations. The upstream failures listed above remain. No APK was rebuilt;
+the existing app can consume these backend descriptors. Verification summaries
+are in the ignored artifact `artifacts/french-expansion/hosted-followup.json`.
