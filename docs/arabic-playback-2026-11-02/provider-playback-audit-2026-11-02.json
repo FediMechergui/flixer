@@ -1,23 +1,24 @@
 {
-  "at": "2026-11-02T08:30:00.271Z",
+  "at": "2026-11-02T08:41:15.660Z",
   "startedAt": "2026-11-02T08:10:25.365Z",
-  "finishedAt": "2026-11-02T08:23:58.700Z",
+  "finishedAt": "2026-11-02T08:40:33.536Z",
   "complete": true,
   "outcomes": {
     "player_error": 7,
-    "playback_confirmed": 4,
+    "playback_confirmed": 6,
     "no_advancing_video": 1
   },
-  "appVersion": "1.6.29-audit",
+  "appVersion": "1.6.30-audit",
   "appVersions": [
-    "1.6.29-audit"
+    "1.6.29-audit",
+    "1.6.30-audit"
   ],
   "scope": "Every returned server for the provider/type/language sample matrix, using the production player; not every catalogue episode.",
   "preparationComplete": true,
   "samples": 7,
-  "total": 12,
-  "tested": 12,
-  "confirmed": 4,
+  "total": 14,
+  "tested": 14,
+  "confirmed": 6,
   "previouslyConfirmed": 0,
   "providers": [
     {
@@ -53,10 +54,10 @@
     {
       "provider": "ahwaktv",
       "samples": 1,
-      "returned": 1,
+      "returned": 3,
       "sourceServers": 1,
-      "tested": 1,
-      "confirmed": 0,
+      "tested": 3,
+      "confirmed": 2,
       "confirmedSource": 0,
       "lookupIssues": []
     }
@@ -304,6 +305,52 @@
       "errors": [
         "No player is available right now\n\nTry a fresh server list or choose another source. You can close this player at any time.\n\nRefresh servers"
       ],
+      "httpStatuses": []
+    },
+    {
+      "case": 14,
+      "provider": "ahwaktv",
+      "serverProvider": "youtube",
+      "title": "باب الحارة S1E1",
+      "kind": "series",
+      "server": "YouTube - Aj Art Production",
+      "host": "www.youtube.com",
+      "type": "youtube",
+      "testedAt": "2026-11-02T08:39:59.084Z",
+      "appVersion": "1.6.30-audit",
+      "appSha256": "337e33cbd92797d8a055e2d297f9a28ca084ccd13256bd0ad522d6827ab2123c",
+      "status": "playback_confirmed",
+      "ms": 18516,
+      "proof": {
+        "start": 0,
+        "end": 3.582694,
+        "duration": 2948.101,
+        "transport": "webview"
+      },
+      "errors": [],
+      "httpStatuses": []
+    },
+    {
+      "case": 15,
+      "provider": "ahwaktv",
+      "serverProvider": "youtube",
+      "title": "باب الحارة S2E23",
+      "kind": "series",
+      "server": "YouTube - Aj Art Production",
+      "host": "www.youtube.com",
+      "type": "youtube",
+      "testedAt": "2026-11-02T08:40:17.931Z",
+      "appVersion": "1.6.30-audit",
+      "appSha256": "337e33cbd92797d8a055e2d297f9a28ca084ccd13256bd0ad522d6827ab2123c",
+      "status": "playback_confirmed",
+      "ms": 15337,
+      "proof": {
+        "start": 0,
+        "end": 3.680678,
+        "duration": 2879.84,
+        "transport": "webview"
+      },
+      "errors": [],
       "httpStatuses": []
     }
   ]

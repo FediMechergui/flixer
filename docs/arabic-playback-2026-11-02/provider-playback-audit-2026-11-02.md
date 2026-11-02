@@ -1,8 +1,8 @@
 # Android provider playback audit — 2 November 2026
 
-Completed audit. APKs 1.6.29-audit; 12/12 returned server choices tested across 7 title samples; 4 advancing-video confirmations.
+Completed audit. APKs 1.6.29-audit, 1.6.30-audit; 14/14 returned server choices tested across 7 title samples; 6 advancing-video confirmations.
 
-Device observation window: 2 Nov 2026, 09:10 to 2 Nov 2026, 09:23 WAT.
+Device observation window: 2 Nov 2026, 09:10 to 2 Nov 2026, 09:40 WAT.
 
 Every returned server for the provider/type/language sample matrix, using the production player; not every catalogue episode.
 
@@ -15,14 +15,14 @@ The source provider identifies the catalogue sample. A returned alternative may 
 | tuniflix | 3 | 6 | 6 | 6 | 3 | 3 |
 | cimatn | 2 | 4 | 4 | 4 | 0 | 0 |
 | youtubeoriginals | 1 | 1 | 1 | 1 | 1 | 1 |
-| ahwaktv | 1 | 1 | 1 | 1 | 0 | 0 |
+| ahwaktv | 1 | 3 | 1 | 3 | 2 | 0 |
 
 ## Outcomes
 
 | Outcome | Choices |
 |---|---:|
 | player_error | 7 |
-| playback_confirmed | 4 |
+| playback_confirmed | 6 |
 | no_advancing_video | 1 |
 
 ## Lookup and guide gaps
@@ -44,3 +44,5 @@ The source provider identifies the catalogue sample. A returned alternative may 
 | 10 | cimatn / دار العرس Dar El 3ers HDCAM | CimaTN - player.mediadelivery.net / player.mediadelivery.net | 1.6.29-audit | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
 | 12 | youtubeoriginals / باب الحارة | YouTube - Aj Art Production / www.youtube.com | 1.6.29-audit | playback_confirmed | 0.0 → 4.0 s / 3060.5 s (webview) |
 | 13 | ahwaktv / باب الحارة | AhwakTV - www.ok.ru / www.ok.ru | 1.6.29-audit | player_error | No player is available right now Try a fresh server list or choose another source. You can close this player at any time. Refresh servers |
+| 14 | ahwaktv / باب الحارة S1E1 | YouTube - Aj Art Production / www.youtube.com | 1.6.30-audit | playback_confirmed | 0.0 → 3.6 s / 2948.1 s (webview) |
+| 15 | ahwaktv / باب الحارة S2E23 | YouTube - Aj Art Production / www.youtube.com | 1.6.30-audit | playback_confirmed | 0.0 → 3.7 s / 2879.8 s (webview) |

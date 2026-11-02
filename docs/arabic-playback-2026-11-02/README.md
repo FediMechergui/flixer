@@ -11,16 +11,18 @@ inside the app; source pages never receive the Capacitor bridge.
 | Tuniflix Tunisian films | All 3 advertised pages: 113 entries, 113 with supported descriptors |
 | CimaTN Tunisian films | Complete film feed: 70 entries, 54 with supported descriptors |
 | Combined source entries | 183, including duplicates across sources; 167 with descriptors, 16 without |
-| Android player sample | 12 distinct routes across 7 title samples; 4 advancing-video confirmations |
+| Android player sample | 14 distinct routes across 7 title samples; 6 advancing-video confirmations |
 | Confirmed Tunisian films | Tuniflix/Uqload: In a Whisper / بيت الحس, El Naffoura / النافورة, The Needle / الإبرة |
-| Confirmed Arabic episode | Bab El Hara, S1E2, Aj Art Production's YouTube upload |
+| Confirmed Arabic episodes | Bab El Hara S1E1, S1E2 and S2E23, Aj Art Production's YouTube uploads |
 | Reviewed Bab El Hara alternatives | 85 producer-upload links matched to 42 existing episode slots |
 | Regression tests | 295 passed |
 
 Descriptors establish that the source advertises a supported link. They do not
 certify playback for an entire film or catalogue. Android tests used the existing
-production player in the 1.6.29 audit APK with freshly resolved descriptors. New
-device-side origin handling has separate fixture tests. Initial emulator
+production player in the 1.6.29 audit APK with freshly resolved descriptors, then
+the 1.6.30 audit APK for S1E1 and S2E23. The device-side Ahwak parser also resolved
+the actual iframe in 2.48 seconds on 1.6.30. Origin handling has fixture tests.
+Initial emulator
 Bluetooth crash dialogs were excluded from source results; affected attempts
 were repeated after closing the system dialog.
 
@@ -88,3 +90,16 @@ node scripts/audit-tunisian-films.js --out artifacts/tunisian-films-audit.json
 The command follows all advertised pages, detects repeated pages, uses bounded
 concurrency, and distinguishes descriptors from playback. This investigation does
 not certify every Tunisian film ever released or every Arabic series.
+
+## Delivery validation
+
+The production backend was deployed as `6ae84a14e72d342b7d3bfc47`. Hosted health
+and stream checks returned HTTP 200. The Needle returns two Tuniflix choices and
+three CimaTN choices together, retaining each source's identity and referrer.
+
+The signed 1.6.30 APK is version code 10630, 18,227,337 bytes, SHA-256
+`1ea51637e33dacabe4fd704d28834b155609dc69a380f92ba11e8598834b77dd`.
+Debug and release builds completed successfully. APK signature verification
+passed; release assets include the new source parser and exclude the debug audit
+page. Data publication uses the ordinary catalogue workflow, without another
+application deployment.
