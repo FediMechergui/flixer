@@ -1,5 +1,9 @@
 # DessinAnime source check — 2 November 2026
 
+Follow-up: [browser discovery and refreshed episode mappings](dessinanime-browser-discovery-2026-11-02.md)
+supersede the one-episode coverage limitation below. This report preserves the
+earlier direct-HTTP and emulator results.
+
 Scope: Flixer's current DessinAnime integration and the known cached Les Simpson
 episode, using the existing 1.6.30 player. These checks do not certify playback
 for every title, episode or language in the source catalogue.

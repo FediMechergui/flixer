@@ -39,7 +39,7 @@ export function mergeShow(existing, incoming) {
   }
   if (existing.kind === 'series') episodes.sort((a,b) => (a.season ?? Infinity)-(b.season ?? Infinity) || (a.number ?? Infinity)-(b.number ?? Infinity));
   return { ...incoming, ...existing, id:existing.id,
-    access:incoming.access==='catalogue-only'&&showOfferings(existing).some(o=>o.provider!=='dessinanime'&&o.availability!=='catalogue-only')?existing.access==='catalogue-only'?'public':existing.access:existing.access==='catalogue-only'&&incoming.access!=='catalogue-only'&&incoming.episodes?.length?incoming.access||'public':incoming.id===existing.id?incoming.access??existing.access:existing.access,
+    access:incoming.id===existing.id&&/^sp:dessinanime:/.test(existing.id)&&episodes.some(e=>e.cachedPlayers?.length)?'public':incoming.access==='catalogue-only'&&showOfferings(existing).some(o=>o.provider!=='dessinanime'&&o.availability!=='catalogue-only')?existing.access==='catalogue-only'?'public':existing.access:existing.access==='catalogue-only'&&incoming.access!=='catalogue-only'&&incoming.episodes?.length?incoming.access||'public':incoming.id===existing.id?incoming.access??existing.access:existing.access,
     kind:incoming.id===existing.id && /^sp:myasiantv:/.test(existing.id) && incoming.kindVerified?incoming.kind:existing.kind,
     title:existing.title || incoming.title,
     year:existing.year || incoming.year || null,

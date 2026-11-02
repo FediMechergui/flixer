@@ -57,12 +57,19 @@ export function dessinPlayers(players){return (Array.isArray(players)?players:[]
 export function parseDessinPage(id,html,existing){
  const p=parseDessinId(id);if(!p)throw Error('Invalid DessinAnime ID');
  const objects=dessinRecords(html),kind=p.type==='m'?'film':'series';
- const media=objects.find(value=>value.slug===p.slug&&value.mediaType===(kind==='film'?'MOVIE':'TV')&&Number.isSafeInteger(value.tmdbId)&&value.title);
+ const guide=objects.find(value=>value.slug===p.slug&&Array.isArray(value.seasons));
+ let media=objects.find(value=>value.slug===p.slug&&value.mediaType===(kind==='film'?'MOVIE':'TV')&&Number.isSafeInteger(value.tmdbId)&&value.title);
+ // Some series pages render their media header on the server and serialize only
+ // the guide. Bind that guide to the actual catalogue record, never a title guess.
+ if(!media&&p.type==='s'&&existing?.id===id&&existing.kind==='series'&&Number.isSafeInteger(existing.sourceRecordId)&&existing.sourceRecordId>0&&guide?.seasons?.length){
+  const tmdbId=Number(p.slug.split('-')[0]);
+  if(Number.isSafeInteger(tmdbId)&&tmdbId>0&&guide.seasons.every(s=>s.mediaTmdbId===tmdbId&&s.mediaId===existing.sourceRecordId))media={slug:p.slug,title:existing.title,mediaType:'TV',tmdbId,releaseYear:existing.year};
+ }
  if(!media)throw Error('DessinAnime page identity mismatch');
  const canonical=`sp:dessinanime:${kind==='film'?'m':'s'}:${p.slug}`;
  if(existing&&(existing.id!==canonical||existing.kind!==kind))throw Error('DessinAnime cached identity mismatch');
- let row={...existing,id:canonical,title:media.title,kind,tmdbId:media.tmdbId,year:media.releaseYear||existing?.year||null,sourceUrl:dessinUrl(canonical),channelId:'dessinanime',collections:[...new Set([...(existing?.collections||[]),'french'])],tags:existing?.tags||[],providerMetadata:true,documentary:false,altTitles:[...new Set([...(existing?.altTitles||[]),media.ogTitle].filter(x=>x&&x!==media.title))],synopsis:media.customOverview||media.overview||existing?.synopsis||'',portrait:artworkUrl(media.customPosterPath||media.posterPath)||existing?.portrait,poster:existing?.poster,offerings:[{provider:'dessinanime',id:canonical,sourceUrl:dessinUrl(canonical)}]};
- const episodes=[];const guide=objects.find(value=>value.slug===p.slug&&Array.isArray(value.seasons));
+ let row={...existing,id:canonical,title:media.title,kind,tmdbId:media.tmdbId,sourceRecordId:Number.isSafeInteger(media.id)?media.id:existing?.sourceRecordId,year:media.releaseYear||existing?.year||null,sourceUrl:dessinUrl(canonical),channelId:'dessinanime',collections:[...new Set([...(existing?.collections||[]),'french'])],tags:existing?.tags||[],providerMetadata:true,documentary:false,altTitles:[...new Set([...(existing?.altTitles||[]),media.ogTitle].filter(x=>x&&x!==media.title))],synopsis:media.customOverview||media.overview||existing?.synopsis||'',portrait:artworkUrl(media.customPosterPath||media.posterPath)||existing?.portrait,poster:existing?.poster,offerings:[{provider:'dessinanime',id:canonical,sourceUrl:dessinUrl(canonical)}]};
+ const episodes=[];
  for(const season of guide?.seasons||[])if(Number.isInteger(season.seasonNumber)&&season.seasonNumber>=0&&season.mediaTmdbId===media.tmdbId)for(const episode of season.episodes||[]){
   if(!Number.isInteger(episode.episodeNumber)||episode.episodeNumber<1)continue;
   const eid=`sp:dessinanime:e:${p.slug}:${season.seasonNumber}:${episode.episodeNumber}`;
@@ -85,7 +92,7 @@ let snapshotStamp='',snapshotRows=new Map();
 export async function dessinSnapshot(id){
  if(hosted())return runtimeProviderSnapshot(id);
  const p=parseDessinId(id);if(!p)return null;
- const deployment=new URL('../deployment-dessinanime.json',import.meta.url),local=new URL('../data/providers-flixer.json',import.meta.url),file=fs.existsSync(deployment)?deployment:local;
+ const deployment=new URL('../deployment-dessinanime.json',import.meta.url),local=new URL('../data/providers-flixer.json',import.meta.url),file=fs.existsSync(local)?local:deployment;
  if(!fs.existsSync(file))return null;const stamp=`${file}:${fs.statSync(file).mtimeMs}`;
  if(stamp!==snapshotStamp){const data=JSON.parse(fs.readFileSync(file,'utf8'));snapshotRows=new Map((Array.isArray(data)?data:data.items||[]).filter(row=>parseDessinId(row.id)).map(row=>[row.id,row]));snapshotStamp=stamp;}
  return snapshotRows.get(`sp:dessinanime:${p.type==='m'?'m':'s'}:${p.slug}`)||null;

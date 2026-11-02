@@ -22,6 +22,10 @@ on:
         description: 'Continue official Arabic and Tunisian archives during this refresh'
         type: boolean
         default: false
+      dessin_browser_backfill:
+        description: 'Continue DessinAnime discovery using a normal isolated browser'
+        type: boolean
+        default: false
 
 concurrency:
   group: refresh
@@ -50,6 +54,20 @@ jobs:
         run: node scripts/snapshot.js restore
       - name: Apply reviewed Arabic source identities
         run: node scripts/import-reviewed-sources.js
+      - name: Apply reviewed DessinAnime episode metadata
+        run: node scripts/import-dessinanime-metadata.js server/seeds/dessinanime-reviewed.json
+      - name: Continue permitted DessinAnime browser discovery
+        if: inputs.dessin_browser_backfill || github.event.schedule == '17 */2 * * *'
+        timeout-minutes: 8
+        continue-on-error: true
+        run: xvfb-run -a node scripts/collect-dessinanime-browser.js --launch --pages 60 --titles 4 --latest --write-cache
+      - name: Preserve DessinAnime discovery report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dessinanime-source-metadata
+          path: artifacts/dessin-browser-metadata.json
+          if-no-files-found: ignore
       - name: Continue official Arabic and Tunisian source backfill
         if: inputs.official_backfill || (github.event_name != 'schedule' && !inputs.latest_only) || github.event.schedule == '17 */2 * * *'
         run: node scripts/import-official-arabic.js --pages 36
