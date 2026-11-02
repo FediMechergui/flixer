@@ -88,6 +88,12 @@ Collection counts show saved titles; they are not upstream library totals.
 
 ## French sources and update behaviour
 
+Frembed supplies French animation discovery, verified episode/player availability
+and update ordering through its public API. DessinAnime.net is a separate source
+with real episode guides and inline host players, using the Cartoony integration.
+Both join existing search, matching and GitHub refresh jobs. See the
+[integration checks and playback limitations](docs/french-expansion-2026-11-02.md).
+
 French Stream supplies its public movie catalogue and season-specific episode/server data. VF and VOSTFR remain distinct player choices. Only episodes with actual source links are imported; announced episodes without links are excluded. French originals require original-language evidence; dubbed international titles remain in the broader French catalogue.
 
 DessinAnime supplies anonymous catalogue/search APIs and `/api/stream?playerId=...` for direct video. Source pages map real seasons, episode numbers, language choices and player IDs; verified MP4/HLS resources play inside Flixer. Android resolves temporary video URLs directly from the public source API when playback starts, keeping datacentre API blocks out of that request. Episode pages currently return 403 to ordinary server requests, so previously mapped source player IDs are retained. Unmapped guide entries do not become fake playable episodes or open a nested browser. A normally loaded source HTML export can be imported with `node scripts/import-dessinanime-page.js SOURCE_ID SOURCE_HTML`; no verification cookies are imported. Independently verified alternate providers remain available on matching titles.

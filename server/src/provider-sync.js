@@ -100,11 +100,11 @@ async function scan({product,full,latestOnly,pageBudget,log}) {
   }
   if(!cache.queue.length && !cache.completed)cache.queue=scopes(product);
   // Existing resumable scans keep their cursors when new source families arrive.
-  if(product==='flixer' && cache.specialistScopesVersion!==8){
+  if(product==='flixer' && cache.specialistScopesVersion!==9){
     const key=job=>JSON.stringify([job.provider,job.kind,job.country,job.language,job.genre,job.year,job.collection]);
     const known=new Set(cache.queue.map(key));
     cache.queue.push(...seeds.filter(job=>(job.country||job.language||!['fmovies','hdtoday'].includes(job.provider))&&!known.has(key(job))));
-    cache.specialistScopesVersion=8;cache.completed=false;
+    cache.specialistScopesVersion=9;cache.completed=false;
   }
   if(full && cache.completed){cache.queue=scopes(product);cache.completed=false;}
   let scanned=0;

@@ -7,6 +7,7 @@ import {artworkUrl} from '../../shared/artwork.js';
 import {fetchFrenchPage,getFrenchDetails} from './french-providers.js';
 import {mergeShow} from './merge-library.js';
 import {searchFmovies,getFmoviesDetails} from './fmovies.js';
+import {getFrembedDetails} from './frembed.js';
 export const DESSIN_ORIGIN='https://dessinanime.cc';
 export const DESSIN_PROVIDERS={dessinanime:{name:'DessinAnime',origin:DESSIN_ORIGIN,kind:null,collections:['french','french-cartoons']}};
 export function parseDessinId(id){const m=/^sp:dessinanime:([mse]):([\p{L}\p{N}][\p{L}\p{N}\p{M}\u30fb\u3001-]{0,250})(?::(\d{1,3}):([1-9]\d{0,4}))?$/u.exec(String(id));return m&&((m[1]==='e')===!!m[3])?{provider:'dessinanime',type:m[1],slug:m[2],...(m[3]?{season:Number(m[3]),number:Number(m[4])}:{})}:null;}
@@ -35,6 +36,10 @@ export async function getDessinDetails(id,{fresh=false}={}){
   // for an episode guide or invent French players from the catalogue slug.
   const query=p.slug.replace(/^\d+-/,'').replaceAll('-',' '),data=JSON.parse(await request(`/api/search?${new URLSearchParams({q:query})}`));
   let row=parseDessinCatalogue(data).find(item=>item.id===id);if(!row)throw Error('DessinAnime title not found in public search');
+  if(saved)row=mergeShow(saved,row);
+  // Use a confirmed alternative provider, not a fabricated DessinAnime player.
+  // The API must independently confirm kind, TMDB identity and release year.
+  try{const hint=Number(p.slug.split('-')[0]);if(Number.isSafeInteger(hint)&&hint>0){const candidate=await getFrembedDetails(`sp:frembed:${p.type}:${hint}`,{fresh});if(verifiedDessinAlias(row,candidate))return mergeDessinPlayback(row,candidate);}}catch{}
   const candidates=await searchFmovies(row.title).catch(()=>[]);
   const match=candidates.find(candidate=>verifiedDessinAlias(row,candidate));
   if(match){row={...row,tmdbId:match.tmdbId,altTitles:[...new Set([match.title,...(match.altTitles||[])])].filter(title=>title!==row.title),synopsis:match.synopsis,tags:match.tags,originalLanguage:match.originalLanguage||match.lang};if(match.tags.includes('animation'))row.collections.push('french-cartoons');}
