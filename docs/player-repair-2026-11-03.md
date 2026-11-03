@@ -9,7 +9,10 @@ This release supplies the missing native support as well as further player fixes
 
 Backend code `f0b74c6` is deployed in Netlify deployment
 [`6ae9bef2a980aa7096647f07`](https://app.netlify.com/projects/flixer-api-fedimechergui/deploys/6ae9bef2a980aa7096647f07).
-The APK release is not yet published. Both native audit matrices are complete.
+[Flixer 1.6.31](https://github.com/FediMechergui/flixer/releases/tag/flixer-v1.6.31)
+is published with the signed APK and checksums. GitHub's APK asset digest matches
+the locally verified file. Both native audit matrices are complete, and the test
+emulator was stopped after the manual follow-up.
 
 ## What changed
 
