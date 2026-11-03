@@ -80,6 +80,21 @@ test('known HDToday identities refresh actual source choices instead of returnin
   assert.equal(unavailable[0].embedUrl,'https://vidcore.io/tv/275139/2/3');
 });
 
+test('a successful empty HDToday inventory stays empty when the title is reopened',async()=>{
+  const id='hd:s:tv-cleared-inventory-abc12345:2:3';
+  const before=await resolveHdtodayServers(id,{tmdbId:275139});
+  assert.equal(before.length,44);
+  const cleared=await resolveHdtodayServers(id,{tmdbId:275139,fresh:true,fetchChoices:async()=>[],fetchPlayer:async()=>{throw new Error('No player should be requested');}});
+  assert.deepEqual(cleared,[]);
+  assert.deepEqual(await resolveHdtodayServers(id,{tmdbId:275139}),[],'reopening must not restore removed generic routes');
+  assert.equal((await resolveHdtodayServers('hd:s:tv-cleared-inventory-abc12345:2:4',{tmdbId:275139})).length,44,'other episodes remain independent');
+  assert.equal((await resolveHdtodayServers(id,{tmdbId:88})).length,44,'a changed verified title identity remains independent');
+
+  const unavailableId='hd:s:tv-failed-inventory-abc12345:2:3';
+  assert.equal((await resolveHdtodayServers(unavailableId,{tmdbId:275139,fresh:true,fetchChoices:async()=>{throw new Error('browser verification');}})).length,44);
+  assert.equal((await resolveHdtodayServers(unavailableId,{tmdbId:275139})).length,44,'a failed source request must not create an empty inventory');
+});
+
 test('source-derived HDToday TV variants retain distinct season and episode coordinates',()=>{
   const routes=hdtodayTvFallbacks('hd:s:tv-source-routes-abc12345:2:13',4614);
   assert.equal(routes.length,44);

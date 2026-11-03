@@ -332,7 +332,10 @@ export async function resolveHdtodayServers(id,{tmdbId,fresh=false,fetchPlayer=f
     return route&&serverLabel(server)===serverLabel(route)?{...route,name:server.name||route.name,sourceUrl:server.sourceUrl||server.embedUrl}:null;
   }).filter(Boolean);
   const result=prioritizeHdtodayServers(inferred || current);
-  if(result.length)playerCache.set(cacheKey,{at:Date.now(),value:result});
+  // An authoritative empty inventory must survive reopening the title. Without
+  // this short-lived negative entry the fast path immediately restores all
+  // generic routes. Request failures return above and never create this entry.
+  if(result.length || fetchChoices && choices.length===0)playerCache.set(cacheKey,{at:Date.now(),value:result});
   if(playerCache.size>300)playerCache.delete(playerCache.keys().next().value);
   return result;
 }
