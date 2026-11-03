@@ -22,6 +22,29 @@ function fixture(shows, streams = {}, respond, options = {}) {
   return {api:new context.window.Api.FlixerApi(),requests,events};
 }
 
+test('cold-start continue watching uses saved title metadata before the full index and keeps source aliases',async()=>{
+ const showId='sp:stardima:s:6ae791af3be9a',episodeId='sp:stardima:e:6ae791af3be9a:104745',alias='fm:t:saved-kaiju';
+ const show={id:showId,kind:'series',title:'Kaiju No. 8',year:2024,access:'public',poster:{custom:'https://www.stardima.com/storage/kaiju.jpg'},aliasIds:[alias],offerings:[{provider:'stardima',id:showId},{provider:'fmovies',id:alias}],episodes:[{id:episodeId,title:'Episode 1',season:4,number:1}]};
+ const cached=JSON.stringify({t:Date.now(),show}),storage=new Map([['flixer:title:'+showId,cached],['flixer:title:'+alias,cached],['flixer:delta','[]']]);
+ let finish;const index=new Promise(resolve=>finish=resolve),{api,requests}=fixture([],{},null,{storage,index,config:{mobile:true}});
+ const app=fs.readFileSync(new URL('../../client-terrarium/js/app.js',import.meta.url),'utf8'),state={progress:{[episodeId]:{showId,position:26.559,duration:224.057,finished:false,at:2,episode:{id:episodeId,season:4,n:1,title:'Episode 1'}},old:{showId:alias,position:25,duration:224,finished:false,at:1}}};
+ const context=vm.createContext({api,state,esc:value=>String(value),epLabel:(_type,e)=>`S${e.season} · E${String(e.n).padStart(2,'0')}`,artPlaceholder:()=>'',saveProgress(){}});
+ const progressStart=app.indexOf('  const episodeIds='),progressEnd=app.indexOf('  /* ---------- Components',progressStart),badgeStart=app.indexOf('  function providerBadge('),badgeEnd=app.indexOf('  function card(',badgeStart),cardStart=app.indexOf('  function resumeCard('),cardEnd=app.indexOf('  const skelCard',cardStart),rowStart=app.indexOf('  async function continueWatchingRow('),rowEnd=app.indexOf('  /* ---------- Browse',rowStart);
+ vm.runInContext([app.slice(progressStart,progressEnd),app.slice(badgeStart,badgeEnd),app.slice(cardStart,cardEnd),app.slice(rowStart,rowEnd),'globalThis.resume={row:continueWatchingRow,resumeAt};'].join('\n'),context);
+ let timer;
+ try{
+  const html=await Promise.race([context.resume.row(),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Resume metadata waited for the full index or a provider')),300);})]);
+  assert.match(html,/Continue watching/);assert.match(html,/Kaiju No\. 8/);assert.match(html,/S4 · E01/);assert.match(html,/12% watched/);assert.ok(html.includes(`href="#/watch/${showId}/${episodeId}"`));
+  assert.match(html,/Various providers/);assert.equal((html.match(/class="card" /g)||[]).length,1,'explicit source aliases share one resume card');
+  assert.equal(context.resume.resumeAt(episodeId),26.559);assert.equal((await api.item(alias)).id,showId);
+  assert.equal(api._catalog.shows.length,0,'painting resume cards does not load large episode guides into the startup catalogue');
+  assert.equal(requests.some(url=>url.includes('/api/title')||url.includes('/api/stream')||url.includes('/data/shows/')),false);
+  const opened=await api.show(alias);assert.equal(opened.id,showId);assert.equal(opened.episodes[0].id,episodeId,'opening a resume card reuses the real saved guide');
+  storage.set('flixer:title:unrelated',cached);assert.equal(await api.item('unrelated'),null,'a mismatched cached identity cannot produce a different title');
+  for(const [id,value]of [['invalid-json','{'],['invalid-title',JSON.stringify({show:{id:'invalid-title',kind:'series',title:{text:'Broken'}}})],['invalid-offering',JSON.stringify({show:{id:'invalid-offering',kind:'series',title:'Broken',offerings:[null]}})]]){storage.set('flixer:title:'+id,value);assert.equal(await api.item(id),null,'malformed saved metadata is ignored');}
+ }finally{clearTimeout(timer);finish({product:'flixer',shows:[]});await api._indexReady;await api._metadataReady;}
+});
+
 test('small bundled index parts load completely while preserving a newer saved home title',async()=>{
  const generation='2026-10-21',rows=[{id:'one',kind:'film',title:'Old title',aliasIds:['fm:m:1']},{id:'two',kind:'series',title:'Second title',countries:['TN'],collections:['tunisian']}];
  const storage=new Map([['flixer:homeSnapshot',JSON.stringify({product:'flixer',generatedAt:'2026-10-23',shows:[{...rows[0],title:'Current title'}]})]]);

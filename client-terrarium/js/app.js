@@ -460,8 +460,8 @@
     for (const [epId, p] of entries) {
       if (seen.has(p.showId)) continue;
       const item = await api.item(p.showId);
-      if (!item) continue;
-      seen.add(p.showId);
+      if (!item || seen.has(item.id)) continue;
+      seen.add(item.id);
       cards.push(resumeCard(item, epId, pctOf(epId)));
     }
     if (!cards.length) return "";

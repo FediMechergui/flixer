@@ -107,6 +107,14 @@
   }
 
   /* ----- raw show -> view item ----- */
+  function localTitle(id) {
+    const cached=store.get('title:'+id,null),row=cached?.show;
+    if(!row||typeof row.id!=='string'||!row.id||typeof row.title!=='string'||!row.title.trim()||!['film','series'].includes(row.kind))return null;
+    for(const key of ['aliasIds','altTitles','tags','episodes','offerings','versions','collections','countries','audioModes','audioLanguages','subtitleLanguages'])if(row[key]!=null&&!Array.isArray(row[key]))return null;
+    for(const key of ['episodes','offerings','versions'])if(row[key]?.some(value=>!value||typeof value!=='object'))return null;
+    const ids=[row.id,...(Array.isArray(row.aliasIds)?row.aliasIds:[]),...(Array.isArray(row.offerings)?row.offerings:[]).map(o=>o.id)];
+    return ids.includes(id)?cached:null;
+  }
   async function savedTitle(id,ms){
     if(window.FlixerCatalogueSource?.enabled())try{const body=await window.FlixerCatalogueSource.title(id);if(body)return {body};}catch(error){console.warn('[flixer] Published title unavailable:',error.message);}
     return getJson(`${DATA_BASE}/data/shows/${encodeURIComponent(encodeURIComponent(id))}.json`,ms);
@@ -805,7 +813,13 @@
       }
     }
     async all(type) { const c = await this.catalog(); return type && type!=="all" ? c.items.filter(i => i.type === type) : c.items; }
-    async item(id) { const c = await this.catalog(); return c.items.find(i => i.id === id) || null; }
+    async item(id) {
+      await this.catalog();
+      // Resume cards can precede the bundled/live index. One saved-title read
+      // supplies their metadata without fetching providers or hydrating guides.
+      const row=this._byId.get(id)||localTitle(id)?.show;
+      return row?normalize(row):null;
+    }
     async yearRange() { const c = await this.catalog(); return c.years; }
     async generatedAt() { const c = await this.catalog(); return c.generatedAt; }
     async stats() { const c = await this.catalog(); return { total: c.shows.length, films: c.items.filter(i => i.type === "movie").length, series: c.items.filter(i => i.type === "tv").length, rated: c.items.filter(i => i.rating).length, lastSync: this._lastSync, live: this.liveEnabled, tvmazeAt: c.tvmazeAt }; }
@@ -966,9 +980,9 @@
     async show(id) {
       await this.catalog();
       if (this._byId.has(id)) return this._byId.get(id);
+      const cached=localTitle(id);
+      if(cached){const stamp=new Date(cached.t).getTime();this._merge([cached.show],{snapshotAt:Number.isFinite(stamp)?new Date(stamp).toISOString():'1970-01-01'});this._reindex();return this._byId.get(id)||this._byId.get(cached.show.id);}
       if(stardimaTitle(null,id)){
-        const cached=store.get('title:'+id,null);
-        if(cached?.show?.id===id&&cached.show.access==='public'){this._merge([cached.show],{snapshotAt:new Date(cached.t).toISOString()});this._reindex();return this._byId.get(id);}
         const row=await nativeStardima().details(id);this._mergeNativeStardima([row]);this._reindex();
         const completed=this._byId.get(id)||row;
         store.set('title:'+completed.id,{t:Date.now(),show:completed});
@@ -1150,16 +1164,21 @@
       if (!this.liveEnabled) return { items: localItems, totalPages: 1 };
       if(API_BASE){
         if(signal?.aborted)return {items:localItems,totalPages:1};
-        const native=nativeStardima(),ids=new Set(local.map(i=>i.id));let pending=2+(native?1:0);
+        const native=nativeStardima(),ids=new Set(local.map(i=>i.id)),nativeResultIds=new Set();let pending=2+(native?1:0);
         const exact=local.find(item=>[item.title,...(item.altTitles||[])].some(value=>norm(value)===norm(q)));
         const aliases=[...new Set(exact?[exact.title,...(exact.altTitles||[])]:[])].filter(value=>value&&norm(value)!==norm(q)&&value.length<=120).slice(0,2);
         const matches=item=>hit(item.title)||(item.alt&&hit(item.alt))||(item.altTitles||[]).some(hit)||(item.versions||[]).some(version=>hit(version.title)||(version.altTitles||[]).some(hit));
-        const result=()=>({items:this._groupSearchItems(ids).filter(matches),totalPages:1,pending});
+        const result=()=>{
+          // The source can match a Latin query while displaying an Arabic
+          // title. Keep that query evidence by ID, without inventing aliases.
+          const nativeMatches=new Set([...nativeResultIds].map(id=>this._byId.get(id)?.id||id));
+          return {items:this._groupSearchItems(ids).filter(item=>matches(item)||nativeMatches.has(item.id)||(item.versions||[]).some(version=>nativeMatches.has(version.id))),totalPages:1,pending};
+        };
         // Android searches the public source immediately, while the hosted
         // provider registry and other providers load independently.
         const device=native?native.search(q,{aliases,signal}).then(rows=>{
           if(signal?.aborted)return;const accepted=this._mergeNativeStardima(rows).rows;
-          for(const row of accepted)ids.add((this._byId.get(row.id)||row).id);
+          for(const row of accepted){nativeResultIds.add(row.id);ids.add(row.id);ids.add((this._byId.get(row.id)||row).id);}
         }).catch(()=>{}).finally(()=>{pending--;if(!signal?.aborted&&onLocal)onLocal(result());}):null;
         const saved=Promise.resolve(this._indexReady).then(async()=>{
           if(signal?.aborted)return;const rows=await this.all();if(signal?.aborted)return;

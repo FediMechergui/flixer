@@ -38,6 +38,26 @@ test('native StarDima search publishes before the hosted registry and merges exp
   assert.equal(found.pending,0);
 });
 
+test('a cold Latin search retains the source Arabic result before detail aliases exist and after a late canonical index merge',async()=>{
+  const sourceId='sp:stardima:s:video-11',canonicalId='mf:s:confirmed-blazing-teens',gate=deferred(),updates=[];
+  const row={...title(sourceId),title:'بليزين تينز',altTitles:[],year:null};
+  const c=await client({source:{search:async()=>[row]},request:async url=>url.pathname==='/api/search'&&!url.searchParams.has('providers')?{items:[{id:'fm:t:unrelated',title:'Unrelated source default',kind:'series',altTitles:[]}]}:undefined});
+  c.api._indexReady=gate.promise.then(async()=>{
+    await c.api._mergeIndex([{...row,id:canonicalId,aliasIds:[sourceId],offerings:[{provider:'myflixer',id:canonicalId},{provider:'stardima',id:sourceId}]}],'2026-11-03T12:00:00Z');c.api._reindex();
+  });
+  const pending=c.api.search('Blazing Teens',{onLocal:page=>updates.push(page)});
+  await turn();const progressive=updates.find(page=>page.items.some(item=>item.id===sourceId));
+  assert.ok(progressive,'the source result paints before full title details or the pending catalogue');assert.equal(progressive.items[0].title,'بليزين تينز');
+  assert.deepEqual(Array.from(progressive.items[0].altTitles),[]);assert.equal(c.calls.details.length,0,'search must not load a large episode guide to discover aliases');
+  assert.equal(c.calls.search[0].query,'Blazing Teens');assert.equal(c.requests.some(url=>url.pathname==='/api/title'),false);
+  gate.resolve();const result=await bounded(pending);
+  assert.equal(result.items.length,1);assert.equal(result.items[0].id,canonicalId);assert.equal(result.items[0].title,'بليزين تينز');
+  assert.deepEqual(Array.from(result.items[0].altTitles),[],'query evidence never becomes a fabricated title alias');
+  assert.ok(result.items[0].providers.some(provider=>provider.id==='stardima'));assert.ok(result.items[0].providers.some(provider=>provider.id==='myflixer'));
+  assert.equal(result.items.some(item=>item.id==='fm:t:unrelated'),false,'other provider defaults still need the existing title filter');
+  assert.ok(updates.some(page=>page.items.some(item=>item.id===canonicalId)),'late index repaint follows the canonical source identity');
+});
+
 test('native discovery pages progress while hosted discovery is blocked, without repeating titles',async()=>{
   const gate=deferred();
   const c=await client({source:{page:async options=>({items:[{...title(`sp:stardima:s:video-${options.page}`),title:'Public series '+options.page,altTitles:[]}],page:options.page,totalPages:2})},request:async url=>url.pathname==='/api/discover'?gate.promise:undefined});
