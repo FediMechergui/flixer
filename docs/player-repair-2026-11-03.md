@@ -1,5 +1,7 @@
 # Flixer 1.6.31 player repair — 3 November 2026
 
+For the later HDToday, Arabic and French fixes, see the [Flixer 1.6.32 follow-up](inline-followup-2026-11-03.md). The results below describe 1.6.31.
+
 This release changes the Android player as well as the backend. **Installing
 Flixer 1.6.31 (version code 10631) is required for the native player fixes.** A
 backend refresh alone cannot update the native host policy or bundled player.

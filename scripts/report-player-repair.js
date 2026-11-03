@@ -8,6 +8,7 @@ const finite=value=>Number.isFinite(value)&&value>=0;
 const label=value=>String(value||'').replace(/https?:\/\/[^\s"<>]+/gi,'[source URL]').replace(/\b(?:token|signature|authorization|cookie|key)\s*[=:]\s*\S+/gi,'[redacted]').replace(/[A-Za-z0-9_-]{80,}/g,'[token]').slice(0,240);
 const host=value=>typeof value==='string'&&/^(?:[a-z0-9-]+\.)+[a-z]{2,}$/i.test(value)?value:null;
 const date=value=>typeof value==='string'&&/^\d{4}-\d\d-\d\dT[\d:.]+Z$/.test(value)?value:undefined;
+const sha256=value=>typeof value==='string'&&/^[a-f0-9]{64}$/i.test(value)?value.toLowerCase():undefined;
 
 export function playbackEvidence(result){
   const p=result?.proof;
@@ -28,7 +29,8 @@ export function playbackEvidence(result){
 function publicAttempt(result){
   const proof=playbackEvidence(result),status=isPreviewPlayback(result||{})?'preview_only':proof?'playback_confirmed':result?.playbackConfirmed?'unverified_clock_attribution':classifyPlayback({...result,playbackConfirmed:false});
   const sourceDiagnostics=nativePlaybackDiagnostics(result||{});
-  return {status,testedAt:date(result?.at),appVersion:label(result?.appVersion),...(proof?{proof}:{}),...(sourceDiagnostics.length?{sourceDiagnostics}:{}),errorCodes:[...new Set((result?.nativeResults||[]).flatMap(row=>[row.error,row.result?.error]).filter(value=>typeof value==='string'&&/^ERROR_CODE_[A-Z0-9_]+$/.test(value)))]};
+  const appSha256=sha256(result?.appSha256);
+  return {status,testedAt:date(result?.at),appVersion:label(result?.appVersion),...(appSha256?{appSha256}:{}),...(proof?{proof}:{}),...(sourceDiagnostics.length?{sourceDiagnostics}:{}),errorCodes:[...new Set((result?.nativeResults||[]).flatMap(row=>[row.error,row.result?.error]).filter(value=>typeof value==='string'&&/^ERROR_CODE_[A-Z0-9_]+$/.test(value)))]};
 }
 
 export function summarizePlayerRepair(groups,{titleById=new Map()}={}){

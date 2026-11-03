@@ -1,0 +1,1751 @@
+{
+  "generatedAt": "2026-11-03T13:59:03.546Z",
+  "scope": "Short native playback samples of the selected routes, not every catalogue title or episode. Retries do not increase route coverage.",
+  "transportAttribution": "Legacy native progress was labelled media3 even for openPlayer. Public proof uses a single recorded openPlayer/openMedia call to correct the transport label; private observations remain unchanged. New observations use invocation-tagged clocks. Ambiguous untagged clocks are not confirmations.",
+  "total": 65,
+  "tested": 65,
+  "confirmed": 16,
+  "complete": true,
+  "reports": [
+    {
+      "name": "repaired-sources",
+      "startedAt": "2026-11-03T11:47:05.347Z",
+      "finishedAt": "2026-11-03T12:07:19.055Z",
+      "complete": true,
+      "total": 19,
+      "tested": 19,
+      "confirmed": 7,
+      "outcomes": {
+        "no_advancing_video": 10,
+        "playback_confirmed": 7,
+        "missing_video": 1,
+        "source_unavailable": 1
+      },
+      "routes": [
+        {
+          "case": 1,
+          "provider": "ahwaktv",
+          "serverProvider": "ahwaktv",
+          "title": "صقر وكناريا",
+          "kind": "film",
+          "server": "AhwakTV - vkvideo.ru",
+          "host": "vkvideo.ru",
+          "type": "embed",
+          "status": "no_advancing_video",
+          "testedAt": "2026-11-03T11:47:06.756Z",
+          "appVersion": "1.6.31-audit",
+          "appSha256": "a63b4f713e52af26a781b17a3ec14766a0f18eeb6973d8640d9d9f690391ab3f",
+          "errorCodes": [],
+          "ms": 36428,
+          "httpStatuses": []
+        },
+        {
+          "case": 2,
+          "provider": "ahwaktv",
+          "serverProvider": "ahwaktv",
+          "title": "صقر وكناريا",
+          "kind": "film",
+          "server": "AhwakTV - www.ok.ru",
+          "host": "www.ok.ru",
+          "type": "embed",
+          "status": "no_advancing_video",
+          "testedAt": "2026-11-03T11:48:33.496Z",
+          "appVersion": "1.6.31-audit",
+          "appSha256": "a63b4f713e52af26a781b17a3ec14766a0f18eeb6973d8640d9d9f690391ab3f",
+          "errorCodes": [],
+          "ms": 35963,
+          "httpStatuses": []
+        },
+        {
+          "case": 3,
+          "provider": "ahwaktv",
+          "serverProvider": "ahwaktv",
+          "title": "صقر وكناريا",
+          "kind": "film",
+          "server": "AhwakTV - uqload.vc",
+          "host": "uqload.vc",
+          "type": "embed",
+          "status": "playback_confirmed",
+          "testedAt": "2026-11-03T11:49:46.280Z",
+          "appVersion": "1.6.31-audit",
+          "appSha256": "a63b4f713e52af26a781b17a3ec14766a0f18eeb6973d8640d9d9f690391ab3f",
+          "proof": {
+            "start": 0.2,
+            "end": 3.382343,
+            "duration": 7478.625,
+            "transport": "webview",
+            "attribution": "single-recorded-player-invocation"
+          },
+          "errorCodes": [],
+          "ms": 10332,
+          "httpStatuses": []
+        },
+        {
+          "case": 4,
+          "provider": "ahwaktv",
+          "serverProvider": "ahwaktv",
+          "title": "صقر وكناريا",
+          "kind": "film",
+          "server": "AhwakTV - hgcloud.to",
+          "host": "hgcloud.to",
+          "type": "embed",
+          "status": "playback_confirmed",
+          "testedAt": "2026-11-03T11:50:00.617Z",
+          "appVersion": "1.6.31-audit",
+          "appSha256": "a63b4f713e52af26a781b17a3ec14766a0f18eeb6973d8640d9d9f690391ab3f",
+          "proof": {
+            "start": 0.673,
+            "end": 4.694,
+            "duration": 7478.625,
+            "transport": "media3",
+            "attribution": "invocation-tagged-clock"
+          },
+          "errorCodes": [],
+          "ms": 9606,
+          "httpStatuses": []
+        },
+        {
+          "case": 5,
+          "provider": "ahwaktv",
+          "serverProvider": "ahwaktv",
+          "title": "صقر وكناريا",
+          "kind": "film",
+          "server": "AhwakTV - playmogo.com",
+          "host": "playmogo.com",
+          "type": "embed",
+          "status": "no_advancing_video",
+          "testedAt": "2026-11-03T11:50:49.586Z",
+          "appVersion": "1.6.31-audit",
+          "appSha256": "a63b4f713e52af26a781b17a3ec14766a0f18eeb6973d8640d9d9f690391ab3f",
+          "errorCodes": [],
+          "ms": 35861,
+          "httpStatuses": []
+        },
+        {
+          "case": 6,
+          "provider": "ahwaktv",
+          "serverProvider": "ahwaktv",
+          "title": "خمسين خمسين",
+          "kind": "series",
+          "server": "AhwakTV - vkvideo.ru",
+          "host": "vkvideo.ru",
+          "type": "embed",
+          "status": "no_advancing_video",
+          "testedAt": "2026-11-03T11:51:25.546Z",
+          "appVersion": "1.6.31-audit",
+          "appSha256": "a63b4f713e52af26a781b17a3ec14766a0f18eeb6973d8640d9d9f690391ab3f",
+          "errorCodes": [],
+          "ms": 35882,
+          "httpStatuses": []
+        },
+        {
+          "case": 7,
+          "provider": "ahwaktv",
+          "serverProvider": "ahwaktv",
+          "title": "خمسين خمسين",
+          "kind": "series",
+          "server": "AhwakTV - hgcloud.to",
+          "host": "hgcloud.to",
+          "type": "embed",
+          "status": "playback_confirmed",
+          "testedAt": "2026-11-03T11:52:01.528Z",
+          "appVersion": "1.6.31-audit",
+          "appSha256": "a63b4f713e52af26a781b17a3ec14766a0f18eeb6973d8640d9d9f690391ab3f",
+          "proof": {
+            "start": 0,
+            "end": 3.486,
+            "duration": 2275,
+            "transport": "media3",
+            "attribution": "invocation-tagged-clock"
+          },
+          "errorCodes": [],
+          "ms": 11301,
+          "httpStatuses": []
+        },
+        {
+          "case": 8,
+          "provider": "ahwaktv",
+          "serverProvider": "ahwaktv",
+          "title": "خمسين خمسين",
+          "kind": "series",
+          "server": "AhwakTV - uqload.vc",
+          "host": "uqload.vc",
+          "type": "embed",
+          "status": "playback_confirmed",
+          "testedAt": "2026-11-03T11:52:12.962Z",
+          "appVersion": "1.6.31-audit",
+          "appSha256": "a63b4f713e52af26a781b17a3ec14766a0f18eeb6973d8640d9d9f690391ab3f",
+          "proof": {
+            "start": 0.285661,
+            "end": 3.391379,
+            "duration": 2275.08,
+            "transport": "webview",
+            "attribution": "single-recorded-player-invocation"
+          },
+          "errorCodes": [],
+          "ms": 8105,
+          "httpStatuses": []
+        },
+        {
+          "case": 9,
+          "provider": "ahwaktv",
+          "serverProvider": "ahwaktv",
+          "title": "خمسين خمسين",
+          "kind": "series",
+          "server": "AhwakTV - playmogo.com",
+          "host": "playmogo.com",
+          "type": "embed",
+          "status": "no_advancing_video",
+          "testedAt": "2026-11-03T11:52:21.182Z",
+          "appVersion": "1.6.31-audit",
+          "appSha256": "a63b4f713e52af26a781b17a3ec14766a0f18eeb6973d8640d9d9f690391ab3f",
+          "errorCodes": [],
+          "ms": 36068,
+          "httpStatuses": []
+        },
+        {
+          "case": 10,
+          "provider": "egydead",
+          "serverProvider": "egydead",
+          "title": "سوتس 2022 كامل",
+          "kind": "series",
+          "server": "EgyDead - hgcloud.to",
+          "host": "hgcloud.to",
+          "type": "embed",
+          "status": "playback_confirmed",
+          "testedAt": "2026-11-03T11:47:43.415Z",
+          "appVersion": "1.6.31-audit",
+          "appSha256": "a63b4f713e52af26a781b17a3ec14766a0f18eeb6973d8640d9d9f690391ab3f",
+          "proof": {
+            "start": 0,
+            "end": 3.603,
+            "duration": 2246.6,
+            "transport": "media3",
+            "attribution": "invocation-tagged-clock"
+          },
+          "errorCodes": [],
+          "ms": 13742,
+          "httpStatuses": []
+        },
+        {
+          "case": 11,
+          "provider": "egydead",
+          "serverProvider": "egydead",
+          "title": "سوتس 2022 كامل",
+          "kind": "series",
+          "server": "EgyDead - morencius.com",
+          "host": "morencius.com",
+          "type": "embed",
+          "status": "playback_confirmed",
+          "testedAt": "2026-11-03T12:05:57.743Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "74c5482f033ebdc8a5425168da2bc3f85b54e8327154d6d71c6bd1094dc0eed2",
+          "proof": {
+            "start": 0.327732,
+            "end": 3.711347,
+            "duration": 2246.6,
+            "transport": "webview",
+            "attribution": "single-recorded-player-invocation"
+          },
+          "errorCodes": [],
+          "ms": 11575,
+          "httpStatuses": [],
+          "previousAttempts": [
+            {
+              "status": "no_advancing_video",
+              "testedAt": "2026-11-03T11:49:09.581Z",
+              "appVersion": "1.6.31-audit",
+              "appSha256": "a63b4f713e52af26a781b17a3ec14766a0f18eeb6973d8640d9d9f690391ab3f",
+              "errorCodes": []
+            }
+          ]
+        },
+        {
+          "case": 12,
+          "provider": "egydead",
+          "serverProvider": "egydead",
+          "title": "سوتس 2022 كامل",
+          "kind": "series",
+          "server": "EgyDead - mixdrop.top",
+          "host": "mixdrop.top",
+          "type": "embed",
+          "status": "missing_video",
+          "testedAt": "2026-11-03T12:06:09.540Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "74c5482f033ebdc8a5425168da2bc3f85b54e8327154d6d71c6bd1094dc0eed2",
+          "sourceDiagnostics": [
+            {
+              "sourceError": "SOURCE_UNAVAILABLE",
+              "httpStatus": 0,
+              "networkErrorCode": 0
+            }
+          ],
+          "errorCodes": [],
+          "ms": 6629,
+          "httpStatuses": [],
+          "previousAttempts": [
+            {
+              "status": "player_error",
+              "testedAt": "2026-11-03T11:49:56.736Z",
+              "appVersion": "1.6.31-audit",
+              "appSha256": "a63b4f713e52af26a781b17a3ec14766a0f18eeb6973d8640d9d9f690391ab3f",
+              "errorCodes": []
+            }
+          ]
+        },
+        {
+          "case": 13,
+          "provider": "egydead",
+          "serverProvider": "egydead",
+          "title": "سوتس 2022 كامل",
+          "kind": "series",
+          "server": "EgyDead - playmogo.com",
+          "host": "playmogo.com",
+          "type": "embed",
+          "status": "no_advancing_video",
+          "testedAt": "2026-11-03T11:50:10.294Z",
+          "appVersion": "1.6.31-audit",
+          "appSha256": "a63b4f713e52af26a781b17a3ec14766a0f18eeb6973d8640d9d9f690391ab3f",
+          "errorCodes": [],
+          "ms": 36475,
+          "httpStatuses": []
+        },
+        {
+          "case": 14,
+          "provider": "dessinanimenet",
+          "serverProvider": "dessinanimenet",
+          "title": "Scooby-Doo! Halloween",
+          "kind": "film",
+          "server": "DessinAnime.net · lecteur1.xtremestream.xyz",
+          "host": "lecteur1.xtremestream.xyz",
+          "type": "embed",
+          "status": "no_advancing_video",
+          "testedAt": "2026-11-03T11:47:57.302Z",
+          "appVersion": "1.6.31-audit",
+          "appSha256": "a63b4f713e52af26a781b17a3ec14766a0f18eeb6973d8640d9d9f690391ab3f",
+          "errorCodes": [],
+          "ms": 36095,
+          "httpStatuses": []
+        },
+        {
+          "case": 15,
+          "provider": "frembed",
+          "serverProvider": "frembed",
+          "title": "Le Petit Prince",
+          "kind": "film",
+          "server": "Frembed · VF · Netu",
+          "host": "netu.frembed.bond",
+          "type": "embed",
+          "status": "no_advancing_video",
+          "testedAt": "2026-11-03T12:03:46.278Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "74c5482f033ebdc8a5425168da2bc3f85b54e8327154d6d71c6bd1094dc0eed2",
+          "errorCodes": [],
+          "ms": 36901,
+          "httpStatuses": [],
+          "previousAttempts": [
+            {
+              "status": "player_error",
+              "testedAt": "2026-11-03T11:50:46.880Z",
+              "appVersion": "1.6.31-audit",
+              "appSha256": "a63b4f713e52af26a781b17a3ec14766a0f18eeb6973d8640d9d9f690391ab3f",
+              "errorCodes": []
+            }
+          ]
+        },
+        {
+          "case": 16,
+          "provider": "frembed",
+          "serverProvider": "frembed",
+          "title": "Avatar",
+          "kind": "series",
+          "server": "Frembed · VF · Netu",
+          "host": "netu.frembed.bond",
+          "type": "embed",
+          "status": "no_advancing_video",
+          "testedAt": "2026-11-03T12:04:45.354Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "74c5482f033ebdc8a5425168da2bc3f85b54e8327154d6d71c6bd1094dc0eed2",
+          "errorCodes": [],
+          "ms": 35994,
+          "httpStatuses": [],
+          "previousAttempts": [
+            {
+              "status": "player_error",
+              "testedAt": "2026-11-03T11:50:48.969Z",
+              "appVersion": "1.6.31-audit",
+              "appSha256": "a63b4f713e52af26a781b17a3ec14766a0f18eeb6973d8640d9d9f690391ab3f",
+              "errorCodes": []
+            }
+          ]
+        },
+        {
+          "case": 17,
+          "provider": "hdtoday",
+          "serverProvider": "hdtoday",
+          "title": "Murdoch Mysteries S20E2",
+          "kind": "series",
+          "server": "HDToday · vidfast",
+          "host": "vidfast.pro",
+          "type": "embed",
+          "status": "playback_confirmed",
+          "testedAt": "2026-11-03T12:04:23.308Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "74c5482f033ebdc8a5425168da2bc3f85b54e8327154d6d71c6bd1094dc0eed2",
+          "proof": {
+            "start": 0,
+            "end": 3.544483,
+            "duration": 2650.981999999997,
+            "transport": "webview",
+            "attribution": "single-recorded-player-invocation"
+          },
+          "errorCodes": [],
+          "ms": 21904,
+          "httpStatuses": []
+        },
+        {
+          "case": 18,
+          "provider": "hdtoday",
+          "serverProvider": "hdtoday",
+          "title": "Murdoch Mysteries S20E2",
+          "kind": "series",
+          "server": "HDToday · vidcore-V2",
+          "host": "vidcore.io",
+          "type": "embed",
+          "status": "no_advancing_video",
+          "testedAt": "2026-11-03T12:05:21.556Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "74c5482f033ebdc8a5425168da2bc3f85b54e8327154d6d71c6bd1094dc0eed2",
+          "errorCodes": [],
+          "ms": 36043,
+          "httpStatuses": []
+        },
+        {
+          "case": 19,
+          "provider": "hdtoday",
+          "serverProvider": "hdtoday",
+          "title": "The Sins Beneath",
+          "kind": "film",
+          "server": "HDToday · vidfast",
+          "host": "vidfast.pro",
+          "type": "embed",
+          "status": "source_unavailable",
+          "testedAt": "2026-11-03T12:07:03.260Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "74c5482f033ebdc8a5425168da2bc3f85b54e8327154d6d71c6bd1094dc0eed2",
+          "sourceDiagnostics": [
+            {
+              "sourceError": "SOURCE_UNAVAILABLE",
+              "httpStatus": 0,
+              "networkErrorCode": 0
+            }
+          ],
+          "errorCodes": [],
+          "ms": 15658,
+          "httpStatuses": []
+        }
+      ]
+    },
+    {
+      "name": "remaining-providers",
+      "startedAt": "2026-11-03T12:07:45.138Z",
+      "finishedAt": "2026-11-03T13:50:05.468Z",
+      "complete": true,
+      "total": 46,
+      "tested": 46,
+      "confirmed": 9,
+      "outcomes": {
+        "debugger_restricted": 8,
+        "source_unavailable": 15,
+        "playback_confirmed": 9,
+        "no_advancing_video": 10,
+        "missing_video": 2,
+        "preview_only": 1,
+        "unverified_clock_attribution": 1
+      },
+      "routes": [
+        {
+          "case": 1,
+          "provider": "cimafu",
+          "serverProvider": "cimafu",
+          "title": "Tenzing",
+          "kind": "film",
+          "server": "Cima4u - doodstream.com - Arabic sub",
+          "host": "doodstream.com",
+          "type": "embed",
+          "status": "debugger_restricted",
+          "testedAt": "2026-11-03T12:07:45.893Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "74c5482f033ebdc8a5425168da2bc3f85b54e8327154d6d71c6bd1094dc0eed2",
+          "errorCodes": [],
+          "ms": 36591,
+          "httpStatuses": []
+        },
+        {
+          "case": 2,
+          "provider": "cimafu",
+          "serverProvider": "cimafu",
+          "title": "Tenzing",
+          "kind": "film",
+          "server": "Cima4u - doodstream.com - Arabic sub",
+          "host": "doodstream.com",
+          "type": "embed",
+          "status": "debugger_restricted",
+          "testedAt": "2026-11-03T13:38:22.134Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+          "errorCodes": [],
+          "ms": 37059,
+          "httpStatuses": [],
+          "previousAttempts": [
+            {
+              "status": "no_advancing_video",
+              "testedAt": "2026-11-03T13:36:55.400Z",
+              "appVersion": "1.6.32-audit",
+              "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+              "errorCodes": []
+            }
+          ]
+        },
+        {
+          "case": 3,
+          "provider": "cimafu",
+          "serverProvider": "cimafu",
+          "title": "Tenzing",
+          "kind": "film",
+          "server": "Cima4u - doodstream.com - Arabic sub",
+          "host": "doodstream.com",
+          "type": "embed",
+          "status": "debugger_restricted",
+          "testedAt": "2026-11-03T13:40:46.528Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+          "errorCodes": [],
+          "ms": 35497,
+          "httpStatuses": []
+        },
+        {
+          "case": 4,
+          "provider": "cimafu",
+          "serverProvider": "cimafu",
+          "title": "Tenzing",
+          "kind": "film",
+          "server": "Cima4u - bysetayico.com - Arabic sub",
+          "host": "bysetayico.com",
+          "type": "embed",
+          "status": "source_unavailable",
+          "testedAt": "2026-11-03T13:42:18.312Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+          "sourceDiagnostics": [
+            {
+              "sourceError": "SOURCE_UNAVAILABLE",
+              "httpStatus": 0,
+              "networkErrorCode": 0
+            }
+          ],
+          "errorCodes": [],
+          "ms": 6384,
+          "httpStatuses": []
+        },
+        {
+          "case": 5,
+          "provider": "cimafu",
+          "serverProvider": "cimafu",
+          "title": "Tenzing",
+          "kind": "film",
+          "server": "Cima4u - bysetayico.com - Arabic sub",
+          "host": "bysetayico.com",
+          "type": "embed",
+          "status": "source_unavailable",
+          "testedAt": "2026-11-03T13:43:53.286Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+          "sourceDiagnostics": [
+            {
+              "sourceError": "SOURCE_UNAVAILABLE",
+              "httpStatus": 0,
+              "networkErrorCode": 0
+            }
+          ],
+          "errorCodes": [],
+          "ms": 1953,
+          "httpStatuses": []
+        },
+        {
+          "case": 6,
+          "provider": "cimafu",
+          "serverProvider": "cimafu",
+          "title": "Tenzing",
+          "kind": "film",
+          "server": "Cima4u - mixdrop.ps - Arabic sub",
+          "host": "mixdrop.ps",
+          "type": "embed",
+          "status": "source_unavailable",
+          "testedAt": "2026-11-03T13:45:35.699Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+          "sourceDiagnostics": [
+            {
+              "sourceError": "SOURCE_UNAVAILABLE",
+              "httpStatus": 0,
+              "networkErrorCode": 0
+            }
+          ],
+          "errorCodes": [],
+          "ms": 6657,
+          "httpStatuses": []
+        },
+        {
+          "case": 7,
+          "provider": "cimafu",
+          "serverProvider": "cimafu",
+          "title": "Tenzing",
+          "kind": "film",
+          "server": "Cima4u - mixdrop.ps - Arabic sub",
+          "host": "mixdrop.ps",
+          "type": "embed",
+          "status": "source_unavailable",
+          "testedAt": "2026-11-03T13:46:54.560Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+          "sourceDiagnostics": [
+            {
+              "sourceError": "SOURCE_UNAVAILABLE",
+              "httpStatus": 0,
+              "networkErrorCode": 0
+            }
+          ],
+          "errorCodes": [],
+          "ms": 1981,
+          "httpStatuses": []
+        },
+        {
+          "case": 8,
+          "provider": "cimafu",
+          "serverProvider": "cimafu",
+          "title": "Tenzing",
+          "kind": "film",
+          "server": "Cima4u - mixdrop.ps - Arabic sub",
+          "host": "mixdrop.ps",
+          "type": "embed",
+          "status": "source_unavailable",
+          "testedAt": "2026-11-03T13:47:33.727Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+          "sourceDiagnostics": [
+            {
+              "sourceError": "SOURCE_UNAVAILABLE",
+              "httpStatus": 0,
+              "networkErrorCode": 0
+            }
+          ],
+          "errorCodes": [],
+          "ms": 2049,
+          "httpStatuses": []
+        },
+        {
+          "case": 9,
+          "provider": "cimafu",
+          "serverProvider": "cimafu",
+          "title": "Tenzing",
+          "kind": "film",
+          "server": "Cima4u - mixdrop.ps - Arabic sub",
+          "host": "mixdrop.ps",
+          "type": "embed",
+          "status": "source_unavailable",
+          "testedAt": "2026-11-03T13:47:35.865Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+          "sourceDiagnostics": [
+            {
+              "sourceError": "SOURCE_UNAVAILABLE",
+              "httpStatus": 0,
+              "networkErrorCode": 0
+            }
+          ],
+          "errorCodes": [],
+          "ms": 1926,
+          "httpStatuses": []
+        },
+        {
+          "case": 10,
+          "provider": "cimafu",
+          "serverProvider": "cimafu",
+          "title": "Tenzing",
+          "kind": "film",
+          "server": "Cima4u - mixdrop.ps - Arabic sub",
+          "host": "mixdrop.ps",
+          "type": "embed",
+          "status": "source_unavailable",
+          "testedAt": "2026-11-03T13:47:37.882Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+          "sourceDiagnostics": [
+            {
+              "sourceError": "SOURCE_UNAVAILABLE",
+              "httpStatus": 0,
+              "networkErrorCode": 0
+            }
+          ],
+          "errorCodes": [],
+          "ms": 2021,
+          "httpStatuses": []
+        },
+        {
+          "case": 11,
+          "provider": "cimafu",
+          "serverProvider": "cimafu",
+          "title": "Tenzing",
+          "kind": "film",
+          "server": "Cima4u - mixdrop.ps - Arabic sub",
+          "host": "mixdrop.ps",
+          "type": "embed",
+          "status": "source_unavailable",
+          "testedAt": "2026-11-03T13:47:40.006Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+          "sourceDiagnostics": [
+            {
+              "sourceError": "SOURCE_UNAVAILABLE",
+              "httpStatus": 0,
+              "networkErrorCode": 0
+            }
+          ],
+          "errorCodes": [],
+          "ms": 1932,
+          "httpStatuses": []
+        },
+        {
+          "case": 12,
+          "provider": "cimafu",
+          "serverProvider": "cimafu",
+          "title": "Tenzing",
+          "kind": "film",
+          "server": "Cima4u - cybervynx.com - Arabic sub",
+          "host": "cybervynx.com",
+          "type": "embed",
+          "status": "playback_confirmed",
+          "testedAt": "2026-11-03T13:47:42.039Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+          "proof": {
+            "start": 0,
+            "end": 3.766,
+            "duration": 7533.693,
+            "transport": "media3",
+            "attribution": "invocation-tagged-clock"
+          },
+          "errorCodes": [],
+          "ms": 11448,
+          "httpStatuses": []
+        },
+        {
+          "case": 13,
+          "provider": "cimafu",
+          "serverProvider": "cimafu",
+          "title": "Tenzing",
+          "kind": "film",
+          "server": "Cima4u - cybervynx.com - Arabic sub",
+          "host": "cybervynx.com",
+          "type": "embed",
+          "status": "playback_confirmed",
+          "testedAt": "2026-11-03T13:47:53.584Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+          "proof": {
+            "start": 0.217,
+            "end": 4.24,
+            "duration": 7533.693,
+            "transport": "media3",
+            "attribution": "invocation-tagged-clock"
+          },
+          "errorCodes": [],
+          "ms": 8112,
+          "httpStatuses": []
+        },
+        {
+          "case": 14,
+          "provider": "cimafu",
+          "serverProvider": "cimafu",
+          "title": "Tenzing",
+          "kind": "film",
+          "server": "Cima4u - 1vid.xyz - Arabic sub",
+          "host": "1vid.xyz",
+          "type": "embed",
+          "status": "playback_confirmed",
+          "testedAt": "2026-11-03T13:48:01.808Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+          "proof": {
+            "start": 0.487951,
+            "end": 3.584687,
+            "duration": 7533.701,
+            "transport": "webview",
+            "attribution": "single-recorded-player-invocation"
+          },
+          "errorCodes": [],
+          "ms": 11617,
+          "httpStatuses": []
+        },
+        {
+          "case": 15,
+          "provider": "cimafu",
+          "serverProvider": "cimafu",
+          "title": "Tenzing",
+          "kind": "film",
+          "server": "Cima4u - vidmoly.org - Arabic sub",
+          "host": "vidmoly.org",
+          "type": "embed",
+          "status": "no_advancing_video",
+          "testedAt": "2026-11-03T13:48:13.533Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+          "errorCodes": [],
+          "ms": 35931,
+          "httpStatuses": []
+        },
+        {
+          "case": 16,
+          "provider": "cimafu",
+          "serverProvider": "cimafu",
+          "title": "Tenzing",
+          "kind": "film",
+          "server": "Cima4u - vidspeed.org - Arabic sub",
+          "host": "vidspeed.org",
+          "type": "embed",
+          "status": "playback_confirmed",
+          "testedAt": "2026-11-03T13:48:49.557Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+          "proof": {
+            "start": 1.542271,
+            "end": 3.021534,
+            "duration": 7533.7,
+            "transport": "webview",
+            "attribution": "single-recorded-player-invocation"
+          },
+          "errorCodes": [],
+          "ms": 18822,
+          "httpStatuses": []
+        },
+        {
+          "case": 17,
+          "provider": "cimafu",
+          "serverProvider": "cimafu",
+          "title": "Tenzing",
+          "kind": "film",
+          "server": "Cima4u - www.mp4upload.com - Arabic sub",
+          "host": "www.mp4upload.com",
+          "type": "embed",
+          "status": "source_unavailable",
+          "testedAt": "2026-11-03T13:49:08.479Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+          "sourceDiagnostics": [
+            {
+              "sourceError": "SOURCE_UNAVAILABLE",
+              "httpStatus": 0,
+              "networkErrorCode": 0
+            }
+          ],
+          "errorCodes": [],
+          "ms": 2029,
+          "httpStatuses": []
+        },
+        {
+          "case": 18,
+          "provider": "cimafu",
+          "serverProvider": "cimafu",
+          "title": "Tenzing",
+          "kind": "film",
+          "server": "Cima4u - bysesukior.com - Arabic sub",
+          "host": "bysesukior.com",
+          "type": "embed",
+          "status": "source_unavailable",
+          "testedAt": "2026-11-03T13:49:10.606Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+          "sourceDiagnostics": [
+            {
+              "sourceError": "SOURCE_UNAVAILABLE",
+              "httpStatus": 0,
+              "networkErrorCode": 0
+            }
+          ],
+          "errorCodes": [],
+          "ms": 3560,
+          "httpStatuses": []
+        },
+        {
+          "case": 19,
+          "provider": "cimafu",
+          "serverProvider": "cimafu",
+          "title": "Tenzing",
+          "kind": "film",
+          "server": "Cima4u - mixdrop.top - Arabic sub",
+          "host": "mixdrop.top",
+          "type": "embed",
+          "status": "source_unavailable",
+          "testedAt": "2026-11-03T13:49:14.273Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+          "sourceDiagnostics": [
+            {
+              "sourceError": "SOURCE_UNAVAILABLE",
+              "httpStatus": 0,
+              "networkErrorCode": 0
+            }
+          ],
+          "errorCodes": [],
+          "ms": 3643,
+          "httpStatuses": []
+        },
+        {
+          "case": 20,
+          "provider": "cimafu",
+          "serverProvider": "cimafu",
+          "title": "Tenzing",
+          "kind": "film",
+          "server": "Cima4u - hgcloud.to - Arabic sub",
+          "host": "hgcloud.to",
+          "type": "embed",
+          "status": "playback_confirmed",
+          "testedAt": "2026-11-03T13:49:18.009Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+          "proof": {
+            "start": 0.636,
+            "end": 4.634,
+            "duration": 7533.693,
+            "transport": "media3",
+            "attribution": "invocation-tagged-clock"
+          },
+          "errorCodes": [],
+          "ms": 9768,
+          "httpStatuses": []
+        },
+        {
+          "case": 21,
+          "provider": "cimafu",
+          "serverProvider": "cimafu",
+          "title": "Tenzing",
+          "kind": "film",
+          "server": "Cima4u - playmogo.com - Arabic sub",
+          "host": "playmogo.com",
+          "type": "embed",
+          "status": "debugger_restricted",
+          "testedAt": "2026-11-03T13:49:27.882Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+          "errorCodes": [],
+          "ms": 35459,
+          "httpStatuses": []
+        },
+        {
+          "case": 22,
+          "provider": "cimafu",
+          "serverProvider": "cimafu",
+          "title": "Tenzing",
+          "kind": "film",
+          "server": "Cima4u - voe.sx - Arabic sub",
+          "host": "voe.sx",
+          "type": "embed",
+          "status": "missing_video",
+          "testedAt": "2026-11-03T13:50:03.432Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+          "sourceDiagnostics": [
+            {
+              "sourceError": "HTTP_ERROR",
+              "httpStatus": 404,
+              "networkErrorCode": 0
+            }
+          ],
+          "errorCodes": [],
+          "ms": 1937,
+          "httpStatuses": []
+        },
+        {
+          "case": 23,
+          "provider": "streamtunisie",
+          "serverProvider": "streamtunisie",
+          "title": "ستارتاب",
+          "kind": "film",
+          "server": "StreamTunisie - YouTube",
+          "host": "www.youtube.com",
+          "type": "youtube",
+          "status": "preview_only",
+          "testedAt": "2026-11-03T12:08:22.637Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "74c5482f033ebdc8a5425168da2bc3f85b54e8327154d6d71c6bd1094dc0eed2",
+          "errorCodes": [],
+          "ms": 12851,
+          "httpStatuses": []
+        },
+        {
+          "case": 24,
+          "provider": "frenchstream",
+          "serverProvider": "frenchstream",
+          "title": "He's Watching You",
+          "kind": "film",
+          "server": "French Stream · DEFAULT · vidzy",
+          "host": "vidzy.cc",
+          "type": "embed",
+          "status": "no_advancing_video",
+          "testedAt": "2026-11-03T12:08:35.659Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "74c5482f033ebdc8a5425168da2bc3f85b54e8327154d6d71c6bd1094dc0eed2",
+          "errorCodes": [],
+          "ms": 36610,
+          "httpStatuses": []
+        },
+        {
+          "case": 25,
+          "provider": "frenchstream",
+          "serverProvider": "frenchstream",
+          "title": "He's Watching You",
+          "kind": "film",
+          "server": "French Stream · DEFAULT · dood",
+          "host": "trakx.lol",
+          "type": "embed",
+          "status": "debugger_restricted",
+          "testedAt": "2026-11-03T13:38:59.373Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+          "errorCodes": [],
+          "ms": 36133,
+          "httpStatuses": [],
+          "previousAttempts": [
+            {
+              "status": "debugger_restricted",
+              "testedAt": "2026-11-03T13:37:42.995Z",
+              "appVersion": "1.6.32-audit",
+              "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+              "errorCodes": []
+            }
+          ]
+        },
+        {
+          "case": 26,
+          "provider": "frenchstream",
+          "serverProvider": "frenchstream",
+          "title": "He's Watching You",
+          "kind": "film",
+          "server": "French Stream · VF · dood",
+          "host": "trakx.lol",
+          "type": "embed",
+          "status": "debugger_restricted",
+          "testedAt": "2026-11-03T13:41:22.245Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+          "errorCodes": [],
+          "ms": 36291,
+          "httpStatuses": []
+        },
+        {
+          "case": 27,
+          "provider": "frenchstream",
+          "serverProvider": "frenchstream",
+          "title": "He's Watching You",
+          "kind": "film",
+          "server": "French Stream · DEFAULT · voe",
+          "host": "trakx.lol",
+          "type": "embed",
+          "status": "no_advancing_video",
+          "testedAt": "2026-11-03T13:42:24.944Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+          "errorCodes": [],
+          "ms": 36014,
+          "httpStatuses": []
+        },
+        {
+          "case": 28,
+          "provider": "frenchstream",
+          "serverProvider": "frenchstream",
+          "title": "He's Watching You",
+          "kind": "film",
+          "server": "French Stream · VF · voe",
+          "host": "trakx.lol",
+          "type": "embed",
+          "status": "no_advancing_video",
+          "testedAt": "2026-11-03T13:43:55.356Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+          "errorCodes": [],
+          "ms": 36031,
+          "httpStatuses": []
+        },
+        {
+          "case": 29,
+          "provider": "youtubeoriginals",
+          "serverProvider": "youtube",
+          "title": "Knights Of Guinevere",
+          "kind": "series",
+          "server": "Official YouTube",
+          "host": "www.youtube.com",
+          "type": "youtube",
+          "status": "playback_confirmed",
+          "testedAt": "2026-11-03T12:09:12.419Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "74c5482f033ebdc8a5425168da2bc3f85b54e8327154d6d71c6bd1094dc0eed2",
+          "proof": {
+            "start": 0,
+            "end": 3.887384,
+            "duration": 1587.501,
+            "transport": "webview",
+            "attribution": "observed-document-video-clock"
+          },
+          "errorCodes": [],
+          "ms": 8339,
+          "httpStatuses": []
+        },
+        {
+          "case": 30,
+          "provider": "myasiantv",
+          "serverProvider": "myasiantv",
+          "title": "You Should Be the One to Kiss Me",
+          "kind": "series",
+          "server": "MyAsianTV - English sub",
+          "host": "zumivids.com",
+          "type": "embed",
+          "status": "no_advancing_video",
+          "testedAt": "2026-11-03T12:21:52.517Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+          "errorCodes": [],
+          "ms": 35714,
+          "httpStatuses": [],
+          "previousAttempts": [
+            {
+              "status": "no_advancing_video",
+              "testedAt": "2026-11-03T12:09:20.887Z",
+              "appVersion": "1.6.32-audit",
+              "appSha256": "74c5482f033ebdc8a5425168da2bc3f85b54e8327154d6d71c6bd1094dc0eed2",
+              "errorCodes": []
+            }
+          ]
+        },
+        {
+          "case": 31,
+          "provider": "myflixer",
+          "serverProvider": "myflixer",
+          "title": "Tazza: The Song of Beelzebub",
+          "kind": "film",
+          "server": "Player 1",
+          "host": "sv2.nontongo.stream",
+          "type": "embed",
+          "status": "source_unavailable",
+          "testedAt": "2026-11-03T12:09:56.877Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "74c5482f033ebdc8a5425168da2bc3f85b54e8327154d6d71c6bd1094dc0eed2",
+          "sourceDiagnostics": [
+            {
+              "sourceError": "HTTP_ERROR",
+              "httpStatus": 502,
+              "networkErrorCode": 0
+            }
+          ],
+          "errorCodes": [],
+          "ms": 6341,
+          "httpStatuses": [
+            502
+          ]
+        },
+        {
+          "case": 32,
+          "provider": "myflixer",
+          "serverProvider": "myflixer",
+          "title": "Tazza: The Song of Beelzebub",
+          "kind": "film",
+          "server": "Player 2",
+          "host": "balance.medmedia03.wiki",
+          "type": "embed",
+          "status": "no_advancing_video",
+          "testedAt": "2026-11-03T13:39:42.183Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+          "errorCodes": [],
+          "ms": 35448,
+          "httpStatuses": []
+        },
+        {
+          "case": 33,
+          "provider": "myflixer",
+          "serverProvider": "myflixer",
+          "title": "Tazza: The Song of Beelzebub",
+          "kind": "film",
+          "server": "Player 3",
+          "host": "vidapi.xyz",
+          "type": "embed",
+          "status": "debugger_restricted",
+          "testedAt": "2026-11-03T13:41:58.704Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+          "sourceDiagnostics": [
+            {
+              "sourceError": "SOURCE_UNAVAILABLE",
+              "httpStatus": 0,
+              "networkErrorCode": 0
+            }
+          ],
+          "errorCodes": [],
+          "ms": 11463,
+          "httpStatuses": []
+        },
+        {
+          "case": 34,
+          "provider": "myflixer",
+          "serverProvider": "myflixer",
+          "title": "Tazza: The Song of Beelzebub",
+          "kind": "film",
+          "server": "Player 4",
+          "host": "embedmaster.link",
+          "type": "embed",
+          "status": "no_advancing_video",
+          "testedAt": "2026-11-03T13:43:01.079Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+          "errorCodes": [],
+          "ms": 35869,
+          "httpStatuses": []
+        },
+        {
+          "case": 35,
+          "provider": "myflixer",
+          "serverProvider": "myflixer",
+          "title": "Tazza: The Song of Beelzebub",
+          "kind": "film",
+          "server": "Player 5",
+          "host": "vidfast.pro",
+          "type": "embed",
+          "status": "source_unavailable",
+          "testedAt": "2026-11-03T13:44:31.523Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+          "sourceDiagnostics": [
+            {
+              "sourceError": "SOURCE_UNAVAILABLE",
+              "httpStatus": 0,
+              "networkErrorCode": 0
+            }
+          ],
+          "errorCodes": [],
+          "ms": 27841,
+          "httpStatuses": []
+        },
+        {
+          "case": 36,
+          "provider": "myflixer",
+          "serverProvider": "myflixer",
+          "title": "Tazza: The Song of Beelzebub",
+          "kind": "film",
+          "server": "Player 6",
+          "host": "multiembed.mov",
+          "type": "embed",
+          "status": "debugger_restricted",
+          "testedAt": "2026-11-03T13:45:42.472Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+          "errorCodes": [],
+          "ms": 35628,
+          "httpStatuses": []
+        },
+        {
+          "case": 37,
+          "provider": "myflixer",
+          "serverProvider": "myflixer",
+          "title": "Tazza: The Song of Beelzebub",
+          "kind": "film",
+          "server": "Player 7",
+          "host": "moviesapi.to",
+          "type": "embed",
+          "status": "no_advancing_video",
+          "testedAt": "2026-11-03T13:46:56.747Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+          "errorCodes": [],
+          "ms": 36787,
+          "httpStatuses": []
+        },
+        {
+          "case": 38,
+          "provider": "multimovies",
+          "serverProvider": "multimovies",
+          "title": "Street Fighter",
+          "kind": "film",
+          "server": "MultiMovies - Cineverse",
+          "host": "rozgarlelo.modiplay.xyz",
+          "type": "embed",
+          "status": "playback_confirmed",
+          "testedAt": "2026-11-03T12:10:03.364Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "74c5482f033ebdc8a5425168da2bc3f85b54e8327154d6d71c6bd1094dc0eed2",
+          "proof": {
+            "start": 0.116666,
+            "end": 3.858357,
+            "duration": 6522.733,
+            "transport": "webview",
+            "attribution": "invocation-tagged-clock"
+          },
+          "errorCodes": [],
+          "ms": 13304,
+          "httpStatuses": []
+        },
+        {
+          "case": 39,
+          "provider": "multimovies",
+          "serverProvider": "multimovies",
+          "title": "Street Fighter",
+          "kind": "film",
+          "server": "MultiMovies - GD mirror",
+          "host": "streams.iqsmartgames.com",
+          "type": "embed",
+          "status": "playback_confirmed",
+          "testedAt": "2026-11-03T13:40:17.835Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+          "proof": {
+            "start": 1.411303,
+            "end": 3.285392,
+            "duration": 6522.733,
+            "transport": "webview",
+            "attribution": "single-recorded-player-invocation"
+          },
+          "errorCodes": [],
+          "ms": 26143,
+          "httpStatuses": []
+        },
+        {
+          "case": 40,
+          "provider": "multimovies",
+          "serverProvider": "multimovies",
+          "title": "Street Fighter",
+          "kind": "film",
+          "server": "MultiMovies - Vidrift",
+          "host": "embed.vidrift.net",
+          "type": "embed",
+          "status": "source_unavailable",
+          "testedAt": "2026-11-03T13:42:10.288Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+          "sourceDiagnostics": [
+            {
+              "sourceError": "SOURCE_UNAVAILABLE",
+              "httpStatus": 0,
+              "networkErrorCode": 0
+            }
+          ],
+          "errorCodes": [],
+          "ms": 7895,
+          "httpStatuses": []
+        },
+        {
+          "case": 41,
+          "provider": "multimovies",
+          "serverProvider": "multimovies",
+          "title": "Street Fighter",
+          "kind": "film",
+          "server": "MultiMovies - VIDOUT",
+          "host": "vidout.pages.dev",
+          "type": "embed",
+          "status": "playback_confirmed",
+          "testedAt": "2026-11-03T13:43:37.065Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+          "proof": {
+            "start": 0.098866,
+            "end": 3.422488,
+            "duration": 6522.733,
+            "transport": "webview",
+            "attribution": "single-recorded-player-invocation"
+          },
+          "errorCodes": [],
+          "ms": 16105,
+          "httpStatuses": []
+        },
+        {
+          "case": 42,
+          "provider": "multimovies",
+          "serverProvider": "multimovies",
+          "title": "Street Fighter",
+          "kind": "film",
+          "server": "MultiMovies - Filmu",
+          "host": "embed.filmu.in",
+          "type": "embed",
+          "status": "no_advancing_video",
+          "testedAt": "2026-11-03T13:44:59.479Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+          "errorCodes": [],
+          "ms": 36089,
+          "httpStatuses": []
+        },
+        {
+          "case": 43,
+          "provider": "multimovies",
+          "serverProvider": "multimovies",
+          "title": "Street Fighter",
+          "kind": "film",
+          "server": "MultiMovies - VidBolt",
+          "host": "vidbolt.xyz",
+          "type": "embed",
+          "status": "missing_video",
+          "testedAt": "2026-11-03T13:46:18.221Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+          "errorCodes": [],
+          "ms": 36167,
+          "httpStatuses": []
+        },
+        {
+          "case": 44,
+          "provider": "yoturkish",
+          "serverProvider": "yoturkish",
+          "title": "Sevdam Karadeniz",
+          "kind": "series",
+          "server": "YoTurkish - Server 1 (English sub)",
+          "host": "rufiiguta.com",
+          "type": "embed",
+          "status": "no_advancing_video",
+          "testedAt": "2026-11-03T12:10:16.819Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "74c5482f033ebdc8a5425168da2bc3f85b54e8327154d6d71c6bd1094dc0eed2",
+          "errorCodes": [],
+          "ms": 36487,
+          "httpStatuses": []
+        },
+        {
+          "case": 45,
+          "provider": "yoturkish",
+          "serverProvider": "yoturkish",
+          "title": "Sevdam Karadeniz",
+          "kind": "series",
+          "server": "YoTurkish - Server 2 (English sub)",
+          "host": "engifuosi.com",
+          "type": "embed",
+          "status": "source_unavailable",
+          "testedAt": "2026-11-03T13:40:44.203Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+          "sourceDiagnostics": [
+            {
+              "sourceError": "SOURCE_UNAVAILABLE",
+              "httpStatus": 0,
+              "networkErrorCode": 0
+            }
+          ],
+          "errorCodes": [],
+          "ms": 2127,
+          "httpStatuses": []
+        },
+        {
+          "case": 46,
+          "provider": "animegg",
+          "serverProvider": "animegg",
+          "title": "White cat legend season 3",
+          "kind": "series",
+          "server": "AnimeGG - Subbed",
+          "host": "www.animegg.org",
+          "type": "embed",
+          "status": "unverified_clock_attribution",
+          "testedAt": "2026-11-03T12:17:31.361Z",
+          "appVersion": "1.6.32-audit",
+          "appSha256": "74c5482f033ebdc8a5425168da2bc3f85b54e8327154d6d71c6bd1094dc0eed2",
+          "errorCodes": [],
+          "ms": 22712,
+          "httpStatuses": [],
+          "previousAttempts": [
+            {
+              "status": "infrastructure_error",
+              "testedAt": "2026-11-03T12:10:53.550Z",
+              "appVersion": "1.6.32-audit",
+              "appSha256": "74c5482f033ebdc8a5425168da2bc3f85b54e8327154d6d71c6bd1094dc0eed2",
+              "errorCodes": []
+            },
+            {
+              "status": "infrastructure_error",
+              "testedAt": "2026-11-03T12:16:12.105Z",
+              "appVersion": "1.6.32-audit",
+              "appSha256": "74c5482f033ebdc8a5425168da2bc3f85b54e8327154d6d71c6bd1094dc0eed2",
+              "errorCodes": []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "manualHdtoday": {
+    "testedAt": "2026-11-03T11:46:42.251Z",
+    "appVersion": "1.6.31-audit",
+    "scope": "Separate manual tests of the ordinary source controls; excluded from automatic-route totals.",
+    "routes": [
+      {
+        "provider": "hdtoday",
+        "title": "Phony",
+        "season": 1,
+        "episode": 1,
+        "host": "vidcore.io",
+        "interaction": "ordinary source Play tap",
+        "advancingClockObserved": true,
+        "clock": [
+          {
+            "position": 0.102152,
+            "duration": 2130.167
+          },
+          {
+            "position": 2.298037,
+            "duration": 2130.167
+          },
+          {
+            "position": 4.521724,
+            "duration": 2130.167
+          },
+          {
+            "position": 6.670208,
+            "duration": 2130.167
+          }
+        ]
+      },
+      {
+        "provider": "hdtoday",
+        "title": "Phony",
+        "season": 1,
+        "episode": 1,
+        "host": "vidfast.pro",
+        "interaction": "autoplay",
+        "advancingClockObserved": true,
+        "clock": [
+          {
+            "position": 0.112698,
+            "duration": 2130.167
+          },
+          {
+            "position": 1.886736,
+            "duration": 2130.167
+          },
+          {
+            "position": 4.001218,
+            "duration": 2130.167
+          },
+          {
+            "position": 6.166684,
+            "duration": 2130.167
+          },
+          {
+            "position": 8.418057,
+            "duration": 2130.167
+          }
+        ]
+      },
+      {
+        "provider": "hdtoday",
+        "title": "Phony",
+        "season": 1,
+        "episode": 1,
+        "host": "vidsrc.mov",
+        "interaction": "two visible source Play taps",
+        "advancingClockObserved": false,
+        "clock": []
+      }
+    ]
+  },
+  "backend": {
+    "hosting": "Netlify",
+    "deployId": "6ae9e35ac4ca429ad666c473",
+    "hostedChecks": {
+      "hdtodayTv": {
+        "status": 200,
+        "ms": 792,
+        "total": 45,
+        "providers": {
+          "hdtoday": 44,
+          "vidlink": 1
+        }
+      },
+      "hdtodayFilm": {
+        "status": 200,
+        "ms": 1350,
+        "total": 46,
+        "providers": {
+          "hdtoday": 44,
+          "fmovies": 2
+        }
+      },
+      "previewFilter": {
+        "status": 200,
+        "ms": 2254,
+        "servers": 0,
+        "providerErrors": [
+          {
+            "provider": "streamtunisie",
+            "error": "Source advertises a trailer only"
+          }
+        ]
+      }
+    },
+    "routeScope": "44 published player routes each for films and episodes; their presence does not certify media availability."
+  },
+  "limitations": [
+    "This samples returned routes for selected titles, not every catalogue entry or episode.",
+    "Explicit trailers are previews and are excluded from confirmed film playback, even when their video clocks advance.",
+    "A source refusing DevTools inspection needs an uninspected follow-up; that observation is not a missing-video result.",
+    "DessinAnime episode-page restrictions still limit discovery of additional player IDs.",
+    "Netu now loads in a genuine iframe; the sampled French content has not yet shown advancing playback."
+  ],
+  "manualFollowup": {
+    "generatedAt": "2026-11-03T13:56:48.729Z",
+    "scope": "Six bounded ordinary-app follow-ups on existing matrix cases. Only the app audit bridge was inspected; no player DevTools target was attached. These are retries and do not increase distinct route coverage.",
+    "results": [
+      {
+        "group": "remaining-providers",
+        "case": 40,
+        "provider": "multimovies",
+        "title": "Street Fighter",
+        "host": "embed.vidrift.net",
+        "testedAt": "2026-11-03T13:50:14.788Z",
+        "appVersion": "1.6.32-audit",
+        "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+        "playerDebuggerAttached": false,
+        "interaction": [],
+        "outcome": "playback_confirmed",
+        "proof": {
+          "start": 0.127989,
+          "end": 3.876387,
+          "duration": 6520.021000000012,
+          "transport": "webview",
+          "attribution": "invocation-tagged-clock"
+        },
+        "note": "Ordinary source autoplay advanced without a player debugger."
+      },
+      {
+        "group": "remaining-providers",
+        "case": 1,
+        "provider": "cimafu",
+        "title": "Tenzing",
+        "host": "doodstream.com",
+        "testedAt": "2026-11-03T13:50:50.190Z",
+        "appVersion": "1.6.32-audit",
+        "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+        "playerDebuggerAttached": false,
+        "interaction": [
+          "Tapped the genuine triangle Play control"
+        ],
+        "outcome": "player_error",
+        "sourceDiagnostics": [
+          {
+            "sourceError": "STARTUP_TIMEOUT",
+            "httpStatus": 0,
+            "networkErrorCode": 0
+          }
+        ],
+        "note": "The source subsequently displayed a promotion overlay. No promotion was opened and no advancing content clock was observed."
+      },
+      {
+        "group": "remaining-providers",
+        "case": 25,
+        "provider": "frenchstream",
+        "title": "He's Watching You",
+        "host": "trakx.lol",
+        "testedAt": "2026-11-03T13:51:57.816Z",
+        "appVersion": "1.6.32-audit",
+        "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+        "playerDebuggerAttached": false,
+        "interaction": [
+          "Tapped the genuine triangle Play control"
+        ],
+        "outcome": "player_error",
+        "sourceDiagnostics": [
+          {
+            "sourceError": "STARTUP_TIMEOUT",
+            "httpStatus": 0,
+            "networkErrorCode": 0
+          }
+        ],
+        "note": "The Dood route reached a promotion overlay through Trakx. No promotion was opened and no advancing content clock was observed."
+      },
+      {
+        "group": "repaired-sources",
+        "case": 16,
+        "provider": "frembed",
+        "title": "Avatar S1E1",
+        "host": "netu.frembed.bond",
+        "testedAt": "2026-11-03T13:53:03.056Z",
+        "appVersion": "1.6.32-audit",
+        "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+        "playerDebuggerAttached": false,
+        "interaction": [
+          "Closed the visible advertisement using its X control",
+          "Tapped the video surface once to expose ordinary playback controls"
+        ],
+        "outcome": "player_error",
+        "sourceDiagnostics": [
+          {
+            "sourceError": "STARTUP_TIMEOUT",
+            "httpStatus": 0,
+            "networkErrorCode": 0
+          }
+        ],
+        "note": "The source displayed its duration overlay but remained black; no advancing content clock was observed."
+      },
+      {
+        "group": "repaired-sources",
+        "case": 14,
+        "provider": "dessinanimenet",
+        "title": "Scooby-Doo! Trick or Treat (2022)",
+        "host": "lecteur1.xtremestream.xyz",
+        "testedAt": "2026-11-03T13:54:09.014Z",
+        "appVersion": "1.6.32-audit",
+        "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+        "playerDebuggerAttached": false,
+        "interaction": [
+          "Tapped the genuine triangle Play control"
+        ],
+        "outcome": "playback_confirmed",
+        "proof": {
+          "start": 0.1,
+          "end": 4.061505,
+          "duration": 4657.133268999989,
+          "transport": "webview",
+          "attribution": "invocation-tagged-clock"
+        },
+        "note": "The actual source iframe played after an ordinary Play tap without a player debugger."
+      },
+      {
+        "group": "remaining-providers",
+        "case": 46,
+        "provider": "animegg",
+        "title": "White cat legend season 3",
+        "host": "www.animegg.org",
+        "testedAt": "2026-11-03T13:55:03.314Z",
+        "appVersion": "1.6.32-audit",
+        "appSha256": "ff80bb17574d14eb6a90356c52b4cee8796336bf005691ae73fcab43239bff7d",
+        "playerDebuggerAttached": false,
+        "interaction": [
+          "Tapped the visible advertisement X control"
+        ],
+        "outcome": "player_error",
+        "sourceDiagnostics": [
+          {
+            "sourceError": "STARTUP_TIMEOUT",
+            "httpStatus": 0,
+            "networkErrorCode": 0
+          }
+        ],
+        "note": "A promotion overlay covered the source player. The sampled native handoff remains unverified; no promotion was opened."
+      }
+    ]
+  },
+  "confirmedAfterFollowup": 18,
+  "releaseSmoke": {
+    "package": "app.flixer.stream",
+    "versionName": "1.6.32",
+    "versionCode": 10632,
+    "apkSha256": "e3895d1b00dc3e345b64e056d548ce7d3f8d3b4898a9d78182c0a3efa64e1219",
+    "installed": true,
+    "homeVisible": true,
+    "recentlyUpdatedVisible": true,
+    "viewportDpWidth": 360
+  }
+}

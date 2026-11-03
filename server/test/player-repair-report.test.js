@@ -40,6 +40,18 @@ test('native document failures retain bounded diagnostics without exporting upst
   assert.equal(JSON.stringify(report).includes('PRIVATE'),false);
 });
 
+test('public attempts identify the tested APK only with a valid SHA-256 digest',()=>{
+  const valid='AB'.repeat(32),invalid=['https://source.test/?token=PRIVATE','a'.repeat(63),'a'.repeat(65),'g'.repeat(64),' '+valid,42];
+  const matrix={complete:true,cases:[valid,...invalid].map((_,index)=>({case:index+1,provider:'test',title:'Build identity'}))};
+  const device={cases:[valid,...invalid].map((appSha256,index)=>({case:index+1,appVersion:'1.6.32-audit',appSha256})),previousAttempts:[{case:1,appSha256:'cd'.repeat(32)}]};
+  const report=summarizePlayerRepair([{name:'test',matrix,device}]),routes=report.reports[0].routes;
+  assert.equal(routes[0].appSha256,valid.toLowerCase());
+  assert.equal(routes[0].previousAttempts[0].appSha256,'cd'.repeat(32));
+  for(const route of routes.slice(1))assert.equal(Object.hasOwn(route,'appSha256'),false);
+  assert.equal(JSON.stringify(report).includes('PRIVATE'),false);
+  assert.equal(JSON.stringify(report).includes('https://'),false);
+});
+
 test('an advancing official trailer does not count as confirmed film playback',()=>{
   const row={...confirmed,case:1,nativeResults:[{surface:'openPlayer'}],observations:[{url:'https://www.youtube.com/embed/aBxBjNbKETU',videoTitle:'STARTUP | OFFICIAL TRAILER'}]};
   assert.equal(playbackEvidence(row),null);
