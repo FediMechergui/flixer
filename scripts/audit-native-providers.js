@@ -2,7 +2,8 @@
 // Private checkpoints retain source URLs. Published summaries must omit them.
 import fs from 'node:fs';import path from 'node:path';import {execFile} from 'node:child_process';import {promisify} from 'node:util';
 import {auditServer} from './audit-server.js';
-import {observeVideoClock} from './playback-proof.js';
+import {observeVideoClock,observeNativeClock} from './playback-proof.js';
+import {installNativeAuditBridge} from './native-audit-bridge.js';
 import {classifyPlayback} from './playback-outcome.js';
 import {playerSnapshot,canPressPlay} from './player-snapshot.js';
 const run=promisify(execFile),args=process.argv.slice(2),opt=(k,d)=>args.includes(k)?args[args.indexOf(k)+1]:d;
@@ -55,15 +56,15 @@ while(true){if(fs.existsSync(path.join(dir,'pause'))){report.pausedAt=new Date()
   result.resolveMs=Date.now()-start;start=Date.now();try{result.testedHost=new URL(server.streamUrl||server.embedUrl).hostname}catch{}
   phase='mounting production player';
   await main.evaluate('window.__auditPlayer?.destroy();'+prepareLayout+';true');
-  await main.evaluate(`(()=>{window.__auditPlayer?.destroy();window.__auditAttempt=${row.case};window.__auditProgress=[];window.__auditNativeResults=[];if(!window.__auditWrapped){for(const name of ['openPlayer','openMedia']){const original=FlixerBrowser[name];FlixerBrowser[name]=async(...args)=>{const attempt=window.__auditAttempt;try{const result=await original(...args);if(attempt===window.__auditAttempt)window.__auditNativeResults.push({surface:name,result});return result}catch(error){if(attempt===window.__auditAttempt)window.__auditNativeResults.push({surface:name,error:error.message});throw error}}}window.__auditWrapped=true}window.__auditPlayer=FlixerPlayer.mount(document.getElementById('audit-player'),{title:${JSON.stringify(row.title)},servers:[${JSON.stringify(server)}],onProgress:(position,duration)=>window.__auditProgress.push({position,duration}),onExit:()=>{}});return true})()`);
+  await main.evaluate(`(()=>{window.__auditPlayer?.destroy();window.__auditAttempt=${row.case};window.__auditProgress=[];window.__auditNativeProgress=[];window.__auditNativeResults=[];(${installNativeAuditBridge.toString()})();window.__auditPlayer=FlixerPlayer.mount(document.getElementById('audit-player'),{title:${JSON.stringify(row.title)},servers:[${JSON.stringify(server)}],onProgress:(position,duration)=>window.__auditProgress.push({position,duration}),onExit:()=>{}});return true})()`);
   phase='enabling debugger observers';
   const mainContexts=observe(main,result);await enable(main);surfaces.set(main.page.id,{c:main,contexts:mainContexts});
   while(Date.now()-start<seconds*1000){
    // Sample the existing app bridge first. A slow secondary WebView target
    // listing must not interrupt an advancing native video or erase its proof.
    phase='reading native playback state';
-   const state=await main.evaluate(`({progress:window.__auditProgress,native:window.__auditNativeResults,error:document.querySelector('.player__error')?.innerText})`);result.nativeResults=state.native||[];result.playerError=state.error;
-   const moving=(state.progress||[]).filter(p=>p.duration>=120&&p.position>0);if(moving.length>1&&moving.at(-1).position-moving[0].position>=1&&moving.at(-1).position>=3){result.playbackConfirmed=true;result.proof={start:moving[0].position,end:moving.at(-1).position,duration:moving.at(-1).duration,transport:'media3'}}
+   const state=await main.evaluate(`({progress:window.__auditNativeProgress,native:window.__auditNativeResults,error:document.querySelector('.player__error')?.innerText})`);result.nativeResults=state.native||[];result.playerError=state.error;result.nativeProgress=state.progress||[];
+   for(const sample of state.progress||[]){const advancing=observeNativeClock(proof,sample);if(advancing){result.playbackConfirmed=true;result.proof=advancing;break}}
    if(result.playbackConfirmed||result.playerError)break;
    // Attaching DevTools can keep a hidden source WebView's timers alive. WCO
    // must resolve without that intervention; prove its resulting Media3 clock.
@@ -84,7 +85,7 @@ while(true){if(fs.existsSync(path.join(dir,'pause'))){report.pausedAt=new Date()
    if(result.playbackConfirmed||result.playerError)break;await pause(1500);
   }
   phase='collecting final playback state';
-  await main.evaluate('window.__auditPlayer?.destroy();true');await pause(300);const state=await main.evaluate('({native:window.__auditNativeResults,progress:window.__auditProgress})');result.nativeResults=state.native||result.nativeResults;
+  await main.evaluate('window.__auditPlayer?.destroy();true');await pause(300);const state=await main.evaluate('({native:window.__auditNativeResults,progress:window.__auditNativeProgress})');result.nativeResults=state.native||result.nativeResults;
   result.nativeProgress=state.progress;failures=0;
  }catch(error){result.infrastructureError=phase+': '+error.message;failures++;try{main.close();main=await app(true)}catch(recovery){result.recoveryError=recovery.message;failures=3}}
  finally{for(const {c,contexts}of surfaces.values()){contexts.dispose();if(c!==main)c.close()}result.category=classifyPlayback(result);result.ms=Date.now()-start;report.cases.push(result);save();console.log(JSON.stringify({case:row.case,provider:row.provider,host:row.host,category:result.category,ms:result.ms,done:report.cases.length,total:matrix.cases.length,preparationComplete:matrix.complete}));}

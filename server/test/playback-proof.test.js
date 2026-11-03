@@ -1,6 +1,26 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {observeVideoClock} from '../../scripts/playback-proof.js';
+import {observeVideoClock,observeNativeClock} from '../../scripts/playback-proof.js';
 const video={index:0,time:0,duration:1587,src:'blob:https://www.youtube.com/content',paused:false,ad:false,error:null};
 test('an actual clock starting at zero can confirm subsequent content playback',()=>{const clocks=new Map();assert.equal(observeVideoClock(clocks,'frame',video),null);assert.deepEqual(observeVideoClock(clocks,'frame',{...video,time:3.4}),{start:0,end:3.4,duration:1587,transport:'webview'});});
 test('paused, advert, invalid, short and errored clocks cannot confirm content playback',()=>{for(const patch of [{paused:true},{ad:true},{error:3},{duration:30},{duration:Infinity},{time:NaN},{src:''}]){const clocks=new Map();observeVideoClock(clocks,'frame',{...video,...patch});assert.equal(observeVideoClock(clocks,'frame',{...video,...patch,time:4}),null)}});
 test('a different source, frame or video cannot inherit another clock',()=>{for(const [frame,patch] of [['other',{}],['frame',{src:'blob:other'}],['frame',{index:1}]]){const clocks=new Map();observeVideoClock(clocks,'frame',video);assert.equal(observeVideoClock(clocks,frame,{...video,time:4,...patch}),null)}});
+
+test('native callback clocks retain their actual Media3 or WebView transport',()=>{
+ for(const transport of ['webview','media3']){
+  const clocks=new Map(),sample={invocation:'case-1:open-1',transport,position:0.108,duration:1419,playing:true};
+  assert.equal(observeNativeClock(clocks,sample),null);
+  assert.deepEqual(observeNativeClock(clocks,{...sample,position:4.086}),{start:0.108,end:4.086,duration:1419,transport,invocation:sample.invocation});
+ }
+});
+
+test('native failover and media handoffs cannot combine independent clocks into playback proof',()=>{
+ const sample={invocation:'case-1:open-1',transport:'webview',position:0.108,duration:1419,playing:true};
+ for(const patch of [{invocation:'case-1:open-2'},{invocation:'case-2:open-1'},{transport:'media3'}]){
+  const clocks=new Map();observeNativeClock(clocks,sample);
+  assert.equal(observeNativeClock(clocks,{...sample,...patch,position:4.086}),null);
+ }
+ for(const patch of [{playing:false},{invocation:''},{transport:'unknown'},{position:NaN},{position:2000},{duration:30}]){
+  const clocks=new Map();observeNativeClock(clocks,sample);
+  assert.equal(observeNativeClock(clocks,{...sample,position:4.086,...patch}),null);
+ }
+});

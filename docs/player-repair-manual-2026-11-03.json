@@ -1,0 +1,81 @@
+{
+  "at": "2026-11-03T11:13:17.427Z",
+  "scope": "Bounded manual follow-up to providers matrix cases 9 and 12. Original 26-case results are unchanged.",
+  "cases": [
+    {
+      "case": 9,
+      "provider": "fmovies",
+      "serverProvider": "fmovies",
+      "title": "Dune: Part Two",
+      "titleId": "fm:m:693134",
+      "episodeId": "fm:m:693134",
+      "serverId": "fmovies:vidcore",
+      "server": "FMovies · Vidcore",
+      "appVersion": "1.6.31-audit",
+      "appSha256": "a63b4f713e52af26a781b17a3ec14766a0f18eeb6973d8640d9d9f690391ab3f",
+      "originalStatus": "no_advancing_video",
+      "status": "playback_confirmed",
+      "transport": "webview",
+      "host": "vidcore.io",
+      "action": "Clicked the source player triangular Play button through its ordinary button handler with a user gesture.",
+      "notes": "An earlier center tap hit the seek bar. Only the two later, actively playing, visible clock samples below count as proof; the seek jump is excluded.",
+      "samples": [
+        {
+          "time": 4870.244988,
+          "duration": 9948.021,
+          "paused": false,
+          "display": "block",
+          "visibility": "visible",
+          "opacity": "1"
+        },
+        {
+          "time": 4874.292668,
+          "duration": 9948.021,
+          "paused": false,
+          "display": "block",
+          "visibility": "visible",
+          "opacity": "1"
+        }
+      ],
+      "proof": {
+        "start": 4870.244988,
+        "end": 4874.292668,
+        "duration": 9948.021,
+        "transport": "webview"
+      },
+      "auditLimitation": "The source Play button has no accessible label; paused video opacity is zero, so the automated snapshot found neither a visible video nor a recognized Play control."
+    },
+    {
+      "case": 12,
+      "provider": "hdtoday",
+      "serverProvider": "hdtoday",
+      "title": "Phony",
+      "titleId": "hd:s:tv-phony-36t0wt8d",
+      "episodeId": "hd:s:tv-phony-36t0wt8d:1:1",
+      "serverId": "hdtoday:0",
+      "server": "HDToday · vidsrc.mov",
+      "appVersion": "1.6.31-audit",
+      "appSha256": "a63b4f713e52af26a781b17a3ec14766a0f18eeb6973d8640d9d9f690391ab3f",
+      "originalStatus": "no_advancing_video",
+      "status": "no_advancing_video",
+      "host": "vidsrc.mov",
+      "contentHost": "stellarconductornexus.com",
+      "action": "Clicked the actual button#bigPlay with aria-label Play through its ordinary button handler with a user gesture.",
+      "samples": [
+        {
+          "afterSeconds": 4,
+          "videos": 0
+        },
+        {
+          "afterSeconds": 8,
+          "videos": 0
+        },
+        {
+          "afterSeconds": 12,
+          "videos": 0
+        }
+      ],
+      "notes": "The source frame remained blank and exposed no video after the ordinary play gesture. No playback confirmation; this does not prove permanent removal."
+    }
+  ]
+}

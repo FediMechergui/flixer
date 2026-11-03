@@ -6,3 +6,10 @@ export function observeVideoClock(clocks,frame,video){
  if(before===undefined)clocks.set(key,video.time);
  return null;
 }
+
+export function observeNativeClock(clocks,sample){
+ if(!sample||typeof sample.invocation!=='string'||!sample.invocation||!['media3','webview'].includes(sample.transport)||sample.playing!==true||!Number.isFinite(sample.position)||sample.position<0||sample.position>sample.duration+1)return null;
+ const frame='native:'+sample.transport+':'+sample.invocation;
+ const proof=observeVideoClock(clocks,frame,{index:0,time:sample.position,duration:sample.duration,src:frame,paused:false,ad:false,error:null});
+ return proof?{...proof,transport:sample.transport,invocation:sample.invocation}:null;
+}
