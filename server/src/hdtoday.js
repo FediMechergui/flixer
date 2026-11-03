@@ -186,11 +186,14 @@ export function hdtodayMovieFallbacks(id,tmdbId) {
     `https://mappletv.uk/embed/movie/${numericId}`,`https://moviesapi.to/movie/${numericId}`];
   return hdtodayServers(id).map((server,index)=>({...server,embedUrl:urls[index],sandbox:null,sourceUrl:server.embedUrl,...(index===8?{name:'HDToday - Vidlove'}:{}),resolution:'documented-provider-route',availability:'unverified'}));
 }
-export async function resolveHdtodayServers(id,{tmdbId,fetchPlayer=path=>request(path,{timeoutMs:5000})}={}) {
+export async function resolveHdtodayServers(id,{tmdbId,fresh=false,fetchPlayer=path=>request(path,{timeoutMs:5000})}={}) {
   const fallback=[...hdtodayTvFallbacks(id,tmdbId),...hdtodayMovieFallbacks(id,tmdbId)];
   if(fallback.length)return fallback;
   const cached = playerCache.get(id);
-  if (cached && Date.now()-cached.at < 10*60e3) return cached.value;
+  if (!fresh && cached && Date.now()-cached.at < 10*60e3) return cached.value;
+  // A user-requested refresh must not resurrect an old redirect on the next
+  // request if the source no longer advertises any player.
+  if (fresh) playerCache.delete(id);
   const choices = hdtodayServers(id), resolved = [];
   let next = 0, inferred=null;
   await Promise.all(Array.from({length:Math.min(4,choices.length)},async()=>{

@@ -7,13 +7,25 @@ import {mergeShow} from '../src/merge-library.js';
 test('verified Arabic publisher moves preserve saved IDs and title-specific watch destinations',()=>{
  const old='https://tv10.egydead.live/film/';assert.equal(currentArabicUrl(old),'https://a1.egydead.media/film/');assert.equal(arabicId('egydead','m',currentArabicUrl(old)),arabicId('egydead','m',old));
  const id=arabicId('egydead','m',old);assert.equal(egydeadWatchLink(id,'<div class="watchNow"><a href="https://a1.egydead.media/film/watch/">Play</a></div>'),old+'watch/');
- assert.equal(currentArabicUrl('https://kirmalk.com/watch.php?vid=123'),'https://kirmalk.art/watch.php?vid=123');assert.equal(arabicId('kirmalk','m','https://kirmalk.art/watch.php?vid=123'),'sp:kirmalk:m:123');assert.equal(arabicId('kirmalk','m','https://kirmalk.art.attacker.example/watch.php?vid=123'),null);
+ for(const origin of ['https://kirmalk.com','https://kirmalk.art','https://kirmalk.blog']){
+  assert.equal(currentArabicUrl(origin+'/watch.php?vid=123'),'https://kirmalk.blog/watch.php?vid=123');
+  assert.equal(arabicId('kirmalk','m',origin+'/watch.php?vid=123'),'sp:kirmalk:m:123');
+ }
+ for(const origin of ['https://kirmalk.art.attacker.example','https://kirmalk.blog.attacker.example','https://user@kirmalk.blog','https://kirmalk.blog:444','http://kirmalk.blog'])assert.equal(arabicId('kirmalk','m',origin+'/watch.php?vid=123'),null);
  const rows=parseArabicServers('sp:ahwaktv:e:test','<div class="brooks_player"><iframe src="https://www.ok.ru/videoembed/123"></iframe></div><aside><iframe src="https://uqload.vc/embed-ad.html"></iframe></aside>');assert.equal(rows.length,1);assert.equal(rows[0].embedUrl,'https://www.ok.ru/videoembed/123');
 });
 
 test('Tuniflix preserves the source release year and short alternate titles',()=>{
   const item=parseArabicDetails('sp:tuniflix:m:the-needle','<h1>الإبرة</h1><span class="Date">2023</span><div class="Description"><p>A long source synopsis about the film and its characters.</p><p>ibra</p><p>الابرة</p><p>https://unrelated.example/ad</p></div>');
   assert.equal(item.year,2023);assert.deepEqual(item.altTitles,['ibra','الابرة']);assert.match(item.synopsis,/source synopsis/);
+});
+
+test('Kirmalk accepts its published HD-VK embed without approving arbitrary source navigation',()=>{
+ const id='sp:kirmalk:m:293995425',html=url=>`<script type="application/ld+json">${JSON.stringify({'@type':'VideoObject',embedUrl:url})}</script>`;
+ const url='https://ss.hd-vk.com/embed-lbycxnbhuk16.html',servers=parseArabicServers(id,html(url));
+ assert.equal(servers.length,1);assert.equal(servers[0].embedUrl,url);assert.equal(servers[0].headers.Referer,'https://kirmalk.blog/watch.php?vid=293995425');
+ for(const value of ['https://ss.hd-vk.com/','https://ss.hd-vk.com/embed-lbycxnbhuk16.html?url=https://other.test','https://ss.hd-vk.com/embed-lbycxnbhuk16.html#other','https://user@ss.hd-vk.com/embed-lbycxnbhuk16.html','https://ss.hd-vk.com.attacker.test/embed-lbycxnbhuk16.html'])assert.deepEqual(parseArabicServers(id,html(value)),[]);
+ assert.deepEqual(parseArabicServers('sp:ahwaktv:m:test',html(url)),[]);
 });
 
 test('EgyDead follows only the current title watch page and extracts its actual server',async()=>{

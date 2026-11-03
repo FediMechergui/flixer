@@ -38,11 +38,11 @@ public class PlayerViewPlugin extends Plugin {
     static Set<String> playerOrigins(){Set<String> origins=new HashSet<>();for(String host:HOSTS)origins.add("https://"+host);origins.add("https://*.medmedia03.wiki");
         // Observed VidSrc content frame. Telemetry only: this does not authorize
         // new top-level navigation or expose the app's Capacitor bridge.
-        origins.add("https://stellarconductornexus.com");return origins;}
+        origins.add("https://stellarconductornexus.com");origins.addAll(SourcePlayerPolicy.originsFor(null));return origins;}
     private boolean approved(String value) {
         if (value == null || value.length() > 3000) return false;
         try { Uri u = Uri.parse(value); String host = u.getHost();
-            return "https".equals(u.getScheme()) && u.getUserInfo() == null && u.getPort() == -1 && host != null && (HOSTS.contains(host) || host.matches("(?:balance|[1-9])\\.medmedia03\\.wiki"));
+            return "https".equals(u.getScheme()) && u.getUserInfo() == null && u.getPort() == -1 && host != null && (HOSTS.contains(host) || host.matches("(?:balance|[1-9])\\.medmedia03\\.wiki") || SourcePlayerPolicy.approved(value));
         } catch (Exception e) { return false; }
     }
     private int dp(int value) { return Math.round(value * getContext().getResources().getDisplayMetrics().density); }
@@ -86,10 +86,11 @@ public class PlayerViewPlugin extends Plugin {
                 }
             }
             android.webkit.CookieManager.getInstance().setAcceptThirdPartyCookies(web,true);
-            if(WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT))WebViewCompat.addDocumentStartJavaScript(web,PlayerAdBlock.script(getContext()),playerOrigins());
+            Set<String> sessionOrigins=playerOrigins();sessionOrigins.addAll(SourcePlayerPolicy.originsFor(url));
+            if(WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT))WebViewCompat.addDocumentStartJavaScript(web,PlayerAdBlock.script(getContext()),sessionOrigins);
             // Health messages only; remote pages never receive Capacitor's app bridge.
             if(WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)&&WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)){
-                Set<String> origins=playerOrigins();
+                Set<String> origins=sessionOrigins;
                 WebViewCompat.addWebMessageListener(web,"FlixerPlayback",origins,(view,message,origin,main,reply)->{
                     if(playerDialog!=dialog)return;
                     if("playing".equals(message.getData())){played[0]=true;watchdog.removeCallbacks(startupTimeout);}

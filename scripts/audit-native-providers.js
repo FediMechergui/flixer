@@ -18,7 +18,7 @@ if(args.includes('--retest')){
 delete report.finishedAt;delete report.pausedAt;delete report.runEndedAt;
 const pause=ms=>new Promise(r=>setTimeout(r,ms)),save=()=>{fs.writeFileSync(output+'.tmp',JSON.stringify(report,null,2));fs.renameSync(output+'.tmp',output)};
 async function shell(...params){return(await run(adb,['-s',serial,...params],{timeout:20000,windowsHide:true,maxBuffer:1024*1024})).stdout.trim()}
-async function pages(){const r=await fetch('http://127.0.0.1:'+port+'/json',{signal:AbortSignal.timeout(5000)});return r.json()}
+async function pages(){try{const r=await fetch('http://127.0.0.1:'+port+'/json',{signal:AbortSignal.timeout(5000)});if(!r.ok)throw Error('HTTP '+r.status);const targets=await r.json();if(!Array.isArray(targets))throw Error('Unexpected target list');return targets}catch(error){throw Error('Android WebView target enumeration failed: '+error.message)}}
 async function connect(page){const socket=new WebSocket(page.webSocketDebuggerUrl),pending=new Map(),listeners=new Set();let id=0;
  await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Debugger connection timed out')),5000);socket.addEventListener('open',()=>{clearTimeout(timer);resolve()},{once:true});socket.addEventListener('error',()=>{clearTimeout(timer);reject(Error('Debugger connection failed'))},{once:true})});
  socket.addEventListener('message',event=>{const row=JSON.parse(String(event.data)),task=pending.get(row.id);if(task){clearTimeout(task.timer);pending.delete(row.id);row.error?task.reject(Error(row.error.message)):task.resolve(row.result)}else if(row.method)for(const listener of listeners)listener(row)});
@@ -28,6 +28,10 @@ async function app(restart=false){if(restart)await shell('shell','am','force-sto
  for(let i=0;i<45;i++){try{const pid=await shell('shell','pidof',pkg);await shell('forward','tcp:'+port,'localabstract:webview_devtools_remote_'+pid);const page=(await pages()).find(p=>p.url.includes('/playback-audit.html'));if(page){const c=await connect(page);if(await c.evaluate('Boolean(window.FlixerPlayer&&window.FlixerBrowser&&window.Capacitor?.Plugins?.DirectVideo)'))return c;c.close()}}catch{}await pause(1000)}throw Error('Android audit bridge unavailable');
 }
 const snapshot='('+playerSnapshot.toString()+')()';
+// Older audit APKs put a large heading and paragraph above the player. On a
+// dense emulator display that pushed the native surface outside the viewport.
+// Compact only the debug harness, before mounting; never move an active video.
+const prepareLayout=`(()=>{let style=document.getElementById('flixer-audit-layout');if(!style){style=document.createElement('style');style.id='flixer-audit-layout';style.textContent='body{margin:0!important;padding:12px!important;font:14px/1.4 system-ui!important}body>h1{font:600 16px/1.2 system-ui!important;margin:0 0 8px!important}body>p{font-size:12px!important;margin:8px 0!important}#audit-player{max-width:700px}';document.head.appendChild(style);const target=document.getElementById('audit-player'),heading=document.querySelector('body>h1');if(heading)heading.insertAdjacentElement('afterend',target);else document.body.prepend(target)}window.scrollTo(0,0);document.getElementById('audit-player').scrollIntoView({block:'nearest',behavior:'instant'});})()`;
 function observe(c,result){const contexts=new Map(),requests=new Map(),listener=({method,params:p})=>{
  if(method==='Runtime.executionContextCreated'&&p.context.auxData?.isDefault)contexts.set(p.context.id,p.context.auxData.frameId);
  if(method==='Runtime.executionContextDestroyed')contexts.delete(p.executionContextId);if(method==='Runtime.executionContextsCleared')contexts.clear();
@@ -42,18 +46,33 @@ let main=await app(),failures=0;const version=/versionName=([^\s]+)/.exec(await 
 const installed=(await shell('shell','pm','path',pkg)).split('\n').map(line=>line.trim()).find(line=>/^package:\/data\/app\/[A-Za-z0-9_~/+=.-]+\/base\.apk$/.test(line));
 const appSha256=installed?/^[a-f0-9]{64}/i.exec(await shell('shell','sha256sum',installed.slice(8)))?.[0]:undefined;
 while(true){if(fs.existsSync(path.join(dir,'pause'))){report.pausedAt=new Date().toISOString();save();break}const matrix=JSON.parse(fs.readFileSync(input,'utf8')),counts=new Map();for(const done of report.cases)counts.set(done.provider,(counts.get(done.provider)||0)+1);const row=matrix.cases.filter(r=>(!selected.size||selected.has(r.case))&&!report.cases.some(done=>done.case===r.case)).sort((a,b)=>(counts.get(a.provider)||0)-(counts.get(b.provider)||0))[0];if(!row){if(matrix.complete)break;await pause(1500);continue}
- const result={case:row.case,provider:row.provider,serverProvider:row.serverProvider,title:row.title,titleId:row.titleId,kind:row.kind,serverId:row.id,host:row.host,type:row.type,appVersion:version,appSha256,at:new Date().toISOString(),playbackConfirmed:false,observations:[],network:[],nativeResults:[]},proof=new Map(),surfaces=new Map();let start=Date.now(),clicks=0,lastClick=0,server=auditServer(row.server);
+ const result={case:row.case,provider:row.provider,serverProvider:row.serverProvider,title:row.title,titleId:row.titleId,kind:row.kind,serverId:row.id,host:row.host,type:row.type,appVersion:version,appSha256,at:new Date().toISOString(),playbackConfirmed:false,observations:[],network:[],nativeResults:[]},proof=new Map(),surfaces=new Map();let start=Date.now(),clicks=0,lastClick=0,server=auditServer(row.server),phase='checking Android focus';
  try{
   const focus=await shell('shell','dumpsys','window');
   if(/mCurrentFocus=.*(?:Not Responding|Application Error|ImmersiveModeConfirmation)/i.test(focus))throw Error('An emulator system dialog covers the app; playback interaction is not a valid source test');
+  phase='refreshing source descriptor';
   if(['hls','mp4','file','dash'].includes(row.type))try{const response=await fetch(matrix.api+'/api/stream?'+new URLSearchParams({id:row.episodeId,showId:row.titleId,transport:'direct',fresh:'1'}),{signal:AbortSignal.timeout(30000)}),data=await response.json();if(!response.ok)throw Error(data.error||'Source refresh HTTP '+response.status);const fresh=data.servers?.find(s=>s.id===row.id&&s.provider===row.serverProvider&&s.type===row.type);if(fresh){server=auditServer(fresh);result.refreshed=true}else result.sourceRefreshWarning='This server was not returned by the fresh lookup; testing the last advertised descriptor';}catch(error){result.sourceRefreshWarning=error.message}
   result.resolveMs=Date.now()-start;start=Date.now();try{result.testedHost=new URL(server.streamUrl||server.embedUrl).hostname}catch{}
+  phase='mounting production player';
+  await main.evaluate('window.__auditPlayer?.destroy();'+prepareLayout+';true');
   await main.evaluate(`(()=>{window.__auditPlayer?.destroy();window.__auditAttempt=${row.case};window.__auditProgress=[];window.__auditNativeResults=[];if(!window.__auditWrapped){for(const name of ['openPlayer','openMedia']){const original=FlixerBrowser[name];FlixerBrowser[name]=async(...args)=>{const attempt=window.__auditAttempt;try{const result=await original(...args);if(attempt===window.__auditAttempt)window.__auditNativeResults.push({surface:name,result});return result}catch(error){if(attempt===window.__auditAttempt)window.__auditNativeResults.push({surface:name,error:error.message});throw error}}}window.__auditWrapped=true}window.__auditPlayer=FlixerPlayer.mount(document.getElementById('audit-player'),{title:${JSON.stringify(row.title)},servers:[${JSON.stringify(server)}],onProgress:(position,duration)=>window.__auditProgress.push({position,duration}),onExit:()=>{}});return true})()`);
+  phase='enabling debugger observers';
   const mainContexts=observe(main,result);await enable(main);surfaces.set(main.page.id,{c:main,contexts:mainContexts});
   while(Date.now()-start<seconds*1000){
+   // Sample the existing app bridge first. A slow secondary WebView target
+   // listing must not interrupt an advancing native video or erase its proof.
+   phase='reading native playback state';
+   const state=await main.evaluate(`({progress:window.__auditProgress,native:window.__auditNativeResults,error:document.querySelector('.player__error')?.innerText})`);result.nativeResults=state.native||[];result.playerError=state.error;
+   const moving=(state.progress||[]).filter(p=>p.duration>=120&&p.position>0);if(moving.length>1&&moving.at(-1).position-moving[0].position>=1&&moving.at(-1).position>=3){result.playbackConfirmed=true;result.proof={start:moving[0].position,end:moving.at(-1).position,duration:moving.at(-1).duration,transport:'media3'}}
+   if(result.playbackConfirmed||result.playerError)break;
    // Attaching DevTools can keep a hidden source WebView's timers alive. WCO
    // must resolve without that intervention; prove its resulting Media3 clock.
-   if(row.type!=='wco')for(const page of await pages())if(page.type==='page'&&!surfaces.has(page.id)&&!page.url.startsWith('https://localhost'))try{const c=await connect(page),contexts=observe(c,result);await enable(c);surfaces.set(page.id,{c,contexts})}catch{}
+   // Direct Media3 routes have no additional WebView to discover.
+   if(!['wco','hls','mp4','file','dash'].includes(server.type)){
+    let targets=[];try{targets=await pages()}catch(error){const warnings=result.debuggerWarnings||=[];if(warnings.length<8)warnings.push({elapsedMs:Date.now()-start,message:error.message})}
+    for(const page of targets)if(page.type==='page'&&!surfaces.has(page.id)&&!page.url.startsWith('https://localhost'))try{const c=await connect(page),contexts=observe(c,result);await enable(c);surfaces.set(page.id,{c,contexts})}catch{}
+   }
+   phase='reading embedded playback observations';
    for(const {c,contexts}of surfaces.values())for(const [id,frame]of [...contexts].slice(0,8))try{const s=await c.evaluate(snapshot,id,2500);s.frame=frame;s.elapsedMs=Date.now()-start;
     if(!s.url.startsWith('https://localhost'))result.observations.push(s);
     for(const v of s.videos){const advancing=observeVideoClock(proof,frame,v);if(advancing){result.playbackConfirmed=true;result.proof=advancing}}
@@ -62,13 +81,12 @@ while(true){if(fs.existsSync(path.join(dir,'pause'))){report.pausedAt=new Date()
      await c.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[point]});await c.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});clicks++;lastClick=Date.now();
     }
    }catch{}
-   const state=await main.evaluate(`({progress:window.__auditProgress,native:window.__auditNativeResults,error:document.querySelector('.player__error')?.innerText})`);result.nativeResults=state.native||[];result.playerError=state.error;
-   const moving=(state.progress||[]).filter(p=>p.duration>=120&&p.position>0);if(moving.length>1&&moving.at(-1).position-moving[0].position>=1&&moving.at(-1).position>=3){result.playbackConfirmed=true;result.proof={start:moving[0].position,end:moving.at(-1).position,duration:moving.at(-1).duration,transport:'media3'}}
    if(result.playbackConfirmed||result.playerError)break;await pause(1500);
   }
+  phase='collecting final playback state';
   await main.evaluate('window.__auditPlayer?.destroy();true');await pause(300);const state=await main.evaluate('({native:window.__auditNativeResults,progress:window.__auditProgress})');result.nativeResults=state.native||result.nativeResults;
   result.nativeProgress=state.progress;failures=0;
- }catch(error){result.infrastructureError=error.message;failures++;try{main.close();main=await app(true)}catch(recovery){result.recoveryError=recovery.message;failures=3}}
+ }catch(error){result.infrastructureError=phase+': '+error.message;failures++;try{main.close();main=await app(true)}catch(recovery){result.recoveryError=recovery.message;failures=3}}
  finally{for(const {c,contexts}of surfaces.values()){contexts.dispose();if(c!==main)c.close()}result.category=classifyPlayback(result);result.ms=Date.now()-start;report.cases.push(result);save();console.log(JSON.stringify({case:row.case,provider:row.provider,host:row.host,category:result.category,ms:result.ms,done:report.cases.length,total:matrix.cases.length,preparationComplete:matrix.complete}));}
  if(failures>=3)throw Error('Emulator repeatedly unavailable; checkpoint retained without treating these as source failures');
 }

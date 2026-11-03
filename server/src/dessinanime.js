@@ -105,16 +105,18 @@ export async function dessinSnapshot(id){
  return snapshotRows.get(`sp:dessinanime:${p.type==='m'?'m':'s'}:${p.slug}`)||null;
 }
 export function dessinStreamServers(player,data){
- const servers=[],seen=new Set();for(const quality of [{url:data.url,label:'Auto'},...(data.qualities||[])]){
-  try{const u=new URL(quality.url);if(u.origin!=='https://relay.dessinanime.cc'||!u.pathname.startsWith('/api/stream-relay/')||u.username||u.password||seen.has(u.href)||!['mp4','hls'].includes(data.type))continue;seen.add(u.href);
-   servers.push({id:`dessinanime:${player.id}:${servers.length}`,provider:'dessinanime',name:`DessinAnime - ${player.language} - ${player.name} - ${quality.label}`,type:data.type,streamUrl:u.href,...(player.language==='VF'?{audioLanguages:['fr']}:{ }),...(player.language==='VOSTFR'?{subtitleLanguages:['fr']}:{})});
+ const servers=[],seen=new Set();for(const source of [data,data?.fallback])for(const quality of [{url:source?.url,label:source===data?'Auto':'Fallback'},...(Array.isArray(source?.qualities)?source.qualities.slice(0,8):[])]){
+  try{const u=new URL(quality.url),key=source?.type+'|'+u.href;if(u.origin!=='https://relay.dessinanime.cc'||!u.pathname.startsWith('/api/stream-relay/')||u.username||u.password||seen.has(key)||!['mp4','hls'].includes(source?.type))continue;seen.add(key);
+   servers.push({id:`dessinanime:${player.id}:${servers.length}`,provider:'dessinanime',name:`DessinAnime - ${player.language} - ${player.name} - ${quality.label}`,type:source.type,streamUrl:u.href,sourceOrigin:DESSIN_ORIGIN,headers:{Referer:DESSIN_ORIGIN+'/','User-Agent':'Mozilla/5.0'},...(player.language==='VF'?{audioLanguages:['fr']}:{ }),...(player.language==='VOSTFR'?{subtitleLanguages:['fr']}:{})});
   }catch{}
  }return servers;
 }
-export async function resolveDessinServers(id){
+export async function resolveDessinServers(id,{readSnapshot=dessinSnapshot,readPage=request}={}){
  const p=parseDessinId(id);if(!p||p.type==='s')return [];
- let row=await dessinSnapshot(id),episode=row?.episodes?.find(e=>e.id===id);
- if(!episode?.cachedPlayers?.length){row=parseDessinPage(id,await request(dessinUrl(id)),row);episode=row.episodes.find(e=>e.id===id);}
+ let row=await readSnapshot(id),episode=row?.episodes?.find(e=>e.id===id);
+ if(!episode?.cachedPlayers?.length){row=parseDessinPage(id,await readPage(dessinUrl(id)),row);episode=row.episodes.find(e=>e.id===id);}
  const players=dessinPlayers(episode?.cachedPlayers);if(!players.length)throw Error('No verified DessinAnime players for this episode');
- return players.map(player=>player.direct?{id:`dessinanime:${player.id}`,provider:'dessinanime',name:`DessinAnime - ${player.language} - ${player.name}`,type:'dessinanime',playerId:player.id,language:player.language,...(player.language==='VF'?{audioLanguages:['fr']}:{})}:{id:`dessinanime:${player.id}`,provider:'dessinanime',name:`DessinAnime - ${player.language} - ${player.name}`,type:'embed',embedUrl:player.url,sandbox:null});
+ // Keep the actual source frame: the source's own player falls back to it when
+ // its direct API or media fails. A frame is never guessed from a player ID.
+ return players.map(player=>({id:`dessinanime:${player.id}`,provider:'dessinanime',name:`DessinAnime - ${player.language} - ${player.name}`,sourceOrigin:DESSIN_ORIGIN,headers:{Referer:DESSIN_ORIGIN+'/','User-Agent':'Mozilla/5.0'},language:player.language,...(player.language==='VF'?{audioLanguages:['fr']}:{ }),...(player.language==='VOSTFR'?{subtitleLanguages:['fr']}:{ }),...(player.direct?{type:'dessinanime',playerId:player.id,sourceEmbedUrl:player.url}:{type:'embed',embedUrl:player.url,sandbox:null})}));
 }

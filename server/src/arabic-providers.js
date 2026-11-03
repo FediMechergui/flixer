@@ -20,9 +20,9 @@ const clean=x=>String(x||'').replace(/\s+/g,' ').trim();
 const dedupe=rows=>[...new Map(rows.map(r=>[r.id,r])).values()];
 // Retain saved source identities while following these verified publisher moves.
 // An arbitrary redirect or lookalike domain never becomes an approved source.
-export const ARABIC_ORIGIN_MOVES={'https://tv10.egydead.live':'https://a1.egydead.media','https://kirmalk.com':'https://kirmalk.art'};
+export const ARABIC_ORIGIN_MOVES={'https://tv10.egydead.live':'https://a1.egydead.media','https://kirmalk.com':'https://kirmalk.blog','https://kirmalk.art':'https://kirmalk.blog'};
 export function currentArabicUrl(value){const u=new URL(value);const next=ARABIC_ORIGIN_MOVES[u.origin];if(next)u.host=new URL(next).host;return u.href;}
-const fixed=(value,origin,base=origin)=>{try{const u=new URL(value,base);if(ARABIC_ORIGIN_MOVES[origin]===u.origin)u.host=new URL(origin).host;return u.origin===origin&&!u.username&&!u.password?u:null;}catch{return null;}};
+const fixed=(value,origin,base=origin)=>{try{const u=new URL(value,base);if((ARABIC_ORIGIN_MOVES[origin]||origin)===(ARABIC_ORIGIN_MOVES[u.origin]||u.origin))u.host=new URL(origin).host;return u.origin===origin&&!u.username&&!u.password?u:null;}catch{return null;}};
 export function parseArabicId(id){
   const cimafu=parseCimafuId(id);if(cimafu)return cimafu;
   const m=/^sp:(streamtunisie|kirmalk|ahwaktv|egydead|tuniflix|cinetimes|cimatn):([sme]):([A-Za-z0-9_-]{1,300})(?::([1-9]\d{0,3}))?$/.exec(String(id));
@@ -294,7 +294,9 @@ export function parseArabicServers(id,html){
 }
 function approvedArabicUrls(p,urls,sourceUrl){
   const direct=urls.filter(value=>safeTunisianFile(value)||(p.provider==='cinetimes'?pSafeCommons(value):p.provider==='streamtunisie'&&safeSourceHls(value))).map((url,i)=>({id:`${p.provider}:direct:${i}`,provider:p.provider,name:`${ARABIC_PROVIDERS[p.provider].name} - direct video`,type:p.provider==='cinetimes'||safeTunisianFile(url)?'file':'hls',streamUrl:url}));
-  return [...direct,...[...new Set(urls)].flatMap((value,i)=>{try{const u=new URL(value);if(u.protocol!=='https:'||u.username||u.password||u.port||!embedHosts.has(u.hostname))return [];
+  return [...direct,...[...new Set(urls)].flatMap((value,i)=>{try{const u=new URL(value);
+    const kirmalkPlayer=p.provider==='kirmalk'&&u.hostname==='ss.hd-vk.com'&&/^\/embed-[a-z0-9]+\.html$/.test(u.pathname)&&!u.search&&!u.hash;
+    if(u.protocol!=='https:'||u.username||u.password||u.port||!embedHosts.has(u.hostname)&&!kirmalkPlayer)return [];
     const videoId=['www.youtube.com','www.youtube-nocookie.com','youtube.com'].includes(u.hostname)?/^\/embed\/([\w-]{11})/.exec(u.pathname)?.[1]:null;
     return [{id:`${p.provider}:${i}`,provider:p.provider,name:`${ARABIC_PROVIDERS[p.provider].name} - ${videoId?'YouTube':u.hostname}`,type:videoId?'youtube':'embed',...(videoId?{videoId}:{embedUrl:u.href,sandbox:null,headers:{Referer:currentArabicUrl(sourceUrl)}})}];
   }catch{return [];}})];

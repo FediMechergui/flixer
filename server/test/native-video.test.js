@@ -28,7 +28,7 @@ test('native media uses the original CDN URL, isolates progress sessions and rem
 });
 
 test('all fixed specialist embed host lists are accepted by the Android isolated player',()=>{
- const android=fs.readFileSync(new URL('../../mobile/android/app/src/main/java/app/flixer/stream/PlayerViewPlugin.java',import.meta.url),'utf8');
+ const android=['PlayerViewPlugin.java','SourcePlayerPolicy.java'].map(file=>fs.readFileSync(new URL('../../mobile/android/app/src/main/java/app/flixer/stream/'+file,import.meta.url),'utf8')).join('\n');
  const accepted=new Set([...android.matchAll(/"([a-z0-9.-]+\.[a-z]+)"/g)].map(m=>m[1]));
  for(const file of ['arabic-providers','french-providers','dessinanime','specialist-providers','cimafu']){
   const source=fs.readFileSync(new URL('../src/'+file+'.js',import.meta.url),'utf8');

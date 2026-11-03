@@ -46,16 +46,45 @@
   }
   async function resolveDessinPlayer(server) {
     if(server?.provider!=='dessinanime'||server.type!=='dessinanime'||!Number.isSafeInteger(server.playerId)||server.playerId<1)throw Error('Invalid source player');
+    let fallback;
+    try{
+      const u=new URL(server.sourceEmbedUrl);
+      if(u.protocol==='https:'&&!u.username&&!u.password&&!u.port&&['abysscdn.com','morencius.com'].includes(u.hostname))fallback={...server,id:server.id+':source',name:server.name+' - Source player',type:'embed',embedUrl:u.href,streamUrl:undefined,rawStreamUrl:undefined,sandbox:null,headers:{Referer:'https://dessinanime.cc/','User-Agent':'Mozilla/5.0'}};
+    }catch{}
     const controller=new AbortController();let timer;
     try{
-      const data=await Promise.race([fetch('https://dessinanime.cc/api/stream?playerId='+server.playerId,{signal:controller.signal}).then(response=>{if(!response.ok)throw Error('Source HTTP '+response.status);return response.json();}),new Promise((_,reject)=>{timer=setTimeout(()=>{controller.abort();reject(Error('Source player timed out'));},12000);})]);
+      const url='https://dessinanime.cc/api/stream?playerId='+server.playerId;
+      const headers={Accept:'application/json',Referer:'https://dessinanime.cc/','User-Agent':'Mozilla/5.0'};
+      const capacitor=window.Capacitor,native=capacitor?.isNativePlatform?.(),http=native?(capacitor.Plugins?.CapacitorHttp||capacitor.registerPlugin?.('CapacitorHttp')):null;
+      // The public API does not allow the app WebView's localhost origin. Use
+      // Android's HTTP transport explicitly, keeping the request source-bound.
+      const request=native?(async()=>{
+        if(!http?.request)throw Error('Native source request unavailable');
+        const response=await http.request({url,method:'GET',headers,responseType:'json',disableRedirects:true,connectTimeout:4000,readTimeout:7000});
+        if(response.status!==200)throw Error('Source HTTP '+response.status);
+        if(response.url&&response.url!==url)throw Error('Unexpected source redirect');
+        if(typeof response.data==='string'&&response.data.length>262144)throw Error('Source response too large');
+        return typeof response.data==='string'?JSON.parse(response.data):response.data;
+      })():fetch(url,{signal:controller.signal,headers:{Accept:'application/json'}}).then(response=>{if(!response.ok)throw Error('Source HTTP '+response.status);return response.json();});
+      const data=await Promise.race([request,new Promise((_,reject)=>{timer=setTimeout(()=>{controller.abort();reject(Error('Source player timed out'));},12000);})]);
+      if(!data||typeof data!=='object')throw Error('Invalid source response');
       if(!['mp4','hls'].includes(data.type))throw Error('Unsupported source video');
       const seen=new Set(),choices=[];
-      for(const quality of [{url:data.url,label:'Auto'},...(Array.isArray(data.qualities)?data.qualities:[])])try{
-        const u=new URL(quality.url);if(u.origin!=='https://relay.dessinanime.cc'||!u.pathname.startsWith('/api/stream-relay/')||u.username||u.password||seen.has(u.href))continue;seen.add(u.href);
-        choices.push({...server,id:server.id+':'+choices.length,name:server.name+' - '+String(quality.label).slice(0,25),type:data.type,streamUrl:u.href});
-      }catch{}
+      // Some source players publish HLS and a separate MP4 fallback. Preserve
+      // both explicit formats, without deriving media URLs or recursing inputs.
+      for(const format of [data,data.fallback]){
+        if(!format||!['mp4','hls'].includes(format.type))continue;
+        for(const quality of [{url:format.url,label:'Auto'},...(Array.isArray(format.qualities)?format.qualities.slice(0,8):[])])try{
+          const u=new URL(quality.url),key=format.type+'|'+u.href;if(u.origin!=='https://relay.dessinanime.cc'||!u.pathname.startsWith('/api/stream-relay/')||u.username||u.password||seen.has(key))continue;seen.add(key);
+          choices.push({...server,id:server.id+':'+choices.length,name:server.name+' - '+(format===data?'':format.type.toUpperCase()+' ')+String(quality.label).slice(0,25),type:format.type,streamUrl:u.href,rawStreamUrl:u.href,headers:{Referer:'https://dessinanime.cc/','User-Agent':'Mozilla/5.0'}});
+        }catch{}
+      }
+      if(fallback)choices.push(fallback);
       if(!choices.length)throw Error('No verified source video');return choices;
+    }catch(error){
+      // The source itself retains its original iframe when direct resolution
+      // fails. Preserve that actual episode player rather than inventing a URL.
+      if(fallback)return [fallback];throw error;
     }finally{clearTimeout(timer);}
   }
 
@@ -241,7 +270,11 @@
       }
       if(s.type==='dessinanime'){
         const generation=st.generation;showNotice('Resolving source video...');
-        resolveDessinPlayer(s).then(choices=>{if(st.destroyed||st.generation!==generation)return;servers.splice(i,1,...choices);load(i);}).catch(()=>{if(!st.destroyed&&st.generation===generation)failover();});return;
+        resolveDessinPlayer(s).then(choices=>{
+          if(st.destroyed||st.generation!==generation)return;
+          st.attempted=new Set([...st.attempted].map(index=>index>i?index+choices.length-1:index));
+          servers.splice(i,1,...choices);load(i,true);
+        }).catch(error=>{if(!st.destroyed&&st.generation===generation){st.sourceErrors.set(s.id||s.name,s.name+': '+error.message);failover();}});return;
       }
       if (["hls","mp4","file","dash"].includes(s.type) && s.streamUrl) return window.FlixerBrowser?.hasNativeVideo?.()?openDirectPlayer(s):loadHls(s);
       if(s.embedUrl&&['embed','browser'].includes(s.type)&&window.FlixerBrowser?.hasNativePlayer?.())return openNativePlayer();

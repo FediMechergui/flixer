@@ -302,10 +302,11 @@ export async function unifiedStream(id,{showId,source,prefix='/api/stream',catal
     if(quick&&o.provider==='hdtoday'&&!title.tmdbId&&!title.offerings?.some(o=>o.provider==='fmovies'&&o.tmdbId))return [];
     if(product==='flixer' && specialistUrl(o.id))return resolveSpecialist(o.id,{fresh,transport:transport==='direct'?'direct':'proxy'});
     if(o.provider==='fmovies')return fmoviesServers(o.id);
-    if(o.provider==='hdtoday')return resolveHdtoday(o.id,{tmdbId:title.tmdbId || title.offerings?.find(provider=>provider.provider==='fmovies')?.tmdbId});
+    if(o.provider==='hdtoday')return resolveHdtoday(o.id,{fresh,tmdbId:title.tmdbId || title.offerings?.find(provider=>provider.provider==='fmovies')?.tmdbId});
     if(o.provider==='youtube')return [{id:`youtube:${o.id}`,name:o.name||'YouTube',provider:'youtube',type:'youtube',videoId:o.id}];
     if(o.provider==='myflixer'){
       const resolved=await resolveMyflixer(o.id,prefix,{transport:transport==='direct'?'direct':'proxy'});
+      if(resolved.error&&!resolved.servers?.length)throw Error(resolved.error);
       return (resolved.servers||[]).map(s=>({...s,id:`myflixer:${s.id}`,name:`Myflixer · ${s.name}`,provider:'myflixer'}));
     }
     return [];
