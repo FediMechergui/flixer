@@ -39,3 +39,11 @@ test('native document failures retain bounded diagnostics without exporting upst
   assert.deepEqual(route.sourceDiagnostics,[{sourceError:'HTTP_ERROR',httpStatus:403,networkErrorCode:0}]);
   assert.equal(JSON.stringify(report).includes('PRIVATE'),false);
 });
+
+test('an advancing official trailer does not count as confirmed film playback',()=>{
+  const row={...confirmed,case:1,nativeResults:[{surface:'openPlayer'}],observations:[{url:'https://www.youtube.com/embed/aBxBjNbKETU',videoTitle:'STARTUP | OFFICIAL TRAILER'}]};
+  assert.equal(playbackEvidence(row),null);
+  const report=summarizePlayerRepair([{name:'test',matrix:{complete:true,cases:[{case:1,provider:'streamtunisie',title:'Startup',kind:'film'}]},device:{cases:[row]}}]);
+  assert.equal(report.confirmed,0);
+  assert.equal(report.reports[0].routes[0].status,'preview_only');
+});

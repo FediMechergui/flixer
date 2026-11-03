@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {classifyPlayback,blockingPlayerMessage,nativePlaybackDiagnostics,sourceRefusesDebugger} from '../../scripts/playback-outcome.js';
+import {classifyPlayback,blockingPlayerMessage,nativePlaybackDiagnostics,sourceRefusesDebugger,isPreviewPlayback} from '../../scripts/playback-outcome.js';
 test('the observed YouTube country restriction is explicit rather than an unexplained timeout',()=>{const result={observations:[{text:'Video unavailable\nThe uploader has not made this video available in your country'}]};assert.equal(classifyPlayback(result),'region_restricted');assert.match(blockingPlayerMessage(result),/country/)});
 test('source verification, embedding restrictions and soft 404s retain distinct outcomes',()=>{for(const [text,status] of [["Antispam\nI'm not a robot",'verification_required'],['Playback on other websites has been disabled','embedding_restricted'],['Series\n404 — Page Not Found','missing_video'],["We Couldn't Find This Content Or Episode Is Not Available.",'missing_video']])assert.equal(classifyPlayback({observations:[{text}]}),status)});
 test('an advertising-script failure or loaded frame cannot certify content failure or playback',()=>{assert.equal(classifyPlayback({network:[{type:'Script',status:403}]}),'no_advancing_video');assert.equal(classifyPlayback({network:[{type:'Document',status:200}]}),'no_advancing_video');assert.equal(classifyPlayback({infrastructureError:'System dialog'}),'infrastructure_error')});
@@ -34,5 +34,33 @@ test('an explicit source DevTools refusal is audit interference, not an access o
   const result={...evidence,nativeResults:[{result:{reason:'failed',sourceError:'HTTP_ERROR',httpStatus:403}}]};
   assert.equal(classifyPlayback(result),'debugger_restricted');assert.match(blockingPlayerMessage(result),/retest without an attached player debugger/);
   assert.equal(classifyPlayback({...result,playbackConfirmed:true}),'playback_confirmed');
+ }
+});
+test('the observed Mixdrop missing-file page is more specific than its native unavailable signal',()=>{
+ const text="WE ARE SORRY\n\nWe can't find the video you are looking for.";
+ const result={observations:[{text}],nativeResults:[{result:{reason:'failed',sourceError:'SOURCE_UNAVAILABLE'}}]};
+ assert.equal(classifyPlayback(result),'missing_video');assert.equal(blockingPlayerMessage(result),text);
+ assert.equal(classifyPlayback({...result,observations:[{text:text.replace("can't","can\u2019t")}]}),'missing_video');
+});
+test('the actual embedded YouTube trailer is a preview even with an advancing clock',()=>{
+ const url='https://www.youtube.com/embed/aBxBjNbKETU?autoplay=1';
+ for(const evidence of [{videoTitle:'STARTUP | OFFICIAL TRAILER',text:'Playing'},{text:'STARTUP | OFFICIAL TRAILER\nGoubantini Cinema\nRecommended film'}]){
+  const result={type:'youtube',playbackConfirmed:true,proof:{start:0,end:4,duration:150.081},observations:[{url,...evidence}]};
+  assert.equal(isPreviewPlayback(result),true);assert.equal(classifyPlayback(result),'preview_only');assert.match(blockingPlayerMessage(result),/full-title playback is not confirmed/);
+ }
+});
+test('preview detection never guesses from duration, recommendations, another source or a series name',()=>{
+ const url='https://www.youtube.com/embed/aBxBjNbKETU';
+ for(const observation of [{url,videoTitle:'Startup',text:'Startup\nRecommended: OFFICIAL TRAILER'},{url,text:'Startup\nOFFICIAL TRAILER'},{url,videoTitle:'Trailer Park Boys: Full Episode'},{url:'https://www.youtube.com.evil.org/embed/aBxBjNbKETU',videoTitle:'STARTUP | OFFICIAL TRAILER'},{url:'https://movie.example/embed/title',text:'STARTUP | OFFICIAL TRAILER'}]){
+  const result={type:'youtube',playbackConfirmed:true,proof:{start:0,end:4,duration:150},observations:[observation]};
+  assert.equal(isPreviewPlayback(result),false);assert.equal(classifyPlayback(result),'playback_confirmed');
+ }
+ assert.equal(isPreviewPlayback({type:'embed',observations:[{url,videoTitle:'An unrelated ad | OFFICIAL TRAILER'}]}),false);
+});
+test('a passive reCAPTCHA attribution badge is not an active verification challenge',()=>{
+ const badge={observations:[{url:'https://www.google.com/recaptcha/api2/anchor',text:'protected by reCAPTCHA'}]};
+ assert.equal(classifyPlayback(badge),'no_advancing_video');assert.equal(blockingPlayerMessage(badge),'');
+ for(const text of ["protected by reCAPTCHA\nI'm not a robot",'protected by reCAPTCHA\nComplete the CAPTCHA challenge','Verify you are human']){
+  assert.equal(classifyPlayback({observations:[{text}]}),'verification_required');assert.equal(blockingPlayerMessage({observations:[{text}]}),text);
  }
 });

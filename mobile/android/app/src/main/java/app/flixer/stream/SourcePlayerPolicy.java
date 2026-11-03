@@ -43,4 +43,10 @@ final class SourcePlayerPolicy {
         if (approved(value)) try { origins.add("https://" + new URI(value).getHost()); } catch (Exception ignored) {}
         return origins;
     }
+
+    static Set<String> telemetryOrigins() {
+        // MyAsianTV's published Zumivids embed contains this frame (2026-11-03).
+        // Health/progress only: no navigation admission or playback modification.
+        return new HashSet<>(java.util.Collections.singleton("https://streamtape.com"));
+    }
 }

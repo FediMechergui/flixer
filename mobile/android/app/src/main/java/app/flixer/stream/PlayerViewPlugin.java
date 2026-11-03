@@ -91,7 +91,7 @@ public class PlayerViewPlugin extends Plugin {
             if(WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT))WebViewCompat.addDocumentStartJavaScript(web,PlayerAdBlock.script(getContext()),sessionOrigins);
             // Health messages only; remote pages never receive Capacitor's app bridge.
             if(WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)&&WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)){
-                Set<String> origins=sessionOrigins;
+                Set<String> telemetryOnly=SourcePlayerPolicy.telemetryOrigins(),origins=new HashSet<>(sessionOrigins);origins.addAll(telemetryOnly);
                 WebViewCompat.addWebMessageListener(web,"FlixerPlayback",origins,(view,message,origin,main,reply)->{
                     if(playerDialog!=dialog)return;
                     if("playing".equals(message.getData())){diagnostics.clear();played[0]=true;watchdog.removeCallbacks(startupTimeout);}
@@ -106,13 +106,13 @@ public class PlayerViewPlugin extends Plugin {
                                 if(data.optBoolean("ended")&&duration-position<=2){reason[0]="ended";dialog.dismiss();}
                             }
                         }
-                        if(captureMedia&&"public-media".equals(data.optString("type"))&&"https".equals(uri.getScheme())&&uri.getHost()!=null&&uri.getUserInfo()==null&&uri.getPort()==-1&&Arrays.asList("mp4","hls","dash").contains(format)){
+                        if(captureMedia&&!telemetryOnly.contains(origin.toString())&&"public-media".equals(data.optString("type"))&&"https".equals(uri.getScheme())&&uri.getHost()!=null&&uri.getUserInfo()==null&&uri.getPort()==-1&&Arrays.asList("mp4","hls","dash").contains(format)){
                             media.put("url",target);media.put("format",format);media.put("position",Math.max(0,data.optDouble("position",0)));media.put("sourceOrigin",origin.toString());media.put("userAgent",settings.getUserAgentString());reason[0]="media";dialog.dismiss();
                         }
                     }catch(Exception ignored){}
                 });
                 WebViewCompat.addDocumentStartJavaScript(web,PlayerAdBlock.script(getContext(),"player-health.js"),origins);
-                WebViewCompat.addDocumentStartJavaScript(web,PlayerAdBlock.script(getContext(),"public-file-start.js"),origins);
+                WebViewCompat.addDocumentStartJavaScript(web,PlayerAdBlock.script(getContext(),"public-file-start.js"),sessionOrigins);
                 WebViewCompat.addDocumentStartJavaScript(web,PlayerAdBlock.script(getContext(),"player-progress.js").replace("/*FLIXER_START_AT*/0",Double.toString(startAt)),origins);
             }
             web.setWebViewClient(new WebViewClient() {

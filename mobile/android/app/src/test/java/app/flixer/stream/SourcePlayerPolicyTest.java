@@ -46,4 +46,11 @@ public class SourcePlayerPolicyTest {
         assertFalse(SourcePlayerPolicy.originsFor(player).contains("https://*.xtremestream.xyz"));
         assertFalse(SourcePlayerPolicy.originsFor("https://evil.org/player").contains("https://evil.org"));
     }
+    @Test public void theObservedStreamtapeChildReceivesTelemetryWithoutNavigationAdmission() {
+        assertTrue(SourcePlayerPolicy.telemetryOrigins().contains("https://streamtape.com"));
+        assertEquals(1, SourcePlayerPolicy.telemetryOrigins().size());
+        assertFalse(SourcePlayerPolicy.originsFor(null).contains("https://streamtape.com"));
+        assertFalse(SourcePlayerPolicy.approved("https://streamtape.com/e/meXKdepG2WIXO6"));
+        assertFalse(SourcePlayerPolicy.approved("https://streamtape.com/account"));
+    }
 }

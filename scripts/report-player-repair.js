@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {classifyPlayback,nativePlaybackDiagnostics} from './playback-outcome.js';
+import {classifyPlayback,nativePlaybackDiagnostics,isPreviewPlayback} from './playback-outcome.js';
 
 const finite=value=>Number.isFinite(value)&&value>=0;
 const label=value=>String(value||'').replace(/https?:\/\/[^\s"<>]+/gi,'[source URL]').replace(/\b(?:token|signature|authorization|cookie|key)\s*[=:]\s*\S+/gi,'[redacted]').replace(/[A-Za-z0-9_-]{80,}/g,'[token]').slice(0,240);
@@ -11,6 +11,7 @@ const date=value=>typeof value==='string'&&/^\d{4}-\d\d-\d\dT[\d:.]+Z$/.test(val
 
 export function playbackEvidence(result){
   const p=result?.proof;
+  if(isPreviewPlayback(result||{}))return null;
   if(result?.playbackConfirmed!==true||!p||![p.start,p.end,p.duration].every(finite)||p.end-p.start<1||p.end<3||p.duration<120||p.end>p.duration+1)return null;
   let transport,attribution;
   if(p.invocation&&['media3','webview'].includes(p.transport)){
@@ -25,7 +26,7 @@ export function playbackEvidence(result){
 }
 
 function publicAttempt(result){
-  const proof=playbackEvidence(result),status=proof?'playback_confirmed':result?.playbackConfirmed?'unverified_clock_attribution':classifyPlayback({...result,playbackConfirmed:false});
+  const proof=playbackEvidence(result),status=isPreviewPlayback(result||{})?'preview_only':proof?'playback_confirmed':result?.playbackConfirmed?'unverified_clock_attribution':classifyPlayback({...result,playbackConfirmed:false});
   const sourceDiagnostics=nativePlaybackDiagnostics(result||{});
   return {status,testedAt:date(result?.at),appVersion:label(result?.appVersion),...(proof?{proof}:{}),...(sourceDiagnostics.length?{sourceDiagnostics}:{}),errorCodes:[...new Set((result?.nativeResults||[]).flatMap(row=>[row.error,row.result?.error]).filter(value=>typeof value==='string'&&/^ERROR_CODE_[A-Z0-9_]+$/.test(value)))]};
 }

@@ -5,6 +5,11 @@ export function playerSnapshot(){
  const explicit='.vjs-big-play-button,.jw-icon-playback,.jw-icon-display,.plyr__control--overlaid,.ytp-large-play-button,.fp-play,[data-plyr="play"]';
  const play=videos.some(v=>!v.paused&&!v.ad&&v.time>0)?null:[...document.querySelectorAll('button[aria-label],button[title],[role="button"][aria-label],'+explicit)].find(element=>{const label=element.getAttribute('aria-label')||element.getAttribute('title')||'';return visible(element,16,16)&&!advert(element)&&!/\b(?:pause|stop)\b/i.test(label)&&(/^(?:play|replay|start)(?: video)?(?:\s*\([^)]*\))?$/i.test(label)||element.matches(explicit))});
  const video=[...document.querySelectorAll('video')].find(v=>visible(v,80,40)&&v.paused&&v.currentSrc&&!advert(v)),box=(play||video)?.getBoundingClientRect();
- return {url:location.href,text:(document.body?.innerText||'').slice(0,800),videos,play:box?{x:box.x+box.width/2,y:box.y+box.height/2}:null};
+ // The title of the currently embedded YouTube video is separate from page
+ // text, which may also contain unrelated recommended trailers.
+ const youtube=/^https:\/\/(?:www\.)?youtube(?:-nocookie)?\.com\/embed\/[A-Za-z0-9_-]{11}(?:[/?#]|$)/.test(location.href);
+ const titleLink=youtube?document.querySelector?.('.ytp-title-link'):null;
+ const videoTitle=youtube?String(titleLink?.textContent||document.title||'').replace(/\s+-\s+YouTube$/i,'').trim().slice(0,240):'';
+ return {url:location.href,text:(document.body?.innerText||'').slice(0,800),...(videoTitle&&videoTitle!=='YouTube'?{videoTitle}:{}),videos,play:box?{x:box.x+box.width/2,y:box.y+box.height/2}:null};
 }
-export function canPressPlay(text){return !/verify.{0,40}human|captcha|checking your browser|premium|antispam|i.?m not a robot/i.test(text);}
+export function canPressPlay(text){return !/verify.{0,40}human|captcha|checking your browser|premium|antispam|i.?m not a robot/i.test(String(text||'').replace(/\bprotected by reCAPTCHA\b/gi,''));}
