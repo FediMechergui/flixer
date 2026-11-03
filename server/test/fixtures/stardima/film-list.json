@@ -1,0 +1,30 @@
+{
+  "videos": [
+    {
+      "id": 4019,
+      "title": "دوريات المخلاب: فيلم الديناصورات",
+      "description": "تهبط فرقة الإنقاذ من الجراء على جزيرة غامضة تسكنها الديناصورات بعد عاصفة، وحين يتسبب التنقيب المتهور",
+      "url": "https://www.stardima.com/movie/6ae8afb7b21ab",
+      "poster_url": "posters/doryat-almkhlab-fylm-aldynasorat-portrait.jpg",
+      "year": "2026",
+      "video_quality": "مدبلج فصحى",
+      "is_series": false,
+      "seasons_count": "فيلم"
+    },
+    {
+      "id": 4016,
+      "title": "سجلات سبايدرويك",
+      "description": "تنتقل عائلة للعيش في منزل منعزل، ويبدأ كل فرد في العائلة بالتكيف مع الإقامة في المنزل، (سيمون) كان ي",
+      "url": "https://www.stardima.com/movie/6ae7843be51cb",
+      "poster_url": "https://image.tmdb.org/t/p/w500/uN7MUMaCXfa8DbMMp61A8iXEcEG.jpg",
+      "year": "2008",
+      "video_quality": "مترجم",
+      "is_series": false,
+      "seasons_count": "فيلم"
+    }
+  ],
+  "pagination": {
+    "current_page": 1,
+    "last_page": 108
+  }
+}

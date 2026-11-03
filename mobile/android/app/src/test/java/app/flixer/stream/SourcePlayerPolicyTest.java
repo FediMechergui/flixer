@@ -53,4 +53,14 @@ public class SourcePlayerPolicyTest {
         assertFalse(SourcePlayerPolicy.approved("https://streamtape.com/e/meXKdepG2WIXO6"));
         assertFalse(SourcePlayerPolicy.approved("https://streamtape.com/account"));
     }
+    @Test public void stardimaFreePlayersAcceptOnlyTheirPublishedEmbedPaths() {
+        for (String host : new String[]{"lulustream.com", "luluvdo.com", "savefiles.com", "mixdrop.ag"}) {
+            assertTrue(SourcePlayerPolicy.approved("https://" + host + "/e/ca89bh8wwo66"));
+            assertTrue(SourcePlayerPolicy.originsFor(null).contains("https://" + host));
+            for (String suffix : new String[]{"/account", "/premium", "/e/abc?redirect=elsewhere", "/e/abc#other", "/e/../account"})
+                assertFalse(SourcePlayerPolicy.approved("https://" + host + suffix));
+            assertFalse(SourcePlayerPolicy.approved("https://" + host + ".evil.org/e/abc"));
+            assertFalse(SourcePlayerPolicy.approved("http://" + host + "/e/abc"));
+        }
+    }
 }

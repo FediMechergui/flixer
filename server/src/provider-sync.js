@@ -8,6 +8,7 @@ import { validateHdtodayFeed } from './hdtoday-feed.js';
 import {fetchMovies,fetchSeries} from './myflixer.js';
 import {getSpecialistDetails} from './specialist-providers.js';
 import {refreshSeriesEpisodes} from './episode-refresh.js';
+import {STARDIMA_IMPORT_JOBS,stardimaPartitionKey,alignStardimaQueue} from './stardima-import.js';
 
 const running=new Map();
 const filename=product=>`providers-${product}.json`;
@@ -40,6 +41,7 @@ function scopes(product) {
       ...['KR','JP','CN','TW','CA','IN','TR','EG','TN'].flatMap(country=>['film','series'].map(kind=>({provider:'fmovies',kind,country,page:1}))),
       {provider:'fmovies',kind:'series',country:'JP',genre:'animation',page:1},
       ...specialistJobs(),
+      ...STARDIMA_IMPORT_JOBS.filter(job=>job.collection).map(job=>({...job,page:1})),
       ...['film','series'].map(kind=>({provider:'frenchstream',kind,collection:'french-originals',page:1})),
       ...['film','series'].map(kind=>({provider:'dessinanime',kind,collection:'french-cartoons',page:1})),
       ...['film','series'].map(kind=>({provider:'cimafu',kind,collection:'arabic',page:1})),
@@ -62,6 +64,22 @@ async function fetchPage(job) {
 export async function refreshProviders({product='dahsha',full=false,latestOnly=false,pageBudget=Number(process.env.PROVIDER_SCAN_PAGES||12),log=console.log}={}) {
   if(running.has(product))return running.get(product);
   const promise=scan({product,full,latestOnly,pageBudget,log}).finally(()=>running.delete(product));running.set(product,promise);return promise;
+}
+export function extendSpecialistScopes(cache,seeds,product){
+  if(product!=='flixer')return;
+  cache.queue=alignStardimaQueue(cache.queue,cache.stardimaCoverage);
+  if(cache.specialistScopesVersion===10)return;
+  const key=job=>JSON.stringify([job.provider,job.kind,job.country,job.language,job.genre,job.year,job.collection]);
+  const known=new Set(cache.queue.map(key));
+  // Version 9 already completed the previous source migration. Adding StarDima
+  // must not restart every completed provider's historical traversal.
+  const additions=cache.specialistScopesVersion===9?seeds.filter(job=>job.provider==='stardima'):seeds;
+  cache.queue.push(...additions.filter(job=>(job.country||job.language||!['fmovies','hdtoday'].includes(job.provider))&&!known.has(key(job))).flatMap(job=>{
+    const progress=job.provider==='stardima'?cache.stardimaCoverage?.partitions?.[stardimaPartitionKey(job)]:null;
+    if(progress?.complete)return [];
+    return [Number.isSafeInteger(progress?.nextPage)&&progress.nextPage>1?{...job,page:progress.nextPage}:job];
+  }));
+  cache.specialistScopesVersion=10;cache.completed=false;
 }
 async function scan({product,full,latestOnly,pageBudget,log}) {
   const cache=providerCache(product),items=new Map(cache.items.map(i=>[i.id,i]));
@@ -100,12 +118,7 @@ async function scan({product,full,latestOnly,pageBudget,log}) {
   }
   if(!cache.queue.length && !cache.completed)cache.queue=scopes(product);
   // Existing resumable scans keep their cursors when new source families arrive.
-  if(product==='flixer' && cache.specialistScopesVersion!==9){
-    const key=job=>JSON.stringify([job.provider,job.kind,job.country,job.language,job.genre,job.year,job.collection]);
-    const known=new Set(cache.queue.map(key));
-    cache.queue.push(...seeds.filter(job=>(job.country||job.language||!['fmovies','hdtoday'].includes(job.provider))&&!known.has(key(job))));
-    cache.specialistScopesVersion=9;cache.completed=false;
-  }
+  extendSpecialistScopes(cache,seeds,product);
   if(full && cache.completed){cache.queue=scopes(product);cache.completed=false;}
   let scanned=0;
   while(!latestOnly && cache.queue.length && (full || scanned<pageBudget)) {

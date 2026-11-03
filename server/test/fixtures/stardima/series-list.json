@@ -1,0 +1,30 @@
+{
+  "videos": [
+    {
+      "id": 4018,
+      "title": "كايجو رقم 8",
+      "description": "هيبينو كافكا يشتغل في شركة منظفي الوحوش. وهو ابن 32. وعمله تقطيع الوحوش التي أخضعها جند الدفاع وإتلا",
+      "url": "https://www.stardima.com/tvshow/6ae791af3be9a",
+      "poster_url": "https://image.tmdb.org/t/p/w500/sOSI2G20TuQHbfYqwzGXGQXNQHE.jpg",
+      "year": "2024",
+      "video_quality": "مدبلج فصحى",
+      "is_series": true,
+      "seasons_count": "مسلسل"
+    },
+    {
+      "id": 4017,
+      "title": "زفاف اليراعا",
+      "description": "تدور الأحداث في عصر ميجي حول ساتوكو كيريغايا، وهي فتاة من عائلة نبيلة تمتلك كل شيء تقريباً باستثناء ",
+      "url": "https://www.stardima.com/tvshow/6ae7915defaa0",
+      "poster_url": "https://image.tmdb.org/t/p/w500/1RXEvHmis1oKTAWtKOrzJqenpb6.jpg",
+      "year": "2026",
+      "video_quality": "مدبلج فصحى",
+      "is_series": true,
+      "seasons_count": "مسلسل"
+    }
+  ],
+  "pagination": {
+    "current_page": 1,
+    "last_page": 153
+  }
+}

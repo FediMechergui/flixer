@@ -29,6 +29,7 @@
       const publicFile=servers.findIndex(s=>{try{return s.provider==='tuniflix'&&new URL(s.embedUrl).hostname==='uqload.vc';}catch{return false;}});if(publicFile>=0)return publicFile;
       for(const host of ['1vid.xyz','vidmoly.org','vidspeed.org']){const known=servers.findIndex(s=>{try{return s.provider==='cimafu'&&new URL(s.embedUrl).hostname===host;}catch{return false;}});if(known>=0)return known;}
       const hg=servers.findIndex(s=>window.FlixerHgSource?.supports(s));if(hg>=0)return hg;
+      const lulu=servers.findIndex(s=>window.FlixerLuluSource?.supports(s));if(lulu>=0)return lulu;
     }
     const lazy=servers.findIndex(s=>s.type==='dessinanime');
     return lazy>=0?lazy:0;
@@ -257,9 +258,10 @@
         }).catch(error=>{if(!st.destroyed&&st.generation===generation){notice.hidden=true;st.sourceErrors.set('wco',window.FlixerWcoSource.failureMessage(error));failover();}});return;
       }
       const hgSource=s.sourceEmbedUrl||s.embedUrl;
-      if(window.FlixerBrowser?.hasNativeVideo?.()&&window.FlixerHgSource?.supports(s)&&!st.hgAttempted.has(hgSource)){
+      const sourceResolver=[window.FlixerHgSource,window.FlixerLuluSource].find(helper=>helper?.supports(s));
+      if(window.FlixerBrowser?.hasNativeVideo?.()&&sourceResolver&&!st.hgAttempted.has(hgSource)){
         st.hgAttempted.add(hgSource);const generation=st.generation;showNotice('Resolving source video...');
-        window.FlixerHgSource.resolve(s).then(choices=>{
+        sourceResolver.resolve(s).then(choices=>{
           if(st.destroyed||st.generation!==generation)return;
           if(choices.length){
             st.attempted=new Set([...st.attempted].map(index=>index>i?index+choices.length:index));
@@ -368,7 +370,7 @@
       } else showError();
     }
 
-    function resetHgSources() { st.hgAttempted.clear();window.FlixerHgSource?.clearCache?.();window.FlixerWcoSource?.clearCache?.(); }
+    function resetHgSources() { st.hgAttempted.clear();window.FlixerHgSource?.clearCache?.();window.FlixerLuluSource?.clearCache?.();window.FlixerWcoSource?.clearCache?.(); }
 
     function showError() {
       teardownMedia();

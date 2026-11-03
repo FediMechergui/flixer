@@ -28,6 +28,10 @@ final class SourcePlayerPolicy {
             if ("uqload.co".equals(host)) return path.matches("/embed-[A-Za-z0-9]+\\.html") && query == null;
             if ("ss.hd-vk.com".equals(host)) return path.matches("/embed-[A-Za-z0-9]+\\.html") && query == null;
             if ("netu.frembed.bond".equals(host)) return path.matches("/e/[A-Za-z0-9]+") && query == null;
+            // Public StarDima/Hyperwatching choices and Lulu's observed redirect.
+            if ("lulustream.com".equals(host) || "luluvdo.com".equals(host) || "savefiles.com".equals(host) || "mixdrop.ag".equals(host)) {
+                return path.matches("/e/[A-Za-z0-9]+/?") && query == null;
+            }
             if ("dood.to".equals(host) || "dood.watch".equals(host) || "shanelocaldog.com".equals(host)) {
                 return path.matches("/e/[A-Za-z0-9]+/?") && query == null;
             }
@@ -37,7 +41,7 @@ final class SourcePlayerPolicy {
 
     static Set<String> originsFor(String value) {
         Set<String> origins = new HashSet<>();
-        for (String host : new String[]{"emmmmbed.com", "frembed.uno", "uqload.co", "dood.to", "dood.watch", "shanelocaldog.com", "ss.hd-vk.com", "netu.frembed.bond"}) origins.add("https://" + host);
+        for (String host : new String[]{"emmmmbed.com", "frembed.uno", "uqload.co", "dood.to", "dood.watch", "shanelocaldog.com", "ss.hd-vk.com", "netu.frembed.bond", "lulustream.com", "luluvdo.com", "savefiles.com", "mixdrop.ag"}) origins.add("https://" + host);
         // Only the actual approved Xtremestream origin receives health/progress
         // messages. No wildcard origin or Capacitor bridge is exposed to players.
         if (approved(value)) try { origins.add("https://" + new URI(value).getHost()); } catch (Exception ignored) {}

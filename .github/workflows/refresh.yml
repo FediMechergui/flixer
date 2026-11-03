@@ -22,6 +22,10 @@ on:
         description: 'Continue official Arabic and Tunisian archives during this refresh'
         type: boolean
         default: false
+      stardima_backfill:
+        description: 'Continue up to 600 free StarDima catalogue pages without restarting saved cursors'
+        type: boolean
+        default: false
       dessin_browser_backfill:
         description: 'Export a fresh source seed for the independent DessinAnime browser runner'
         type: boolean
@@ -53,6 +57,22 @@ jobs:
         run: npm ci --prefix server && npm ci --prefix client
       - name: Restore data snapshot
         run: node scripts/snapshot.js restore
+      - name: Continue free StarDima catalogue backfill
+        if: inputs.stardima_backfill || github.event.schedule == '17 */2 * * *'
+        run: |
+          if [ "${{ inputs.stardima_backfill }}" = true ]; then
+            node scripts/import-stardima.js --pages 600
+          else
+            node scripts/import-stardima.js --pages 24
+          fi
+      - name: Preserve StarDima source coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stardima-source-coverage
+          path: artifacts/stardima-import.json
+          retention-days: 7
+          if-no-files-found: ignore
       - name: Apply reviewed Arabic source identities
         run: node scripts/import-reviewed-sources.js
       - name: Apply reviewed DessinAnime episode metadata

@@ -108,7 +108,7 @@
     if(window.FlixerCatalogueSource?.enabled())try{const body=await window.FlixerCatalogueSource.title(id);if(body)return {body};}catch(error){console.warn('[flixer] Published title unavailable:',error.message);}
     return getJson(`${DATA_BASE}/data/shows/${encodeURIComponent(encodeURIComponent(id))}.json`,ms);
   }
-  const PROVIDER_NAMES={aloula:'Aloula',myflixer:'MyFlixer',fmovies:'FMovies',hdtoday:'HDToday',wco:'WCO',animegg:'AnimeGG',megacartoons:'MegaCartoons',toontales:'ToonTales',myasiantv:'MyAsianTV',multimovies:'MultiMovies',yoturkish:'YoTurkish',dessinanime:'DessinAnime',onepace:'One Pace',youtubeoriginals:'YouTube',youtube:'YouTube',cimafu:'Cimafu',streamtunisie:'StreamTunisie',kirmalk:'Kirmalk',ahwaktv:'AhwakTV',egydead:'EgyDead',tuniflix:'Tuniflix',cinetimes:'Cinetimes',cimatn:'CimaTN',frenchstream:'FrenchStream'};
+  const PROVIDER_NAMES={stardima:'StarDima',aloula:'Aloula',myflixer:'MyFlixer',fmovies:'FMovies',hdtoday:'HDToday',wco:'WCO',animegg:'AnimeGG',megacartoons:'MegaCartoons',toontales:'ToonTales',myasiantv:'MyAsianTV',multimovies:'MultiMovies',yoturkish:'YoTurkish',dessinanime:'DessinAnime',onepace:'One Pace',youtubeoriginals:'YouTube',youtube:'YouTube',cimafu:'Cimafu',streamtunisie:'StreamTunisie',kirmalk:'Kirmalk',ahwaktv:'AhwakTV',egydead:'EgyDead',tuniflix:'Tuniflix',cinetimes:'Cinetimes',cimatn:'CimaTN',frenchstream:'FrenchStream'};
   function providersOf(show) {
     const ids=new Set(),seen=new Set();
     const visit=row=>{if(!row||seen.has(row))return;seen.add(row);
@@ -1092,7 +1092,7 @@
       if (!this.liveEnabled) return { items: localItems, totalPages: 1 };
       if(API_BASE){
         this._searchProviders ||= getJson(`${API_BASE}/api/search?providers=1`,3000).then(({body})=>body.providers).catch(()=>null);
-        const names=[...new Set([...(await this._searchProviders||['aloula','youtubeoriginals','myflixer','fmovies','hdtoday','streamtunisie','kirmalk','ahwaktv','egydead','tuniflix','cinetimes','cimatn','animegg','megacartoons','toontales','myasiantv','multimovies','yoturkish','frenchstream','dessinanime']),...(window.Capacitor?.Plugins?.WcoSource?['wco']:[])])];
+        const names=[...new Set([...(await this._searchProviders||['stardima','aloula','youtubeoriginals','myflixer','fmovies','hdtoday','streamtunisie','kirmalk','ahwaktv','egydead','tuniflix','cinetimes','cimatn','animegg','megacartoons','toontales','myasiantv','multimovies','yoturkish','frenchstream','dessinanime']),...(window.Capacitor?.Plugins?.WcoSource?['wco']:[])])];
         if(signal?.aborted)return {items:local,totalPages:1};
         const ids=new Set(local.map(i=>i.id));let pending=names.length+1;
         const exact=local.find(item=>[item.title,...(item.altTitles||[])].some(value=>norm(value)===norm(q)));
