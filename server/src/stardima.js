@@ -60,6 +60,10 @@ function titleContext(id,html){
   const canonical=$('meta[property="og:url"]').attr('content')||$('link[rel="canonical"]').attr('href');if(canonical&&stardimaIdFromUrl(canonical)!==id)throw Error('StarDima title identity mismatch');
   const hero=$('section').filter((_,e)=>$(e).find('h1').length||$(e).find('img[alt$=" Logo"]').length).first(),title=clean(hero.find('h1').last().text())||clean(hero.find('img[alt$=" Logo"]').attr('alt')).replace(/ Logo$/,'');
   if(!title)throw Error('StarDima title missing');const item=row(id,title,$('meta[property="og:image"]').attr('content'));
+  // The source explicitly publishes Arabic/Latin alternative names in <title>.
+  // Do not infer aliases from poster filenames or the authenticated APK API.
+  const names=clean($('title').first().text()).split('|');
+  if(names.length>1)item.altTitles=[...new Set(names.map(name=>clean(name).replace(/\s*-\s*(?:ستارديما|stardima)\s*$/i,'').trim()).filter(name=>name&&name!==title&&name.length<=200))];
   item.synopsis=clean(hero.find('p').first().text());item.year=Number(/\b(?:19|20)\d{2}\b/.exec(hero.find('.info-item').text())?.[0])||null;
   Object.assign(item,languages(hero.find('.info-item').text()+' '+hero.find('span').text()));item.sourceRecordId=integer(hero.find('[data-video-id]').first().attr('data-video-id'));
   const genreLinks=hero.find('a[href*="/search/"]').toArray().map(e=>{try{return decodeURIComponent(new URL($(e).attr('href')).pathname.split('/').pop());}catch{return '';}});

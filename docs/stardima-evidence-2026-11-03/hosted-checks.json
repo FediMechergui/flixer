@@ -1,0 +1,32 @@
+[
+  {
+    "name": "providers",
+    "status": 200,
+    "ms": 3147,
+    "registered": true
+  },
+  {
+    "name": "search",
+    "status": 200,
+    "ms": 3375,
+    "items": 0
+  },
+  {
+    "name": "title",
+    "status": 500,
+    "ms": 1398,
+    "error": "StarDima HTTP 403; cached data retained"
+  },
+  {
+    "name": "film",
+    "status": 502,
+    "ms": 1515,
+    "error": "StarDima HTTP 403; cached data retained"
+  },
+  {
+    "name": "episode",
+    "status": 502,
+    "ms": 909,
+    "error": "StarDima HTTP 403; cached data retained"
+  }
+]

@@ -23,6 +23,9 @@
   const SYNC_EVERY = 3 * 60 * 1000;
   const DELTA_CAP = 2500;
   const UNI = window.FlixerUniverses;
+  const nativeStardima = () => window.FlixerStardimaSource?.enabled?.() ? window.FlixerStardimaSource : null;
+  const stardimaTitle = (show, preferred) => [preferred,show?.id,...(show?.offerings||[]).map(o=>o.id)].find(id=>/^sp:stardima:[ms]:/.test(id||'')&&nativeStardima()?.supports(id));
+  const STARDIMA_COLLECTIONS = new Set(['','arabic','cartoons','classic-cartoons','anime','anime-sub','anime-dub']);
   const unrestrictedPlayers=new Set(['vidsrc.mov','vidsrc.fyi','embed.vidsrc.si','vidfast.pro','vidup.to','vidrock.net','vidnest.fun','vidlink.pro','111movies.net','multiembed.mov','mappletv.uk','moviesapi.to','embos.top','vidcore.net','vidcore.io','vidapi.xyz','embedmaster.link','player.vidlove.cc']);
   const embedSandbox=server=>{try{const u=new URL(server.embedUrl||server.rawEmbedUrl);if(u.protocol==='https:'&&!u.username&&!u.password&&(unrestrictedPlayers.has(u.hostname)||/^(?:balance|[1-9])\.medmedia03\.wiki$/.test(u.hostname)))return null;}catch{}return server.sandbox;};
   const GENRES = [
@@ -307,6 +310,7 @@
     },
     async details(id, sources = [],{fresh=false}={}) {
       if(/^sp:wco:s:[a-z0-9][a-z0-9-]{0,159}$/.test(id)&&window.Capacitor?.Plugins?.WcoSource)return window.FlixerWcoSource.details(id);
+      if(stardimaTitle(null,id))return nativeStardima().details(id,{fresh});
       const isSeries = id.startsWith("mf:s:");
       const slug = id.replace(/^mf:[mse]:/, "");
       if (await this.serverOk()) {
@@ -691,8 +695,36 @@
     }
     _persistDelta(rows) {
       const delta = store.get("delta", []);
-      const incoming=new Map(rows.map(r=>[r.id, {id:r.id,kind:r.kind,title:r.title,altTitles:r.altTitles,year:r.year,tags:r.tags,slug:r.slug,wpId:r.wpId,publishedAt:r.publishedAt,latestAt:r.latestAt,latestEpisode:r.latestEpisode,firstEpisodeId:r.firstEpisodeId,contentUpdatedAt:r.contentUpdatedAt,providerUpdatedAt:r.providerUpdatedAt,tvm:r.tvm,offerings:r.offerings,versions:r.versions,sourceUrl:r.sourceUrl,poster:r.poster,portrait:r.portrait,tmdbId:r.tmdbId,documentary:r.documentary,originalLanguage:r.originalLanguage,countries:r.countries,audioModes:r.audioModes,collections:r.collections,access:r.access,audioLanguages:r.audioLanguages,subtitleLanguages:r.subtitleLanguages,_catalogRevision:this._rowRevisions?.get(r.id)||Date.now()}]));
+      const incoming=new Map(rows.map(r=>[r.id, {id:r.id,kind:r.kind,title:r.title,altTitles:r.altTitles,year:r.year,tags:r.tags,slug:r.slug,wpId:r.wpId,publishedAt:r.publishedAt,firstSeenAt:r.firstSeenAt,latestAt:r.latestAt,latestEpisode:r.latestEpisode,firstEpisodeId:r.firstEpisodeId,contentUpdatedAt:r.contentUpdatedAt,providerUpdatedAt:r.providerUpdatedAt,tvm:r.tvm,offerings:r.offerings,versions:r.versions,sourceUrl:r.sourceUrl,poster:r.poster,portrait:r.portrait,tmdbId:r.tmdbId,documentary:r.documentary,originalLanguage:r.originalLanguage,countries:r.countries,audioModes:r.audioModes,collections:r.collections,access:r.access,audioLanguages:r.audioLanguages,subtitleLanguages:r.subtitleLanguages,_catalogRevision:this._rowRevisions?.get(r.id)||Date.now()}]));
       store.set("delta",[...incoming.values(),...delta.filter(r=>!incoming.has(r.id))].slice(0,DELTA_CAP));
+    }
+
+    _mergeNativeStardima(rows,{latest=false}={}) {
+      const at=new Date().toISOString();
+      const accepted=rows.filter(row=>stardimaTitle(null,row?.id)&&row.access==='public').map(row=>{
+        const old=this._byId.get(row.id),next={...row};
+        // Observation time is an Added date, never an invented release date.
+        if(!old&&!row.firstSeenAt)next.firstSeenAt=at;
+        const previous=old?.latestEpisode,episode=row.latestEpisode;
+        const unseen=episode&&!old?.episodes?.some(e=>e.id===episode||e.offerings?.some(o=>o.id===episode));
+        if(latest&&old&&unseen&&(previous||old.episodes?.length)&&episode!==previous&&(!previous||Number(episode.split(':').at(-1))>Number(previous.split(':').at(-1))))next.contentUpdatedAt=at;
+        return next;
+      });
+      const added=this._merge(accepted);
+      return {added,rows:accepted};
+    }
+    _refreshNativeStardima() {
+      const source=nativeStardima();
+      if(!source||!this.liveEnabled||!this._catalog||this._stardimaRefresh||Date.now()-(this._lastStardimaRefresh||0)<SYNC_EVERY||document.visibilityState==='hidden'||/^#\/watch\//.test(window.location?.hash||''))return this._stardimaRefresh;
+      this._lastStardimaRefresh=Date.now();
+      // Two small latest pages run independently of the hosted snapshot and
+      // never delay startup. Historical traversal belongs to Browse paging.
+      this._stardimaRefresh=Promise.allSettled(['film','series'].map(async kind=>{
+        const page=await source.page({kind,page:1,latest:true});
+        const {added,rows}=this._mergeNativeStardima((page.items||[]).slice(0,12),{latest:true});
+        if(rows.length){this._reindex();window.dispatchEvent(new CustomEvent('flixer:catalog',{detail:{updated:true,added}}));}
+      })).finally(()=>{this._stardimaRefresh=null;});
+      return this._stardimaRefresh;
     }
 
     /* ----- background sync: newest titles on the source, every few minutes ----- */
@@ -706,6 +738,7 @@
     }
     async sync() {
       if (this._syncing || !this._catalog || /^#\/watch\//.test(window.location?.hash||'')) return 0;
+      this._refreshNativeStardima();
       this._syncing = true;
       let added = 0;
       try {
@@ -811,6 +844,23 @@
       const key=JSON.stringify([type,f]);
       if(page===1 || !this._browseSessions.has(key)) this._browseSessions.set(key,{seen:new Set(),remotePage:0,totalPages:1,buffer:[]});
       const session=this._browseSessions.get(key);
+      const native=nativeStardima();
+      if(this.liveEnabled&&native&&STARDIMA_COLLECTIONS.has(f.collection||'')){
+        const kinds=type==='all'?['film','series']:[type==='tv'?'series':'film'];
+        const collections=f.collection?[f.collection]:(f.genres||[]).includes('animation')?['cartoons','anime']:[''];
+        session.nativeLanes ||= kinds.flatMap(kind=>collections.map(collection=>({kind,collection,page:0,totalPages:1})));
+        for(const lane of session.nativeLanes){
+          if(lane.pending||lane.page>=lane.totalPages)continue;
+          lane.pending=native.page({kind:lane.kind,collection:lane.collection,page:lane.page+1,latest:f.sort==='updated'}).then(body=>{
+            // Partial pages keep their cursor so a later visit can recover
+            // unavailable rows without dropping the successful ones.
+            if(!body.partial)lane.page++;lane.totalPages=body.totalPages||Math.max(1,lane.page);
+            const {rows}=this._mergeNativeStardima(body.items||[],{latest:f.sort==='updated'});this._reindex();
+            session.buffer.push(...rows.map(row=>this._byId.get(row.id)?.id||row.id));
+            if(rows.length)window.dispatchEvent(new CustomEvent('flixer:catalog',{detail:{updated:true}}));
+          }).catch(()=>{}).finally(()=>{lane.pending=null;});
+        }
+      }
       // Every scroll advances all upstream lists, even while cached titles remain.
       if(this.liveEnabled && session.remotePage < session.totalPages) {
         const genre=GENRES.find(g=>g[2]===(f.genres || [])[0]);
@@ -846,12 +896,10 @@
       return list.slice().sort(sorters[f.sort] || byAdded);
       };
       let list=filterList(cachedList);
-      // Paint matching bootstrap titles immediately. Only an exhausted or empty
-      // local selection needs to wait for the complete bundled index.
-      if(!list.some(i=>!session.seen.has(i.id))&&this._indexReady){await this._indexReady;list=filterList(await this.all(type));}
-      // Cached pages render immediately while each provider advances in the background.
-      // Wait for the network only when no matching saved titles remain.
-      if(!list.some(i=>!session.seen.has(i.id))&&session.pending){await session.pending;list=filterList(await this.all(type));}
+      // Saved cards paint immediately. With an empty selection, the first
+      // productive source wins; a blocked hosted request cannot delay Android.
+      const waiting=new Map([this._indexReady,session.pending,...(session.nativeLanes||[]).map(lane=>lane.pending)].filter(Boolean).map((promise,index)=>[index,Promise.resolve(promise).then(()=>index,()=>index)]));
+      while(!list.some(i=>!session.seen.has(i.id))&&waiting.size){const done=await Promise.race(waiting.values());waiting.delete(done);list=filterList(await this.all(type));}
       const ranked=new Map(list.map(i=>[i.id,i]));
       const priority=session.buffer.map(id=>ranked.get(id)).filter(Boolean);
       if(f.sort==="updated") priority.sort(byUpdated);
@@ -859,7 +907,7 @@
       const items=[];
       for(const item of available) { if(session.seen.has(item.id)) continue; session.seen.add(item.id); items.push(item); if(items.length===PER_PAGE) break; }
       session.buffer=session.buffer.filter(id=>!session.seen.has(id));
-      const more=list.some(i=>!session.seen.has(i.id)) || session.remotePage < session.totalPages;
+      const more=list.some(i=>!session.seen.has(i.id)) || session.remotePage < session.totalPages || (session.nativeLanes||[]).some(lane=>lane.pending||lane.page<lane.totalPages);
       return {items,page,totalPages:more?page+1:page,total:list.length};
     }
     async genres(type) { const c = await this.catalog(); return type==='all'?[...new Map([...c.genres.movie,...c.genres.tv].map(genre=>[genre.id,genre])).values()]:c.genres[type] || []; }
@@ -918,6 +966,15 @@
     async show(id) {
       await this.catalog();
       if (this._byId.has(id)) return this._byId.get(id);
+      if(stardimaTitle(null,id)){
+        const cached=store.get('title:'+id,null);
+        if(cached?.show?.id===id&&cached.show.access==='public'){this._merge([cached.show],{snapshotAt:new Date(cached.t).toISOString()});this._reindex();return this._byId.get(id);}
+        const row=await nativeStardima().details(id);this._mergeNativeStardima([row]);this._reindex();
+        const completed=this._byId.get(id)||row;
+        store.set('title:'+completed.id,{t:Date.now(),show:completed});
+        if(row.synopsis&&normalize(row).poster&&(row.kind!=='series'||row.episodes?.length))this._details.set(completed.id,Date.now());
+        return completed;
+      }
       if(/^sp:wco:s:[a-z0-9][a-z0-9-]{0,159}$/.test(id)&&window.Capacitor?.Plugins?.WcoSource){
         const row=await window.FlixerWcoSource.details(id);this._merge([row]);this._reindex();
         if(row.synopsis&&row.episodes?.length&&normalize(row).poster)this._details.set(id,Date.now());
@@ -936,21 +993,22 @@
     async details(_type, id) {
       const raw = await this.show(id);
       const canonical=raw.id,cached=store.get('title:'+canonical,null),nativeWco=/^sp:wco:s:[a-z0-9][a-z0-9-]{0,159}$/.test(raw.id)&&window.Capacitor?.Plugins?.WcoSource;
+      const nativeStarId=stardimaTitle(raw,id),nativeTitle=nativeWco||nativeStarId;
       if(raw.kind==='series'&&Date.now()-(Number(this._details.get(canonical))||0)>120000)this._details.delete(canonical);
       if(!this._details.has(canonical)&&cached&&Date.now()-cached.t<(raw.kind==='series'?120000:6*3600e3)){this._merge([cached.show],{snapshotAt:new Date(cached.t).toISOString()});this._reindex();if((cached.show.synopsis||cached.show.blurb)&&normalize(cached.show).poster&&(cached.show.kind!=='series'||cached.show.episodes?.length))this._details.set(canonical,cached.t);}
       if(!this._details.has(canonical)){
         this._titleRequests ||= new Map();
         if(!this._titleRequests.has(canonical)){
           const refresh=(async()=>{
-            if(!nativeWco)try{const {body}=await savedTitle(canonical,6000);if(body.id!==canonical)throw new Error('Title identity mismatch');this._merge([body],{snapshotAt:this._catalog.generatedAt||this._bundleAt||'1970-01-01'});this._reindex();window.dispatchEvent(new CustomEvent('flixer:title',{detail:{id:canonical}}));}catch{}
+            if(!nativeTitle)try{const {body}=await savedTitle(canonical,6000);if(body.id!==canonical)throw new Error('Title identity mismatch');this._merge([body],{snapshotAt:this._catalog.generatedAt||this._bundleAt||'1970-01-01'});this._reindex();window.dispatchEvent(new CustomEvent('flixer:title',{detail:{id:canonical}}));}catch{}
             const current=this._byId.get(canonical)||raw;
             if(this.liveEnabled&&(current.kind==='series'||!(current.synopsis||current.blurb)||!normalize(current).poster||Date.now()-Date.parse(this._catalog.generatedAt||0)>6*3600e3)){
-              const fresh=await live.details(canonical,[current.sourceUrl,...(current.offerings||[]).map(o=>o.sourceUrl)],{fresh:current.kind==='series'});
+              const fresh=await live.details(nativeStarId||canonical,[current.sourceUrl,...(current.offerings||[]).map(o=>o.sourceUrl)],{fresh:current.kind==='series'});
               if(fresh)this._merge([fresh]);
             }
             this._reindex();const completed=this._byId.get(canonical)||raw;
             store.set('title:'+canonical,{t:Date.now(),show:completed});
-            if(nativeWco||(completed.synopsis||completed.blurb)&&normalize(completed).poster&&(completed.kind!=='series'||completed.episodes?.length))this._details.set(canonical,Date.now());
+            if(nativeTitle||(completed.synopsis||completed.blurb)&&normalize(completed).poster&&(completed.kind!=='series'||completed.episodes?.length))this._details.set(canonical,Date.now());
             
           })().catch(e=>{if(nativeWco)this._details.set(canonical,Date.now());console.warn('[flixer] title metadata unavailable:',e.message);}).finally(()=>{this._titleRequests.delete(canonical);window.dispatchEvent(new CustomEvent('flixer:title',{detail:{id:canonical}}));});
           this._titleRequests.set(canonical,refresh);
@@ -1091,24 +1149,32 @@
       if (onLocal) onLocal({ items:localItems, totalPages:1,pending:this.liveEnabled?1:0 });
       if (!this.liveEnabled) return { items: localItems, totalPages: 1 };
       if(API_BASE){
-        this._searchProviders ||= getJson(`${API_BASE}/api/search?providers=1`,3000).then(({body})=>body.providers).catch(()=>null);
-        const names=[...new Set([...(await this._searchProviders||['stardima','aloula','youtubeoriginals','myflixer','fmovies','hdtoday','streamtunisie','kirmalk','ahwaktv','egydead','tuniflix','cinetimes','cimatn','animegg','megacartoons','toontales','myasiantv','multimovies','yoturkish','frenchstream','dessinanime']),...(window.Capacitor?.Plugins?.WcoSource?['wco']:[])])];
-        if(signal?.aborted)return {items:local,totalPages:1};
-        const ids=new Set(local.map(i=>i.id));let pending=names.length+1;
+        if(signal?.aborted)return {items:localItems,totalPages:1};
+        const native=nativeStardima(),ids=new Set(local.map(i=>i.id));let pending=2+(native?1:0);
         const exact=local.find(item=>[item.title,...(item.altTitles||[])].some(value=>norm(value)===norm(q)));
         const aliases=[...new Set(exact?[exact.title,...(exact.altTitles||[])]:[])].filter(value=>value&&norm(value)!==norm(q)&&value.length<=120).slice(0,2);
         const matches=item=>hit(item.title)||(item.alt&&hit(item.alt))||(item.altTitles||[]).some(hit)||(item.versions||[]).some(version=>hit(version.title)||(version.altTitles||[]).some(hit));
         const result=()=>({items:this._groupSearchItems(ids).filter(matches),totalPages:1,pending});
+        // Android searches the public source immediately, while the hosted
+        // provider registry and other providers load independently.
+        const device=native?native.search(q,{aliases,signal}).then(rows=>{
+          if(signal?.aborted)return;const accepted=this._mergeNativeStardima(rows).rows;
+          for(const row of accepted)ids.add((this._byId.get(row.id)||row).id);
+        }).catch(()=>{}).finally(()=>{pending--;if(!signal?.aborted&&onLocal)onLocal(result());}):null;
         const saved=Promise.resolve(this._indexReady).then(async()=>{
           if(signal?.aborted)return;const rows=await this.all();if(signal?.aborted)return;
           rows.filter(i=>hit(i.title)||(i.alt&&hit(i.alt))||i.altTitles.some(hit)).sort(byWeight).slice(0,60).forEach(i=>ids.add(i.id));
         }).finally(()=>{pending--;if(!signal?.aborted&&onLocal)onLocal(result());});
+        this._searchProviders ||= getJson(`${API_BASE}/api/search?providers=1`,3000).then(({body})=>body.providers).catch(()=>null);
+        const names=[...new Set([...(await this._searchProviders||['stardima','aloula','youtubeoriginals','myflixer','fmovies','hdtoday','streamtunisie','kirmalk','ahwaktv','egydead','tuniflix','cinetimes','cimatn','animegg','megacartoons','toontales','myasiantv','multimovies','yoturkish','frenchstream','dessinanime']),...(window.Capacitor?.Plugins?.WcoSource?['wco']:[])])].filter(provider=>!native||provider!=='stardima');
+        pending+=names.length-1;
+        if(signal?.aborted)return {items:localItems,totalPages:1};
         await Promise.allSettled([...names.map(async provider=>{try{
           const params=new URLSearchParams({q,provider});for(const alias of aliases)params.append('alias',alias);
           const {body}=provider==='wco'&&window.Capacitor?.Plugins?.WcoSource?{body:{items:await window.FlixerWcoSource.search(q,{aliases,signal})}}:await getJson(`${API_BASE}/api/search?${params}`,12000,signal);
           if(signal?.aborted)return;
           const rows=body.items||[];this._merge(rows);for(const row of rows)ids.add((this._byId.get(row.id)||row).id);
-        }finally{pending--;if(!signal?.aborted&&onLocal)onLocal(result());}}),saved]);
+        }finally{pending--;if(!signal?.aborted&&onLocal)onLocal(result());}}),saved,device]);
         this._reindex();return result();
       }
       const liveHits = await Promise.race([
@@ -1143,8 +1209,14 @@
         const rows=[...found.values()];if(rows.length&&!signal?.aborted)onSources?.(rows);return rows;
       };
       const episode=show.episodes?.find(e=>e.id===id||e.offerings?.some(o=>o.id===id));
-      const ownIds=[...new Set([id,...(episode?.offerings||[]).map(o=>o.id)])].filter(id=>window.FlixerArabicSource?.supports(id));
-      const device=ownIds.length?Promise.allSettled(ownIds.slice(0,5).map(id=>window.FlixerArabicSource.resolve(id,{fresh,signal}))).then(results=>publish(normalizeServers({servers:results.flatMap(row=>row.status==='fulfilled'?row.value:[])}))):null;
+      const movie=show.kind==='film'||show.type==='movie',offeringIds=[...new Set([id,...(episode?.offerings||[]).map(o=>o.id),...(movie?show.offerings||[]:[]).map(o=>o.id)])];
+      const ownIds=offeringIds.filter(id=>window.FlixerArabicSource?.supports(id)),starIds=offeringIds.filter(id=>/^sp:stardima:[me]:/.test(id||'')&&nativeStardima()?.supports(id));
+      const deviceRequests=[...ownIds.slice(0,5).map(id=>window.FlixerArabicSource.resolve(id,{fresh,signal})),...starIds.slice(0,3).map(id=>nativeStardima().servers(id,{fresh,signal}))];
+      const device=deviceRequests.length?Promise.allSettled(deviceRequests).then(results=>publish(normalizeServers({servers:results.flatMap(row=>row.status==='fulfilled'?row.value:[])}))):null;
+      const starPrimary=starIds.includes(id),alternateId=starPrimary?offeringIds.find(value=>value!==id&&!/^sp:stardima:/.test(value)):null;
+      // Hosted StarDima is blocked on its current network. A public device
+      // route should not wait twenty seconds for the same denied request.
+      if(starPrimary&&!alternateId){const servers=await device;if(signal?.aborted)throw new DOMException('Aborted','AbortError');return {servers,via:'device'};}
       const wco=/^sp:wco:e:[a-z0-9][a-z0-9-]{0,159}:([a-z0-9][a-z0-9-]{0,159})$/.exec(id);
       if(wco&&window.Capacitor?.Plugins?.WcoSource){
         if(signal?.aborted)throw new DOMException('Aborted','AbortError');
@@ -1159,11 +1231,12 @@
         return {servers:[{id:'wco:public',provider:'wco',name:'Watch Cartoon Online',type:'wco',embedUrl:'https://www.wcostream.tv/'+wco[1],captureMedia:false,...(mode?{audioMode:mode[1]==='subbed'?'sub':'dub'}:{})}],via:'device'};
       }
       try {
-        const params = new URLSearchParams({id});
+        const params = new URLSearchParams({id:alternateId||id});
         if(window.FlixerBrowser?.hasNativeVideo?.())params.set('transport','direct');
         if(fresh)params.set('fresh','1');
-        if (show.id) params.set('showId',show.id);
-        [show.sourceUrl, ...(show.offerings || []).map(o => o.sourceUrl)].filter(Boolean).forEach(source => params.append('source',source));
+        const remoteShowId=starPrimary&&/^sp:stardima:/.test(show.id||'')?(show.offerings||[]).find(o=>!/^sp:stardima:/.test(o.id||''))?.id:show.id;
+        if (remoteShowId) params.set('showId',remoteShowId);
+        [show.sourceUrl, ...(show.offerings || []).map(o => o.sourceUrl)].filter(source=>source&&(!starPrimary||!/^https:\/\/www\.stardima\.com\//.test(source))).forEach(source => params.append('source',source));
         const remote=getJson(`${API_BASE}/api/stream?${params}`,20000,signal).then(({body})=>publish(normalizeServers(body)));
         const full=device?Promise.race([remote.then(choices=>choices.length?choices:device).catch(()=>device),device.then(choices=>choices.length?choices:remote)]):remote;
         let servers;

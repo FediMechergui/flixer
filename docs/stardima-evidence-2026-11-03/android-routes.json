@@ -1,0 +1,568 @@
+{
+  "generatedAt": "2026-11-03T14:37:58.679Z",
+  "scope": "Short native playback samples of the selected routes, not every catalogue title or episode. Retries do not increase route coverage.",
+  "transportAttribution": "Legacy native progress was labelled media3 even for openPlayer. Public proof uses a single recorded openPlayer/openMedia call to correct the transport label; private observations remain unchanged. New observations use invocation-tagged clocks. Ambiguous untagged clocks are not confirmations.",
+  "total": 19,
+  "tested": 19,
+  "confirmed": 8,
+  "complete": true,
+  "reports": [
+    {
+      "name": "stardima",
+      "startedAt": "2026-11-03T14:24:59.670Z",
+      "finishedAt": "2026-11-03T14:33:41.030Z",
+      "complete": true,
+      "total": 19,
+      "tested": 19,
+      "confirmed": 8,
+      "outcomes": {
+        "playback_confirmed": 8,
+        "source_unavailable": 4,
+        "no_advancing_video": 6,
+        "unverified_clock_attribution": 1
+      },
+      "routes": [
+        {
+          "case": 1,
+          "provider": "stardima",
+          "serverProvider": "stardima",
+          "title": "سجلات سبايدرويك",
+          "kind": "film",
+          "server": "StarDima - Uqload",
+          "host": "uqload.vc",
+          "type": "embed",
+          "status": "playback_confirmed",
+          "testedAt": "2026-11-03T14:25:09.956Z",
+          "appVersion": "1.6.33-audit",
+          "appSha256": "6afef77bcfe3e1936cac319dbe6ed7ff8f3c270f10bb183e7db6c0db8d2e7359",
+          "proof": {
+            "start": 0.222896,
+            "end": 3.170935,
+            "duration": 5026.678,
+            "transport": "webview",
+            "attribution": "single-recorded-player-invocation"
+          },
+          "errorCodes": [],
+          "ms": 14133,
+          "httpStatuses": []
+        },
+        {
+          "case": 2,
+          "provider": "stardima",
+          "serverProvider": "stardima",
+          "title": "سجلات سبايدرويك",
+          "kind": "film",
+          "server": "StarDima - Lulustream",
+          "host": "lulustream.com",
+          "type": "embed",
+          "status": "playback_confirmed",
+          "testedAt": "2026-11-03T14:32:08.146Z",
+          "appVersion": "1.6.33-audit",
+          "appSha256": "6afef77bcfe3e1936cac319dbe6ed7ff8f3c270f10bb183e7db6c0db8d2e7359",
+          "proof": {
+            "start": 0.109,
+            "end": 4.063817,
+            "duration": 5025.56,
+            "transport": "webview",
+            "attribution": "invocation-tagged-clock"
+          },
+          "errorCodes": [
+            "ERROR_CODE_IO_BAD_HTTP_STATUS"
+          ],
+          "ms": 18455,
+          "httpStatuses": [],
+          "previousAttempts": [
+            {
+              "status": "playback_confirmed",
+              "testedAt": "2026-11-03T14:25:24.300Z",
+              "appVersion": "1.6.33-audit",
+              "appSha256": "6afef77bcfe3e1936cac319dbe6ed7ff8f3c270f10bb183e7db6c0db8d2e7359",
+              "proof": {
+                "start": 0,
+                "end": 3.526038,
+                "duration": 5025.56,
+                "transport": "webview",
+                "attribution": "single-recorded-player-invocation"
+              },
+              "errorCodes": []
+            }
+          ]
+        },
+        {
+          "case": 3,
+          "provider": "stardima",
+          "serverProvider": "stardima",
+          "title": "سجلات سبايدرويك",
+          "kind": "film",
+          "server": "StarDima - Mixdrop",
+          "host": "mixdrop.top",
+          "type": "embed",
+          "status": "source_unavailable",
+          "testedAt": "2026-11-03T14:25:37.215Z",
+          "appVersion": "1.6.33-audit",
+          "appSha256": "6afef77bcfe3e1936cac319dbe6ed7ff8f3c270f10bb183e7db6c0db8d2e7359",
+          "sourceDiagnostics": [
+            {
+              "sourceError": "SOURCE_UNAVAILABLE",
+              "httpStatus": 0,
+              "networkErrorCode": 0
+            }
+          ],
+          "errorCodes": [],
+          "ms": 5044,
+          "httpStatuses": []
+        },
+        {
+          "case": 4,
+          "provider": "stardima",
+          "serverProvider": "stardima",
+          "title": "سجلات سبايدرويك",
+          "kind": "film",
+          "server": "StarDima - Savefiles",
+          "host": "savefiles.com",
+          "type": "embed",
+          "status": "no_advancing_video",
+          "testedAt": "2026-11-03T14:25:42.338Z",
+          "appVersion": "1.6.33-audit",
+          "appSha256": "6afef77bcfe3e1936cac319dbe6ed7ff8f3c270f10bb183e7db6c0db8d2e7359",
+          "errorCodes": [],
+          "ms": 35732,
+          "httpStatuses": []
+        },
+        {
+          "case": 5,
+          "provider": "stardima",
+          "serverProvider": "stardima",
+          "title": "سجلات سبايدرويك",
+          "kind": "film",
+          "server": "StarDima - Streamhg",
+          "host": "hgcloud.to",
+          "type": "embed",
+          "status": "playback_confirmed",
+          "testedAt": "2026-11-03T14:26:18.156Z",
+          "appVersion": "1.6.33-audit",
+          "appSha256": "6afef77bcfe3e1936cac319dbe6ed7ff8f3c270f10bb183e7db6c0db8d2e7359",
+          "proof": {
+            "start": 0.427,
+            "end": 4.458,
+            "duration": 5025.56,
+            "transport": "media3",
+            "attribution": "invocation-tagged-clock"
+          },
+          "errorCodes": [],
+          "ms": 11397,
+          "httpStatuses": []
+        },
+        {
+          "case": 6,
+          "provider": "stardima",
+          "serverProvider": "stardima",
+          "title": "كايجو رقم 8 (source S4E1)",
+          "kind": "series",
+          "server": "StarDima - Uqload",
+          "host": "uqload.vc",
+          "type": "embed",
+          "status": "playback_confirmed",
+          "testedAt": "2026-11-03T14:26:29.650Z",
+          "appVersion": "1.6.33-audit",
+          "appSha256": "6afef77bcfe3e1936cac319dbe6ed7ff8f3c270f10bb183e7db6c0db8d2e7359",
+          "proof": {
+            "start": 1.216248,
+            "end": 4.335445,
+            "duration": 224.085,
+            "transport": "webview",
+            "attribution": "single-recorded-player-invocation"
+          },
+          "errorCodes": [],
+          "ms": 20604,
+          "httpStatuses": []
+        },
+        {
+          "case": 7,
+          "provider": "stardima",
+          "serverProvider": "stardima",
+          "title": "كايجو رقم 8 (source S4E1)",
+          "kind": "series",
+          "server": "StarDima - Lulustream",
+          "host": "lulustream.com",
+          "type": "embed",
+          "status": "unverified_clock_attribution",
+          "testedAt": "2026-11-03T14:32:26.692Z",
+          "appVersion": "1.6.33-audit",
+          "appSha256": "6afef77bcfe3e1936cac319dbe6ed7ff8f3c270f10bb183e7db6c0db8d2e7359",
+          "errorCodes": [
+            "ERROR_CODE_IO_BAD_HTTP_STATUS"
+          ],
+          "ms": 14995,
+          "httpStatuses": [],
+          "previousAttempts": [
+            {
+              "status": "playback_confirmed",
+              "testedAt": "2026-11-03T14:26:50.352Z",
+              "appVersion": "1.6.33-audit",
+              "appSha256": "6afef77bcfe3e1936cac319dbe6ed7ff8f3c270f10bb183e7db6c0db8d2e7359",
+              "proof": {
+                "start": 0,
+                "end": 3.701087,
+                "duration": 224.05699999999993,
+                "transport": "webview",
+                "attribution": "single-recorded-player-invocation"
+              },
+              "errorCodes": []
+            }
+          ]
+        },
+        {
+          "case": 8,
+          "provider": "stardima",
+          "serverProvider": "stardima",
+          "title": "كايجو رقم 8 (source S4E1)",
+          "kind": "series",
+          "server": "StarDima - Mixdrop",
+          "host": "mixdrop.top",
+          "type": "embed",
+          "status": "source_unavailable",
+          "testedAt": "2026-11-03T14:27:03.463Z",
+          "appVersion": "1.6.33-audit",
+          "appSha256": "6afef77bcfe3e1936cac319dbe6ed7ff8f3c270f10bb183e7db6c0db8d2e7359",
+          "sourceDiagnostics": [
+            {
+              "sourceError": "SOURCE_UNAVAILABLE",
+              "httpStatus": 0,
+              "networkErrorCode": 0
+            }
+          ],
+          "errorCodes": [],
+          "ms": 2033,
+          "httpStatuses": []
+        },
+        {
+          "case": 9,
+          "provider": "stardima",
+          "serverProvider": "stardima",
+          "title": "كايجو رقم 8 (source S4E1)",
+          "kind": "series",
+          "server": "StarDima - Savefiles",
+          "host": "savefiles.com",
+          "type": "embed",
+          "status": "no_advancing_video",
+          "testedAt": "2026-11-03T14:27:05.630Z",
+          "appVersion": "1.6.33-audit",
+          "appSha256": "6afef77bcfe3e1936cac319dbe6ed7ff8f3c270f10bb183e7db6c0db8d2e7359",
+          "errorCodes": [],
+          "ms": 35703,
+          "httpStatuses": []
+        },
+        {
+          "case": 10,
+          "provider": "stardima",
+          "serverProvider": "stardima",
+          "title": "كايجو رقم 8 (source S4E1)",
+          "kind": "series",
+          "server": "StarDima - Streamhg",
+          "host": "hgcloud.to",
+          "type": "embed",
+          "status": "playback_confirmed",
+          "testedAt": "2026-11-03T14:27:41.425Z",
+          "appVersion": "1.6.33-audit",
+          "appSha256": "6afef77bcfe3e1936cac319dbe6ed7ff8f3c270f10bb183e7db6c0db8d2e7359",
+          "proof": {
+            "start": 0.558,
+            "end": 4.586,
+            "duration": 224.057,
+            "transport": "media3",
+            "attribution": "invocation-tagged-clock"
+          },
+          "errorCodes": [],
+          "ms": 9510,
+          "httpStatuses": []
+        },
+        {
+          "case": 11,
+          "provider": "stardima",
+          "serverProvider": "stardima",
+          "title": "Karate Kid: Legends",
+          "kind": "film",
+          "server": "StarDima - Uqload",
+          "host": "uqload.vc",
+          "type": "embed",
+          "status": "playback_confirmed",
+          "testedAt": "2026-11-03T14:27:51.025Z",
+          "appVersion": "1.6.33-audit",
+          "appSha256": "6afef77bcfe3e1936cac319dbe6ed7ff8f3c270f10bb183e7db6c0db8d2e7359",
+          "proof": {
+            "start": 0.133421,
+            "end": 4.00527,
+            "duration": 5644.461,
+            "transport": "webview",
+            "attribution": "invocation-tagged-clock"
+          },
+          "errorCodes": [],
+          "ms": 7002,
+          "httpStatuses": []
+        },
+        {
+          "case": 12,
+          "provider": "stardima",
+          "serverProvider": "stardima",
+          "title": "Karate Kid: Legends",
+          "kind": "film",
+          "server": "StarDima - Mixdrop",
+          "host": "mixdrop.top",
+          "type": "embed",
+          "status": "source_unavailable",
+          "testedAt": "2026-11-03T14:27:58.118Z",
+          "appVersion": "1.6.33-audit",
+          "appSha256": "6afef77bcfe3e1936cac319dbe6ed7ff8f3c270f10bb183e7db6c0db8d2e7359",
+          "sourceDiagnostics": [
+            {
+              "sourceError": "SOURCE_UNAVAILABLE",
+              "httpStatus": 0,
+              "networkErrorCode": 0
+            }
+          ],
+          "errorCodes": [],
+          "ms": 1952,
+          "httpStatuses": []
+        },
+        {
+          "case": 13,
+          "provider": "stardima",
+          "serverProvider": "stardima",
+          "title": "Karate Kid: Legends",
+          "kind": "film",
+          "server": "StarDima - Savefiles",
+          "host": "savefiles.com",
+          "type": "embed",
+          "status": "no_advancing_video",
+          "testedAt": "2026-11-03T14:28:00.156Z",
+          "appVersion": "1.6.33-audit",
+          "appSha256": "6afef77bcfe3e1936cac319dbe6ed7ff8f3c270f10bb183e7db6c0db8d2e7359",
+          "errorCodes": [],
+          "ms": 35576,
+          "httpStatuses": []
+        },
+        {
+          "case": 14,
+          "provider": "stardima",
+          "serverProvider": "stardima",
+          "title": "Karate Kid: Legends",
+          "kind": "film",
+          "server": "StarDima - Streamhg",
+          "host": "hgcloud.to",
+          "type": "embed",
+          "status": "no_advancing_video",
+          "testedAt": "2026-11-03T14:28:35.823Z",
+          "appVersion": "1.6.33-audit",
+          "appSha256": "6afef77bcfe3e1936cac319dbe6ed7ff8f3c270f10bb183e7db6c0db8d2e7359",
+          "errorCodes": [],
+          "ms": 36270,
+          "httpStatuses": []
+        },
+        {
+          "case": 15,
+          "provider": "stardima",
+          "serverProvider": "stardima",
+          "title": "بليزين تينز (source S1E1)",
+          "kind": "series",
+          "server": "StarDima - Uqload",
+          "host": "uqload.vc",
+          "type": "embed",
+          "status": "playback_confirmed",
+          "testedAt": "2026-11-03T14:29:12.194Z",
+          "appVersion": "1.6.33-audit",
+          "appSha256": "6afef77bcfe3e1936cac319dbe6ed7ff8f3c270f10bb183e7db6c0db8d2e7359",
+          "proof": {
+            "start": 0.203904,
+            "end": 4.152755,
+            "duration": 1214.891,
+            "transport": "webview",
+            "attribution": "invocation-tagged-clock"
+          },
+          "errorCodes": [],
+          "ms": 6903,
+          "httpStatuses": []
+        },
+        {
+          "case": 16,
+          "provider": "stardima",
+          "serverProvider": "stardima",
+          "title": "بليزين تينز (source S1E1)",
+          "kind": "series",
+          "server": "StarDima - Lulustream",
+          "host": "lulustream.com",
+          "type": "embed",
+          "status": "playback_confirmed",
+          "testedAt": "2026-11-03T14:32:41.786Z",
+          "appVersion": "1.6.33-audit",
+          "appSha256": "6afef77bcfe3e1936cac319dbe6ed7ff8f3c270f10bb183e7db6c0db8d2e7359",
+          "proof": {
+            "start": 0.108,
+            "end": 4.077277,
+            "duration": 1214.04,
+            "transport": "webview",
+            "attribution": "invocation-tagged-clock"
+          },
+          "errorCodes": [
+            "ERROR_CODE_IO_BAD_HTTP_STATUS"
+          ],
+          "ms": 22943,
+          "httpStatuses": [],
+          "previousAttempts": [
+            {
+              "status": "playback_confirmed",
+              "testedAt": "2026-11-03T14:29:19.191Z",
+              "appVersion": "1.6.33-audit",
+              "appSha256": "6afef77bcfe3e1936cac319dbe6ed7ff8f3c270f10bb183e7db6c0db8d2e7359",
+              "proof": {
+                "start": 0.108,
+                "end": 3.974195,
+                "duration": 1214.04,
+                "transport": "webview",
+                "attribution": "invocation-tagged-clock"
+              },
+              "errorCodes": []
+            }
+          ]
+        },
+        {
+          "case": 17,
+          "provider": "stardima",
+          "serverProvider": "stardima",
+          "title": "بليزين تينز (source S1E1)",
+          "kind": "series",
+          "server": "StarDima - Mixdrop",
+          "host": "mixdrop.top",
+          "type": "embed",
+          "status": "source_unavailable",
+          "testedAt": "2026-11-03T14:29:31.558Z",
+          "appVersion": "1.6.33-audit",
+          "appSha256": "6afef77bcfe3e1936cac319dbe6ed7ff8f3c270f10bb183e7db6c0db8d2e7359",
+          "sourceDiagnostics": [
+            {
+              "sourceError": "SOURCE_UNAVAILABLE",
+              "httpStatus": 0,
+              "networkErrorCode": 0
+            }
+          ],
+          "errorCodes": [],
+          "ms": 1974,
+          "httpStatuses": []
+        },
+        {
+          "case": 18,
+          "provider": "stardima",
+          "serverProvider": "stardima",
+          "title": "بليزين تينز (source S1E1)",
+          "kind": "series",
+          "server": "StarDima - Savefiles",
+          "host": "savefiles.com",
+          "type": "embed",
+          "status": "no_advancing_video",
+          "testedAt": "2026-11-03T14:29:33.617Z",
+          "appVersion": "1.6.33-audit",
+          "appSha256": "6afef77bcfe3e1936cac319dbe6ed7ff8f3c270f10bb183e7db6c0db8d2e7359",
+          "errorCodes": [],
+          "ms": 35634,
+          "httpStatuses": []
+        },
+        {
+          "case": 19,
+          "provider": "stardima",
+          "serverProvider": "stardima",
+          "title": "بليزين تينز (source S1E1)",
+          "kind": "series",
+          "server": "StarDima - Streamhg",
+          "host": "hgcloud.to",
+          "type": "embed",
+          "status": "no_advancing_video",
+          "testedAt": "2026-11-03T14:33:04.834Z",
+          "appVersion": "1.6.33-audit",
+          "appSha256": "6afef77bcfe3e1936cac319dbe6ed7ff8f3c270f10bb183e7db6c0db8d2e7359",
+          "errorCodes": [],
+          "ms": 36096,
+          "httpStatuses": []
+        }
+      ]
+    }
+  ],
+  "appVersion": "1.6.33-audit",
+  "appSha256": "6afef77bcfe3e1936cac319dbe6ed7ff8f3c270f10bb183e7db6c0db8d2e7359",
+  "samples": [
+    {
+      "title": "سجلات سبايدرويك",
+      "kind": "film",
+      "year": 2008,
+      "era": "current",
+      "subtitleLanguages": [
+        "ar"
+      ],
+      "originalLanguage": "en",
+      "serverCount": 5
+    },
+    {
+      "title": "كايجو رقم 8",
+      "kind": "series",
+      "year": 2024,
+      "era": "current",
+      "audioLanguages": [
+        "ar"
+      ],
+      "season": 4,
+      "number": 1,
+      "sourceSeasonId": 4347,
+      "sourceSeasonLabel": "Kaiju No S04",
+      "serverCount": 5
+    },
+    {
+      "title": "Karate Kid: Legends",
+      "kind": "film",
+      "year": 2025,
+      "era": "legacy",
+      "audioLanguages": [
+        "ar"
+      ],
+      "originalLanguage": "en",
+      "serverCount": 4
+    },
+    {
+      "title": "بليزين تينز",
+      "kind": "series",
+      "year": 2010,
+      "era": "legacy",
+      "audioLanguages": [
+        "ar"
+      ],
+      "season": 1,
+      "number": 1,
+      "sourceSeasonId": 692,
+      "sourceSeasonLabel": "S01",
+      "serverCount": 5
+    }
+  ],
+  "confirmedAtLeastOnce": 9,
+  "transportCounts": {
+    "media3": 2,
+    "webview": 7
+  },
+  "notes": [
+    "All 19 returned choices across four sampled titles were attempted; this is not a test of every catalogue item.",
+    "Nine unique routes have advancing playback proof in at least one attempt: Uqload four, Lulu three, HG two. Eight latest attempts have independently attributable clock proof; the latest Lulu case 7 has an ambiguous document-clock attribution after native-to-WebView fallback, while its earlier single-WebView attempt has confirmed proof.",
+    "Three Lulu retests used the existing packaged public HLS helper, injected into the audit page because that debug harness initially omitted it. All three retrieved HLS metadata successfully, but Media3 failed before playback with ERROR_CODE_IO_BAD_HTTP_STATUS; WebView fallback played. No Lulu native-media success is claimed.",
+    "All four Mixdrop samples reported unavailable. Four Savefiles samples showed no advancing clock. Two legacy HG samples showed no advancing clock.",
+    "Clean HG case 14 was retried for 60 seconds without any player DevTools connection. Two visible Play taps were made at screen position 270,330; no advancing clock was captured.",
+    "Language labels and season numbers are exactly source-published metadata. Actual spoken language was not verified. The source explicitly labels the sampled Kaiju entry as season 4, episode 1.",
+    "Server stream URLs, ephemeral tokens, cookies and raw HTML are excluded from this report."
+  ],
+  "cleanFollowups": [
+    {
+      "case": 14,
+      "host": "hgcloud.to",
+      "status": "no_advancing_video",
+      "ms": 60467,
+      "appSha256": "6afef77bcfe3e1936cac319dbe6ed7ff8f3c270f10bb183e7db6c0db8d2e7359",
+      "playerDevTools": false,
+      "ordinaryVisiblePlayTaps": 2
+    }
+  ]
+}

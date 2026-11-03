@@ -67,12 +67,14 @@ test('Android reads verified published data and guides without a backend deploym
  assert.equal((await source.get(key,hash)).shows.length,1,'a failed asset must preserve verified cached data');
 });
 
-test('Android background sync uses publication data without crawling providers on every phone',async()=>{
- const source=fs.readFileSync(new URL('../../client-terrarium/js/api.js',import.meta.url),'utf8'),start=source.indexOf('    async sync()'),end=source.indexOf('    async _refreshSnapshot()',start),events=[];
- const context=vm.createContext({window:{FlixerCatalogueSource:{enabled:()=>true},dispatchEvent:event=>events.push(event)},CustomEvent:class{constructor(type,options){this.type=type;this.detail=options.detail}},getJson:()=>{throw Error('Unexpected backend request')},Date,Math});
- vm.runInContext('globalThis.api=new(class{'+source.slice(start,end)+'})();',context);const api=context.api;api._catalog={shows:[]};api._refreshSnapshot=async()=>api._catalog.shows.push({id:'new'});
+test('Android background sync uses publication data with two bounded native latest checks instead of a provider crawl',async()=>{
+ const source=fs.readFileSync(new URL('../../client-terrarium/js/api.js',import.meta.url),'utf8'),start=source.indexOf('    async sync()'),end=source.indexOf('    async _refreshSnapshot()',start),nativeStart=source.indexOf('    _refreshNativeStardima()'),nativeEnd=source.indexOf('    /* ----- background sync:',nativeStart),events=[],pages=[];
+ const context=vm.createContext({window:{FlixerCatalogueSource:{enabled:()=>true},dispatchEvent:event=>events.push(event)},document:{visibilityState:'visible'},nativeStardima:()=>({page:async options=>{pages.push(options);return {items:[],totalPages:999,hasNext:true};}}),SYNC_EVERY:180000,CustomEvent:class{constructor(type,options){this.type=type;this.detail=options.detail}},getJson:()=>{throw Error('Unexpected backend request')},Date,Math});
+ vm.runInContext('globalThis.api=new(class{'+source.slice(start,end)+source.slice(nativeStart,nativeEnd)+'})();',context);const api=context.api;api._catalog={shows:[]};api.liveEnabled=true;api._mergeNativeStardima=()=>({added:0,rows:[]});api._refreshSnapshot=async()=>api._catalog.shows.push({id:'new'});
  assert.equal(await api.sync(),1);assert.equal(api._syncing,false);assert.equal(events.at(-1).detail.ok,true);
+ await api._stardimaRefresh;assert.deepEqual(pages.map(page=>[page.kind,page.page,page.latest]),[['film',1,true],['series',1,true]],'large source pagination must not trigger a startup crawl');
  api._refreshSnapshot=async()=>{throw Error('Publication unavailable')};await assert.rejects(api.sync(),/Publication unavailable/);assert.equal(events.at(-1).detail.ok,false);assert.equal(api._syncing,false);
+ assert.equal(pages.length,2,'a quick sync retry must not restart native source checks');
 });
 
 test('live index retries a transient part failure and retains verified chunks across failed updates',async()=>{

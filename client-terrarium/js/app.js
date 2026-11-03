@@ -749,6 +749,7 @@
     if (!el.isConnected) return;
     type = d.type;
     el.dataset.titleId=d.id;
+    const detailMeta = show => `<b>${esc(show.year || "—")}</b>${type === "tv" && show.episodeCount ? ` · ${show.episodeCount} episode${show.episodeCount === 1 ? "" : "s"}` : ""}`;
 
     const saved = inList(d);
     const entry = d.access==='catalogue-only'?null:entryEpisode(d);
@@ -771,7 +772,7 @@
         <div>
           <div class="eyebrow" style="margin-bottom:6px">${type === "tv" ? "Series" : "Film"}${isFresh(d) ? ' · <span style="color:var(--fern)">New</span>' : ""}</div>
           <h1 class="h-display detail__title">${esc(d.title)}</h1>
-          <div class="meta"><b>${esc(d.year || "—")}</b>${type === "tv" && d.episodeCount ? ` · ${d.episodeCount} episode${d.episodeCount === 1 ? "" : "s"}` : ""}</div>
+          <div class="meta" data-detail-meta>${detailMeta(d)}</div>
         </div>
       </div>
       <div class="detail__body">
@@ -847,6 +848,7 @@
       };
       el.refreshEpisodes = fresh => {
         const previous=sel?.value;d=fresh;
+        const meta=$('[data-detail-meta]',el);if(meta)meta.innerHTML=detailMeta(d);
         if(d.seasons.length>1&&!sel){sel=document.createElement('select');sel.id='season';sel.className='season-select';box.before(sel);sel.addEventListener('change',paint);}
         if(sel){sel.innerHTML=d.seasons.map(s=>`<option value="${s.season_number}">${esc(s.name)} \u00b7 ${s.episode_count} episodes</option>`).join('');sel.value=d.seasons.some(s=>String(s.season_number)===previous)?previous:String(d.seasons[0]?.season_number??1);}
         const fact=$('.facts .fact__v',el);if(fact)fact.innerHTML=`${d.seasonCount} <span class="meta">\u00b7 ${d.episodeCount} ep</span>`;

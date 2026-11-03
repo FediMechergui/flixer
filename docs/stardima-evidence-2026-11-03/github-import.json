@@ -1,0 +1,30 @@
+{
+  "at": "2026-11-03T14:26:21.011Z",
+  "pages": [],
+  "errors": [
+    {
+      "source": "film:all",
+      "error": "StarDima HTTP 403; cached data retained"
+    }
+  ],
+  "beforeRecords": 166776,
+  "complete": false,
+  "requests": 1,
+  "elapsedMs": 8757,
+  "budgetReached": false,
+  "coverage": {
+    "version": 1,
+    "partitions": {
+      "film:all": {
+        "nextPage": 1,
+        "complete": false,
+        "error": "StarDima HTTP 403; cached data retained",
+        "checkedAt": "2026-11-03T14:26:21.250Z"
+      }
+    },
+    "lastKey": "film:all"
+  },
+  "sourceRecords": 0,
+  "newRecords": 0,
+  "dry": false
+}

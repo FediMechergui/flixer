@@ -106,3 +106,9 @@ test('a stalled latest feed shares one deadline instead of waiting for every epi
   assert.equal(result.partial,true);assert.equal(result.items.length,0);assert.equal(reads,3);
   assert.ok(result.providerErrors.every(row=>/time budget/.test(row.error)));
 });
+
+test('details preserve the public Arabic and Latin title aliases',async()=>{
+  const read=async path=>path.includes('/series/season/')?fixture('season.json'):path.includes('/play/')?fixture('series-guide.html'):'<title>كايجو رقم 8 | Kaiju No. 8 | الوحش الثامن - ستارديما</title>'+fixture('series-detail.html');
+  const detail=await getStardimaDetails(series,{read,readSnapshot:()=>null});
+  assert.ok(detail.altTitles.includes('Kaiju No. 8'));assert.ok(detail.altTitles.includes('الوحش الثامن'));assert.ok(!detail.altTitles.some(name=>name.includes('ستارديما')));
+});

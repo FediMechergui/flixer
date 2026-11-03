@@ -56,7 +56,7 @@ Release signing uses a private `mobile/keystore.properties` and keystore; neithe
 
 Flixer's Android APK integrates Myflixer, FMovies, cached HDToday, WCO, AnimeGG,
 MegaCartoons, ToonTales, MyAsianTV, MultiMovies, YoTurkish, Tuniflix, CimaTN,
-StreamTunisie, Kirmalk, AhwakTV, EgyDead and Cinetimes. Search and catalogue discovery combine
+StreamTunisie, Kirmalk, AhwakTV, EgyDead, Cinetimes and StarDima. Search and catalogue discovery combine
 providers; matching titles retain existing IDs and gain player choices. Uncertain
 editions remain selectable rather than having their episode lists silently merged.
 
@@ -85,6 +85,12 @@ metadata feeds and PC refresh tasks are disabled; see
 [Arabic provider contracts](docs/arabic-sources.md) records catalogue, episode,
 player and metadata handling, together with sources that did not pass validation.
 Collection counts show saved titles; they are not upstream library totals.
+
+StarDima's public free catalogue, search, real season guides and published player
+choices are available directly on Android. Netlify and GitHub currently receive
+403 responses from StarDima, so its hosted backfill retains its cursor while the
+app uses ordinary device requests. See [APK research, integration and playback
+verification](docs/stardima-integration-2026-11-03.md).
 
 ## French sources and update behaviour
 

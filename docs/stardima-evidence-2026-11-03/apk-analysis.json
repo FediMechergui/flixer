@@ -1,0 +1,188 @@
+{
+  "generatedAt": "2026-11-03T14:07:10.726Z",
+  "scope": "Static interoperability inspection of APKs linked by the official StarDima application website. APKs were not installed or executed. No API credential, signing secret or encrypted VIP payload was recovered or replayed.",
+  "officialSite": "https://stardima.app/",
+  "apk": {
+    "download": "https://stardima.app/stardima.apk",
+    "bytes": 28371076,
+    "sha256": "7e8f9fc8acf2d1eaf6c2bbb3686c391feb0c2a9bcd2751f0f95ddac0edb9a35e",
+    "package": "com.stardima",
+    "versionName": "1.0.8",
+    "versionCode": 1,
+    "minSdk": 26,
+    "targetSdk": 36,
+    "signatureVerified": true,
+    "certificateSha256": "4fd5acc76083b90a722b1bebbe00859d2c459e079496c13430565dde83d3c5d6"
+  },
+  "architecture": {
+    "network": "Retrofit/OkHttp, with dynamic base URL read from app settings",
+    "internalPlayback": "Media3 ExoPlayer",
+    "embeddedPlayback": "The main application delegates embed URLs to its separately published WiPlayer companion; native media can carry source HTTP headers.",
+    "fields": {
+      "server": [
+        "server_id",
+        "video_id",
+        "episode_id",
+        "label",
+        "type",
+        "url",
+        "size",
+        "created_at",
+        "updated_at"
+      ],
+      "title": [
+        "id",
+        "title",
+        "video_orgname",
+        "video_title_japanese",
+        "is_free",
+        "is_exclusive",
+        "is_movie",
+        "is_series",
+        "video_tmdb",
+        "video_imdb",
+        "video_language",
+        "poster_url",
+        "background_url",
+        "description",
+        "year",
+        "slug",
+        "updated_at"
+      ],
+      "episode": [
+        "id",
+        "season_id",
+        "episode_number",
+        "season_number",
+        "is_exclusive",
+        "title",
+        "watch_url",
+        "download_url",
+        "servers",
+        "total_duration",
+        "updated_at"
+      ]
+    },
+    "hostExtractors": [
+      "StreamHG",
+      "Uqload",
+      "Filemoon",
+      "Doodstream",
+      "Mixdrop",
+      "Goodstream",
+      "Firestream",
+      "Odysee",
+      "VK",
+      "Videa",
+      "Mp4Upload",
+      "VidGuard",
+      "Earnvids",
+      "Darkibox",
+      "Forafile",
+      "GoogleDrive",
+      "Krakenfiles",
+      "Lulustream",
+      "Megatuk",
+      "Savefiles",
+      "TheyTube",
+      "VidTube"
+    ],
+    "hyperwatching": "A hyperwatching_id setting exists, but there is no named Hyperwatching extractor. No separate public media database was established from the APK."
+  },
+  "catalogueApiContracts": [
+    {
+      "method": "GET",
+      "path": "/api/series",
+      "query": [
+        "page",
+        "per_page"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/movies",
+      "query": [
+        "page",
+        "per_page"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/video/{id}"
+    },
+    {
+      "method": "GET",
+      "path": "/api/episodes/{seasonId}",
+      "query": [
+        "page",
+        "per_page",
+        "q"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/episodes/{id}/servers"
+    },
+    {
+      "method": "GET",
+      "path": "/api/search",
+      "query": [
+        "categories[]",
+        "query",
+        "language",
+        "media",
+        "status",
+        "premium",
+        "per_page",
+        "page",
+        "gener",
+        "sort",
+        "year"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/searchByOption",
+      "query": [
+        "type",
+        "query",
+        "options",
+        "per_page",
+        "page",
+        "subscription_user"
+      ]
+    }
+  ],
+  "access": {
+    "ordinaryUnauthenticatedChecks": [
+      {
+        "url": "https://www.stardima.com/api/series?page=1&per_page=1",
+        "status": 401,
+        "message": "API key required"
+      },
+      {
+        "url": "https://www.stardima.com/api/movies?page=1&per_page=1",
+        "status": 401,
+        "message": "API key required"
+      }
+    ],
+    "appSecurity": "The network interceptor supplies app authentication metadata. Its protected API is not suitable for an unauthenticated third-party integration.",
+    "premium": "The APK has a distinct serversvip response carrying an encrypted payload. That path was not requested or decoded.",
+    "unconfirmedLiteralHost": {
+      "host": "stardima.worldnow.top",
+      "rootStatus": 200,
+      "rootBody": "404",
+      "note": "A literal URL in the APK is not proof that this is the active catalogue API."
+    }
+  },
+  "companion": {
+    "download": "https://stardima.app/wiplayer.apk",
+    "bytes": 62730625,
+    "sha256": "d063a0e9ead5328691f5754f61d08a8dbe4e4ab636d4147e1b8a2b88309b4e28",
+    "package": "com.wiplayer.plus",
+    "versionName": "1.0.8",
+    "versionCode": 160,
+    "scope": "Downloaded from the official link and inspected statically only; no Hyperwatching-specific extractor established."
+  },
+  "recommendation": "Use StarDima public website catalogue/episode JSON and the actual free-player links published by Hyperwatching. Preserve explicit free/exclusive flags, season and episode identities, original-language aliases and source metadata. Do not depend on the APK protected API or claim APK inspection reveals a separate unrestricted catalogue."
+}
