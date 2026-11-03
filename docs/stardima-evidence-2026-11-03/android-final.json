@@ -1,0 +1,100 @@
+{
+  "generatedAt": "2026-11-03T15:07:13.687Z",
+  "scope": "Final 1.6.33 Android acceptance after the live episode count, cold resume and fresh Latin-search fixes. These checks are separate from the original 19-route sweep and its APK hash.",
+  "debug": {
+    "package": "app.flixer.stream.audit",
+    "version": "1.6.33-audit",
+    "sha256": "a3a0677942734e7a8a6666f733befcea8bc8cb3e336c7194bfbc1f4e268e6f22",
+    "coldActivityLaunchMs": 2131,
+    "checks": [
+      {
+        "name": "Cold Continue Watching",
+        "passed": true,
+        "sourceEpisode": "sp:stardima:e:6ae791af3be9a:104745",
+        "position": 26.559,
+        "duration": 224.057,
+        "note": "Canonical title may merge to FMovies while the exact StarDima episode stays selected."
+      },
+      {
+        "name": "Fresh Latin search",
+        "passed": true,
+        "query": "Blazing Teens",
+        "displayedTitle": "بليزين تينز",
+        "provider": "StarDima",
+        "posterLoaded": true,
+        "note": "Visible source search result appears before opening its title; no invented Latin alias is required."
+      }
+    ]
+  },
+  "signedRelease": {
+    "package": "app.flixer.stream",
+    "version": "1.6.33",
+    "sha256": "381574eb8a65d79c2b7d4f39727975ce6a203e5f380eed7b05eb1bc6de8d4ced",
+    "installedHashVerified": true,
+    "coldActivityLaunchMs": 1095,
+    "restartActivityLaunchMs": 1514,
+    "checks": [
+      {
+        "name": "Latin search",
+        "passed": true,
+        "query": "Kaiju",
+        "result": "Arabic StarDima titles visible alongside other providers; selected actual StarDima row."
+      },
+      {
+        "name": "Source details",
+        "passed": true,
+        "title": "كايجو رقم 8",
+        "posterLoaded": true,
+        "synopsisVisible": true,
+        "episodeHeader": "2024 · 4 episodes",
+        "sourceSeason": 4,
+        "episode": 1
+      },
+      {
+        "name": "Inline playback",
+        "passed": true,
+        "evidence": "Two screenshots show different frames of the source cartoon, with Playing and StarDima - Lulustream selected within the title page.",
+        "numericalClockInstrumented": false,
+        "transportInstrumented": false,
+        "note": "The source choice changed during opening; final selected choice was Lulu. No signed-build HG or Media3 success is claimed."
+      },
+      {
+        "name": "Exit playback",
+        "passed": true,
+        "result": "Normal app Back returns to title; no trapped black player surface."
+      },
+      {
+        "name": "Cold restart persistence",
+        "passed": true,
+        "result": "After force-stop and relaunch, Continue Watching shows Kaiju No. 8, S4 · E01, 42% watched. Previous film progress also remains."
+      }
+    ]
+  },
+  "earlierEvidence": {
+    "routeSweep": "android-routes.json",
+    "sourceHelperChecks": "android-source.json",
+    "numericalInlineProof": "android-ui-draft.json",
+    "headerFixIntermediateDebugSha256": "8f9bdc1318141daa9470b4a973b9a9132508699800a54a963b700f721b3dd314"
+  },
+  "limitations": [
+    "The original sweep tested 19 public choices for four selected titles, not every catalogue item. Nine unique routes had an advancing clock in at least one attempt.",
+    "Mixdrop samples were unavailable; Savefiles and legacy HG samples did not produce advancing playback within their bounded tests.",
+    "Lulu native-HLS attempts failed with HTTP-status errors in the earlier audit; its inline WebView fallback played.",
+    "A previous signed-draft Uqload check displayed source promotion overlays. Ad-free playback is not guaranteed.",
+    "The source labels the short Kaiju sample as S4E1 and reports a 224.057-second duration in the instrumented draft test. No full-episode or language verification claim is made.",
+    "One emulator process exited during the earlier draft tests. The same AVD was restarted without wiping data; final checks completed afterward."
+  ],
+  "screenshots": [
+    "android-inline.png",
+    "android-resume.png",
+    "android-latin-search.png"
+  ],
+  "cleanup": {
+    "dataPreserved": true,
+    "packagesCoexist": true,
+    "displaySizeReset": "1080x2400",
+    "displayDensityReset": 420,
+    "emulatorStopped": true,
+    "note": "Temporary display overrides were reset and the same AVD was stopped normally. No wipe or deletion was performed."
+  }
+}

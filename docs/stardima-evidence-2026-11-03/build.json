@@ -1,0 +1,17 @@
+{
+  "product": "flixer",
+  "versionName": "1.6.33",
+  "versionCode": 10633,
+  "applicationId": "app.flixer.stream",
+  "releaseSha256": "381574eb8a65d79c2b7d4f39727975ce6a203e5f380eed7b05eb1bc6de8d4ced",
+  "releaseBytes": 18253008,
+  "auditSha256": "a3a0677942734e7a8a6666f733befcea8bc8cb3e336c7194bfbc1f4e268e6f22",
+  "signingCertificateSha256": "dc2f6a10b7f82be57780b684ee77e4eedab0510fadb787850a2605402cb810c5",
+  "signatureVerified": true,
+  "signatureSchemes": ["v1", "v2"],
+  "nodeTests": {"passed": 451, "failed": 0},
+  "androidUnitTests": {"passed": 25, "failed": 0},
+  "codeCommit": "b45fa08c2eecab9e3fd89222ee989f1b0d1f2de5",
+  "release": "https://github.com/FediMechergui/flixer/releases/tag/flixer-v1.6.33",
+  "note": "The code commit records the reviewed source used by the build. Earlier route audits and the final signed build are distinguished by their APK hashes in the device reports. No APK or raw source responses are committed to Git."
+}

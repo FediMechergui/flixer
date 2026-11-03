@@ -55,3 +55,23 @@ The Android audit covers current and legacy films and episodes, with all 19 retu
 Nine unique routes have playback proof in at least one attempt. Eight **latest** attempts have independently attributable playback proof; the latest Lulu episode retest has ambiguous clock attribution after a native-to-WebView fallback, while its earlier single-WebView attempt is confirmed. HTTP 200 responses from Lulu manifests did not establish successful native playback.
 
 The [sanitized route report](stardima-evidence-2026-11-03/android-routes.json) preserves these distinctions and the exact tested APK hash. The source marked the sampled Kaiju entry as season 4, episode 1; those numbers were retained. Actual spoken language was not independently verified. This sample does not certify every StarDima title or every upstream server.
+
+## Android integration checks
+
+On the integration build, actual Arabic search surfaced StarDima results in 798 ms while other providers continued independently. Opening the sampled title painted saved metadata in 184 ms; the live four-episode guide arrived in 2,225 ms with its poster and Latin/Arabic aliases. The selected episode returned five source choices in 3,418 ms. Selecting Streamhg played through Media3 inline: the clock advanced from 0.399 to 26.559 seconds of the source's 224.057-second clip. This was a short playback check, not a complete-episode viewing.
+
+Closing playback and returning home removed the player overlay, retained StarDima cards and preserved the same S4E1 Continue Watching entry and position. Latin search displayed a matching title under “Various providers.” The separate native-source checks passed for both catalogue kinds, Arabic/Latin search, current and legacy guides, film and episode servers, and latest entries. The legacy guide contained 151 published episodes across source seasons 1–4. These are sampled results, not an exhaustive import.
+
+The device checks exposed three integration defects, now covered by regressions:
+
+- A late guide refreshed the list but left the title header's episode count stale. The header, facts and list now update together.
+- After a cold start, a saved Continue Watching position could lose its card until the full catalogue loaded. One validated local title-cache read now supplies that card immediately and reopening it reuses the saved guide. Canonical aliases do not produce duplicate resume cards.
+- A fresh Latin search could discard a genuine source result whose display title was Arabic. Exact source-returned result IDs now remain visible through canonical merges, without adding the query as a fabricated alias or fetching a whole guide during search.
+
+**451 Node tests and 25 Android unit tests pass.** Source and UI evidence retain their respective build hashes rather than presenting every earlier route test as a final-build test. The signed-build Uqload check displayed changing movie frames inline, but also source promotional overlays. Ad-free embedded playback is not claimed.
+
+The final audit build (`a3a0677942734e7a8a6666f733befcea8bc8cb3e336c7194bfbc1f4e268e6f22`) passed the cold-start resume check: S4E1 and its 12% position remained visible after the title merged into a canonical FMovies identity. A fresh “Blazing Teens” search displayed the Arabic source title, StarDima badge and poster before opening its guide.
+
+Release 1.6.33 uses version code `10633` and the existing signing certificate. Its APK SHA-256 is `381574eb8a65d79c2b7d4f39727975ce6a203e5f380eed7b05eb1bc6de8d4ced`. The [release page](https://github.com/FediMechergui/flixer/releases/tag/flixer-v1.6.33) contains the APK and checksum file.
+
+The exact signed APK passed a separate visible UI smoke: Latin search found the Arabic source entry, the poster/synopsis and four-episode guide rendered, and the selected S4E1 played inline through a Lulu fallback with changing cartoon scenes. This is visual playback evidence, not an instrumented signed-build clock or proof of HG success. Back exited normally; a force-stop and cold relaunch retained the same S4E1 at 42% watched. The final activity launches measured 1.095 and 1.514 seconds in this emulator run. The [final device report](stardima-evidence-2026-11-03/android-final.json) distinguishes these observations from earlier instrumented checks.

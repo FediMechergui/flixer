@@ -1,0 +1,279 @@
+{
+  "at": "2026-11-03T14:43:20.728Z",
+  "scope": "Ordinary packaged native source helper calls; no player inspection or authentication changes",
+  "results": [
+    {
+      "name": "series page",
+      "ok": true,
+      "ms": 619,
+      "count": 15,
+      "totalPages": 153,
+      "items": [
+        {
+          "id": "sp:stardima:s:6ae791af3be9a",
+          "title": "كايجو رقم 8",
+          "access": "public"
+        },
+        {
+          "id": "sp:stardima:s:6ae7915defaa0",
+          "title": "زفاف اليراعا",
+          "access": "public"
+        },
+        {
+          "id": "sp:stardima:s:6ae471bfa896e",
+          "title": "الملازم كيرو ☆",
+          "access": "public"
+        },
+        {
+          "id": "sp:stardima:s:6ae3ec962d980",
+          "title": "عالم غامبول المدهش (نسخة قديمة)",
+          "access": "public"
+        }
+      ]
+    },
+    {
+      "name": "film page",
+      "ok": true,
+      "ms": 460,
+      "count": 15,
+      "totalPages": 108,
+      "items": [
+        {
+          "id": "sp:stardima:m:6ae8afb7b21ab",
+          "title": "دوريات المخلاب: فيلم الديناصورات",
+          "access": "public"
+        },
+        {
+          "id": "sp:stardima:m:6ae7843be51cb",
+          "title": "سجلات سبايدرويك",
+          "access": "public"
+        },
+        {
+          "id": "sp:stardima:m:6ae0edaa8f743",
+          "title": "الجزيرة المنسية",
+          "access": "public"
+        },
+        {
+          "id": "sp:stardima:m:6ade3ddcc8c2a",
+          "title": "سبايدي وذا أفنجرز: فريق الهالوين",
+          "access": "public"
+        }
+      ]
+    },
+    {
+      "name": "Arabic search",
+      "ok": true,
+      "ms": 1,
+      "count": 5,
+      "items": [
+        {
+          "id": "sp:stardima:s:6ae791af3be9a",
+          "title": "كايجو رقم 8",
+          "access": "public"
+        },
+        {
+          "id": "sp:stardima:s:68dd1445525ca",
+          "title": "غاميرا: ولادة من جديد",
+          "access": "public"
+        },
+        {
+          "id": "sp:stardima:m:699582e8daebf",
+          "title": "كوروكو باسكت بول 2 : أبرز أحداث كأس الشتاء-دموع الأبطال",
+          "access": "public"
+        },
+        {
+          "id": "sp:stardima:s:69ff2cabd0f32",
+          "title": "كايجودو: نهضة أسياد المبارزة",
+          "access": "public"
+        }
+      ]
+    },
+    {
+      "name": "Latin search",
+      "ok": true,
+      "ms": 690,
+      "count": 2,
+      "items": [
+        {
+          "id": "sp:stardima:s:6ae791af3be9a",
+          "title": "كايجو رقم 8",
+          "access": "public"
+        },
+        {
+          "id": "sp:stardima:s:69ff2cabd0f32",
+          "title": "كايجودو: نهضة أسياد المبارزة",
+          "access": "public"
+        }
+      ]
+    },
+    {
+      "name": "current series guide",
+      "ok": true,
+      "ms": 1612,
+      "episodesComplete": true,
+      "title": "كايجو رقم 8",
+      "aliases": [
+        "Kaiju No. 8",
+        "الوحش الثامن"
+      ],
+      "episodeCount": 4,
+      "seasons": [
+        4
+      ],
+      "poster": true,
+      "synopsisLength": 208,
+      "firstEpisodes": [
+        {
+          "id": "sp:stardima:e:6ae791af3be9a:104745",
+          "season": 4,
+          "number": 1,
+          "sourceSeasonId": 4347
+        },
+        {
+          "id": "sp:stardima:e:6ae791af3be9a:104746",
+          "season": 4,
+          "number": 2,
+          "sourceSeasonId": 4347
+        },
+        {
+          "id": "sp:stardima:e:6ae791af3be9a:104747",
+          "season": 4,
+          "number": 3,
+          "sourceSeasonId": 4347
+        }
+      ]
+    },
+    {
+      "name": "legacy series guide",
+      "ok": true,
+      "ms": 9406,
+      "episodesComplete": true,
+      "title": "بليزين تينز",
+      "aliases": [
+        "Blazing Teens"
+      ],
+      "episodeCount": 151,
+      "seasons": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "poster": true,
+      "synopsisLength": 771,
+      "firstEpisodes": [
+        {
+          "id": "sp:stardima:e:video-11:16495",
+          "season": 1,
+          "number": 1,
+          "sourceSeasonId": 692
+        },
+        {
+          "id": "sp:stardima:e:video-11:16496",
+          "season": 1,
+          "number": 2,
+          "sourceSeasonId": 692
+        },
+        {
+          "id": "sp:stardima:e:video-11:16497",
+          "season": 1,
+          "number": 3,
+          "sourceSeasonId": 692
+        }
+      ]
+    },
+    {
+      "name": "current film servers",
+      "ok": true,
+      "ms": 3549,
+      "count": 5,
+      "items": [
+        {
+          "id": "stardima:hyperwatching:1497961",
+          "type": "embed",
+          "name": "StarDima - Uqload",
+          "host": "uqload.vc"
+        },
+        {
+          "id": "stardima:hyperwatching:1497965",
+          "type": "embed",
+          "name": "StarDima - Lulustream",
+          "host": "lulustream.com"
+        },
+        {
+          "id": "stardima:hyperwatching:1497964",
+          "type": "embed",
+          "name": "StarDima - Mixdrop",
+          "host": "mixdrop.top"
+        },
+        {
+          "id": "stardima:hyperwatching:1497967",
+          "type": "embed",
+          "name": "StarDima - Savefiles",
+          "host": "savefiles.com"
+        }
+      ]
+    },
+    {
+      "name": "current episode servers",
+      "ok": true,
+      "ms": 1824,
+      "count": 5,
+      "items": [
+        {
+          "id": "stardima:hyperwatching:1498143",
+          "type": "embed",
+          "name": "StarDima - Uqload",
+          "host": "uqload.vc"
+        },
+        {
+          "id": "stardima:hyperwatching:1498147",
+          "type": "embed",
+          "name": "StarDima - Lulustream",
+          "host": "lulustream.com"
+        },
+        {
+          "id": "stardima:hyperwatching:1498146",
+          "type": "embed",
+          "name": "StarDima - Mixdrop",
+          "host": "mixdrop.top"
+        },
+        {
+          "id": "stardima:hyperwatching:1498149",
+          "type": "embed",
+          "name": "StarDima - Savefiles",
+          "host": "savefiles.com"
+        }
+      ]
+    },
+    {
+      "name": "latest series",
+      "ok": true,
+      "ms": 2734,
+      "count": 12,
+      "totalPages": 3,
+      "items": [
+        {
+          "id": "sp:stardima:s:6accfbe7a236f",
+          "title": "دراغون بول سوبر بيروس",
+          "access": "public"
+        },
+        {
+          "id": "sp:stardima:s:video-102",
+          "title": "LBX Little Battlers eXperience",
+          "access": "public"
+        },
+        {
+          "id": "sp:stardima:s:video-218",
+          "title": "ليغو نينجاغو أبطال السبينجيتسو",
+          "access": "public"
+        },
+        {
+          "id": "sp:stardima:s:69345b629d15d",
+          "title": "بعد التجسد، موضوع تحوّلي إلى وحل",
+          "access": "public"
+        }
+      ]
+    }
+  ]
+}
