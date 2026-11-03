@@ -4,7 +4,7 @@ import fs from 'node:fs';import path from 'node:path';import {execFile} from 'no
 import {auditServer} from './audit-server.js';
 import {observeVideoClock,observeNativeClock} from './playback-proof.js';
 import {installNativeAuditBridge} from './native-audit-bridge.js';
-import {classifyPlayback} from './playback-outcome.js';
+import {classifyPlayback,sourceRefusesDebugger} from './playback-outcome.js';
 import {playerSnapshot,canPressPlay} from './player-snapshot.js';
 const run=promisify(execFile),args=process.argv.slice(2),opt=(k,d)=>args.includes(k)?args[args.indexOf(k)+1]:d;
 const dir=path.resolve(opt('--out','artifacts/provider-device-audit-2026-10-24')),input=path.join(dir,'resolved.private.json'),output=path.join(dir,'device.private.json');
@@ -39,6 +39,7 @@ function observe(c,result){const contexts=new Map(),requests=new Map(),listener=
  if(method==='Network.requestWillBeSent')requests.set(p.requestId,p.request.url);
  if(method==='Network.responseReceived'&&p.response.status>=400&&result.network.length<80)result.network.push({status:p.response.status,url:p.response.url,type:p.type});
  if(method==='Network.loadingFailed'&&result.network.length<80)result.network.push({error:p.errorText,url:requests.get(p.requestId),type:p.type});
+ if(method==='Runtime.consoleAPICalled'&&p.args?.some(arg=>typeof arg.value==='string'&&sourceRefusesDebugger(arg.value))){const notes=result.auditDiagnostics||=[];if(!notes.includes('SOURCE_DEVTOOLS_RESTRICTED'))notes.push('SOURCE_DEVTOOLS_RESTRICTED');}
  };c.on(listener);contexts.dispose=()=>c.off(listener);return contexts;
 }
 async function enable(c){for(const method of ['Runtime.enable','Page.enable','Network.enable'])await c.send(method)}

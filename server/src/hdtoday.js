@@ -1,12 +1,14 @@
+import { load } from 'cheerio';
+import { HDTODAY_PLAYER_ROUTES } from '../../shared/hdtoday-player-routes.js';
 import { safeRemoteFetch } from './stream-security.js';
 import { text } from './fmovies.js';
 
 export const HDTODAY_BASE = 'https://hdtoday.sx';
-const servers = ['vidsrc.mov','vidsrc.fyi','VIP','vidfast','vidup','vidrock','vidnest','vidlink','111movies','multiembed','mappletv','moviesapi'];
 const slugPattern = /^(movie|tv)-[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export function parseHdtodayId(id) {
   const m = /^hd:([ms]):([a-z0-9]+(?:-[a-z0-9]+)*)(?::(\d+):([1-9]\d*))?$/.exec(String(id));
   if (!m || !slugPattern.test(m[2]) || (m[1] === 'm') !== m[2].startsWith('movie-')) return null;
+  if(m[3]!=null&&(m[1]==='m'||!Number.isSafeInteger(Number(m[3]))||!Number.isSafeInteger(Number(m[4]))))return null;
   return {id,kind:m[1] === 'm' ? 'film':'series',slug:m[2],season:m[3] == null ? null:Number(m[3]),number:m[4] == null ? null:Number(m[4])};
 }
 const tag = label => ({'Science Fiction':'sci-fi','Sci-Fi & Fantasy':'sci-fi','Action & Adventure':'action','War & Politics':'war'}[label] || label.toLowerCase().replace(/[^a-z0-9]+/g,'-'));
@@ -54,24 +56,124 @@ export function parseHdtodayList(html, {kind,documentary=false,page=1} = {}) {
   return {items:[...items.values()],page,totalPages:Math.max(page,...last,...next),hasNext:next.length>0};
 }
 export function createHdtodayRequest({fetchRemote=safeRemoteFetch,now=Date.now}={}) {
-let retryAt=0,blockedReason=null;
-return async function request(path,{timeoutMs=12000}={}) {
-  if(now()<retryAt)throw new Error(blockedReason);
-  const url=new URL(path,HDTODAY_BASE);
-  if(url.origin!==HDTODAY_BASE)throw new Error('Invalid HDToday URL');
-  const r=await fetchRemote(url.href,{timeoutMs,headers:{'User-Agent':'Mozilla/5.0','Referer':HDTODAY_BASE+'/home','Accept':'text/html,application/json;q=0.9,*/*;q=0.8'}});
-  if(r.headers.get('cf-mitigated')==='challenge'){
-    await r.body?.cancel();retryAt=now()+600000;
+  let retryAt=0,blockedReason=null;
+  const contexts=new Map(),pending=new Map();
+  function challenge() {
+    retryAt=now()+600000;
     blockedReason='HDToday browser verification required on this host; cached data retained';
-    throw new Error(blockedReason);
+    return new Error(blockedReason);
   }
-  if(!r.ok){if(r.status===429){retryAt=now()+Math.max(60,Number(r.headers.get('retry-after'))||60)*1000;blockedReason='HDToday rate limited; cached data retained until retry';}await r.body?.cancel();throw new Error(`HDToday HTTP ${r.status}`);}
-  const html=await r.text();
-  if(/<title[^>]*>\s*(?:Quick check|Just a moment|Access denied)/i.test(html)){
-    retryAt=now()+600000;blockedReason='HDToday browser verification required on this host; cached data retained';throw new Error(blockedReason);
+  async function read(url,timeoutMs,referer=HDTODAY_BASE+'/home') {
+    if(now()<retryAt)throw new Error(blockedReason);
+    const deadline=Date.now()+timeoutMs;
+    let current=url;
+    for(let hop=0;hop<=3;hop++) {
+      const remaining=deadline-Date.now();
+      if(remaining<=0)throw new Error('HDToday source refresh time budget reached');
+      // The shared transport gives every automatic redirect a new timeout.
+      // Handle source redirects here so all hops share this one deadline.
+      const r=await fetchRemote(current.href,{timeoutMs:remaining,manualRedirect:true,headers:{'User-Agent':'Mozilla/5.0','Referer':referer,'Accept':'text/html,application/json;q=0.9,*/*;q=0.8'}});
+      if(Date.now()>=deadline){await r.body?.cancel();throw new Error('HDToday source refresh time budget reached');}
+      if(r.headers.get('cf-mitigated')==='challenge'){
+        await r.body?.cancel();throw challenge();
+      }
+      if([301,302,303,307,308].includes(r.status)&&r.headers.get('location')){
+        await r.body?.cancel();
+        const next=new URL(r.headers.get('location'),current);
+        if(next.protocol!=='https:'||next.username||next.password||next.port||next.origin!==url.origin)throw new Error('Invalid HDToday source redirect');
+        if(hop===3)throw new Error('Too many HDToday source redirects');
+        current=next;
+        continue;
+      }
+      if(!r.ok){
+        if(r.status===429){retryAt=now()+Math.max(60,Number(r.headers.get('retry-after'))||60)*1000;blockedReason='HDToday rate limited; cached data retained until retry';}
+        await r.body?.cancel();throw new Error(`HDToday HTTP ${r.status}`);
+      }
+      const html=await r.text();
+      if(Date.now()>=deadline)throw new Error('HDToday source refresh time budget reached');
+      if(/<title[^>]*>\s*(?:Quick check|Just a quick check|Just a moment|Access denied)/i.test(html))throw challenge();
+      return {html,url:new URL(r.url||current.href)};
+    }
   }
-  return html;
-};
+  async function titlePage(url,timeoutMs) {
+    const deadline=Date.now()+timeoutMs;
+    const readPage=(next,referer)=>{
+      const remaining=deadline-Date.now();
+      if(remaining<=0)throw new Error('HDToday source refresh time budget reached');
+      return read(next,remaining,referer);
+    };
+    let page=await readPage(url);
+    const $=load(page.html),migration=$('a.dummy-go__btn[href]').attr('href');
+    if(migration){
+      const hop=new URL(migration,url);
+      const destination=new URL(hop.searchParams.get('to')||'',HDTODAY_BASE);
+      if(hop.origin!==HDTODAY_BASE||hop.pathname!=='/home-v1'||destination.origin!==HDTODAY_BASE||destination.pathname!==url.pathname)throw new Error('Invalid HDToday migration');
+      // Follow only the publisher's explicit migration link. Do not try other
+      // mirrors or manufacture verification cookies if its page challenges.
+      const landing=await readPage(hop,url.href),link=load(landing.html)('a[href]').first().attr('href');
+      if(!link)throw new Error('HDToday migration destination unavailable');
+      const handoff=new URL(link);
+      const target=new URL(handoff.searchParams.get('to')||'',HDTODAY_BASE);
+      if(handoff.protocol!=='https:'||handoff.username||handoff.password||handoff.port||!/^flix[a-z0-9-]+\.cyou$/.test(handoff.hostname)||handoff.pathname!=='/__handoff'||target.origin!==HDTODAY_BASE||target.pathname!==url.pathname)throw new Error('Invalid HDToday migration destination');
+      page=await readPage(handoff,hop.href);
+      if(page.url.origin!==handoff.origin||page.url.pathname!==url.pathname)throw new Error('Invalid HDToday migrated title');
+    }
+    const doc=load(page.html),choices=[];
+    doc('#opt-list button[name="x"]').each((_,node)=>{
+      const button=doc(node),index=button.attr('value'),name=button.text().replace(/\s+/g,' ').trim();
+      if(/^\d{1,3}$/.test(index||'')&&name&&!choices.some(c=>c.index===Number(index)))choices.push({index:Number(index),name});
+    });
+    if(choices.length) {
+      contexts.set(url.pathname,{at:now(),origin:page.url.origin,choices});
+      if(contexts.size>300)contexts.delete(contexts.keys().next().value);
+    }else contexts.delete(url.pathname);
+    return page.html;
+  }
+  async function prepare(url,timeoutMs) {
+    if(pending.has(url.pathname))return pending.get(url.pathname);
+    const promise=titlePage(url,timeoutMs);
+    pending.set(url.pathname,promise);
+    try{return await promise;}finally{pending.delete(url.pathname);}
+  }
+  async function request(path,{timeoutMs=12000}={}) {
+    const deadline=Date.now()+timeoutMs;
+    if(now()<retryAt)throw new Error(blockedReason);
+    const url=new URL(path,HDTODAY_BASE);
+    if(url.origin!==HDTODAY_BASE||url.username||url.password)throw new Error('Invalid HDToday URL');
+    if(/^\/watch\/(movie|tv)-[a-z0-9-]+$/.test(url.pathname))return prepare(url,timeoutMs);
+    if(url.pathname==='/api/go') {
+      const slug=url.searchParams.get('slug');
+      if(!slugPattern.test(slug||''))throw new Error('Invalid HDToday player');
+      const watch=new URL(`/watch/${slug}`,HDTODAY_BASE);
+      for(const key of ['s','e'])if(url.searchParams.has(key))watch.searchParams.set(key,url.searchParams.get(key));
+      let context=contexts.get(watch.pathname);
+      if(!context||now()-context.at>=600000){await prepare(watch,timeoutMs);context=contexts.get(watch.pathname);}
+      if(context){
+        if(!context.choices.some(c=>c.index===Number(url.searchParams.get('x'))))throw new Error('HDToday server no longer listed');
+        const remaining=deadline-Date.now();
+        if(remaining<=0)throw new Error('HDToday source refresh time budget reached');
+        return (await read(new URL(url.pathname+url.search,context.origin),remaining,new URL(watch.pathname+watch.search,context.origin).href)).html;
+      }
+    }
+    const remaining=deadline-Date.now();
+    if(remaining<=0)throw new Error('HDToday source refresh time budget reached');
+    return (await read(url,remaining)).html;
+  }
+  request.playerChoices=async(id,{timeoutMs=5000,fresh=false}={})=>{
+    const parsed=parseHdtodayId(id);
+    if(!parsed||(parsed.kind==='series'&&parsed.season==null))return [];
+    const path=`/watch/${parsed.slug}`,url=new URL(path,HDTODAY_BASE);
+    if(parsed.kind==='series'){url.searchParams.set('s',String(parsed.season));url.searchParams.set('e',String(parsed.number));}
+    let context=contexts.get(path);
+    if(fresh||!context||now()-context.at>=600000){await prepare(url,timeoutMs);context=contexts.get(path);}
+    if(!context)return [];
+    return context.choices.map(({index,name})=>{
+      const params=new URLSearchParams({t:parsed.kind==='film'?'movie':'tv',slug:parsed.slug,x:String(index)});
+      if(parsed.kind==='series'){params.set('s',String(parsed.season));params.set('e',String(parsed.number));}
+      return {id:`hdtoday:${index}`,name:`HDToday · ${name}`,provider:'hdtoday',type:'embed',embedUrl:`${HDTODAY_BASE}/api/go?${params}`,sourceUrl:`${context.origin}/api/go?${params}`,availability:'unverified'};
+    });
+  };
+  return request;
 }
 const request=createHdtodayRequest();
 export async function fetchHdtodayPage({kind='film',documentary=false,page=1,latest=false,genre}={}) {
@@ -131,14 +233,14 @@ export async function searchHdtoday(query,{documentary=false}={}) {
 export function hdtodayServers(id) {
   const p=parseHdtodayId(id);
   if(!p||(p.kind==='series' && p.season==null))return [];
-  return servers.map((name,index)=>{
+  return HDTODAY_PLAYER_ROUTES.map(({name})=>name).map((name,index)=>{
     const params=new URLSearchParams({t:p.kind==='film'?'movie':'tv',slug:p.slug,x:String(index)});
     if(p.kind==='series'){params.set('s',String(p.season));params.set('e',String(p.number));}
     return {id:`hdtoday:${index}`,name:`HDToday · ${name}`,provider:'hdtoday',type:'embed',embedUrl:`${HDTODAY_BASE}/api/go?${params}`,availability:'unverified'};
   });
 }
 
-const playerHosts = new Set(['vidsrc.mov','vidsrc.fyi','embed.vidsrc.si','vidfast.pro','vidup.to','vidrock.net','vidnest.fun','vidlink.pro','111movies.net','multiembed.mov','mappletv.uk','moviesapi.to','player.vidlove.cc']);
+const playerHosts = new Set([...HDTODAY_PLAYER_ROUTES.map(({tv})=>new URL(tv).hostname),'vidsrc.mov','vidsrc.fyi','embed.vidsrc.si','vidfast.pro','vidup.to','vidrock.net','vidnest.fun','vidlink.pro','111movies.net','multiembed.mov','mappletv.uk','moviesapi.to','player.vidlove.cc']);
 export function parseHdtodayPlayer(html) {
   if (/<title>\s*(?:Quick check|Just a moment)/i.test(html)) return null;
   const target = /<meta\b[^>]*http-equiv=["']refresh["'][^>]*content=["'][^"']*?url=([^"']+)/i.exec(html)?.[1];
@@ -170,48 +272,74 @@ export function documentedTvServers({tmdbId,season,number}={}) {
 export function hdtodayTvFallbacks(id,tmdbId) {
   const parsed=parseHdtodayId(id), numericId=Number(tmdbId);
   if(!parsed || parsed.kind!=='series' || parsed.season==null || !Number.isSafeInteger(numericId) || numericId<1)return [];
-  const slot=`${numericId}/${parsed.season}/${parsed.number}`;
-  const urls={0:`https://vidsrc.mov/embed/tv/${slot}`,3:`https://vidfast.pro/tv/${slot}?autoPlay=true`,7:`https://vidlink.pro/tv/${slot}`};
-  return hdtodayServers(id).flatMap((server,index)=>urls[index] ? [{...server,embedUrl:urls[index],sandbox:null,sourceUrl:server.embedUrl,resolution:'documented-provider-route'}] : []);
+  return hdtodayServers(id).map((server,index)=>({...server,
+    embedUrl:HDTODAY_PLAYER_ROUTES[index].tv.replaceAll('{id}',String(numericId)).replaceAll('{season}',String(parsed.season)).replaceAll('{episode}',String(parsed.number)),
+    sandbox:null,sourceUrl:server.embedUrl,resolution:'documented-provider-route',availability:'unverified'}));
 }
 export function hdtodayMovieFallbacks(id,tmdbId) {
   const parsed=parseHdtodayId(id), numericId=Number(tmdbId);
   if(!parsed || parsed.kind!=='film' || !Number.isSafeInteger(numericId) || numericId<1)return [];
-  // Routes observed in HDToday's public movie redirect responses.
-  const urls=[`https://vidsrc.mov/embed/movie/${numericId}`,`https://vidsrc.fyi/embed/movie/${numericId}`,
-    `https://embed.vidsrc.si/embed/movie/${numericId}?autoplay=1&ds_lang=en`,
-    `https://vidfast.pro/movie/${numericId}?autoPlay=true`,`https://vidup.to/movie/${numericId}?autoPlay=true`,
-    `https://vidrock.net/movie/${numericId}`,`https://vidnest.fun/movie/${numericId}`,`https://vidlink.pro/movie/${numericId}?autoplay=true&title=true`,
-    `https://player.vidlove.cc/embed/movie/${numericId}`,`https://multiembed.mov/?video_id=${numericId}&tmdb=1`,
-    `https://mappletv.uk/embed/movie/${numericId}`,`https://moviesapi.to/movie/${numericId}`];
-  return hdtodayServers(id).map((server,index)=>({...server,embedUrl:urls[index],sandbox:null,sourceUrl:server.embedUrl,...(index===8?{name:'HDToday - Vidlove'}:{}),resolution:'documented-provider-route',availability:'unverified'}));
+  return hdtodayServers(id).map((server,index)=>({...server,embedUrl:HDTODAY_PLAYER_ROUTES[index].movie.replaceAll('{id}',String(numericId)),sandbox:null,sourceUrl:server.embedUrl,resolution:'documented-provider-route',availability:'unverified'}));
 }
-export async function resolveHdtodayServers(id,{tmdbId,fresh=false,fetchPlayer=path=>request(path,{timeoutMs:5000})}={}) {
+const fetchPlayerDefault=(path,{timeoutMs=5000}={})=>request(path,{timeoutMs});
+export async function resolveHdtodayServers(id,{tmdbId,fresh=false,fetchPlayer=fetchPlayerDefault,fetchChoices=fetchPlayer===fetchPlayerDefault?(id,options)=>request.playerChoices(id,options):null,refreshBudgetMs=10000}={}) {
   const fallback=[...hdtodayTvFallbacks(id,tmdbId),...hdtodayMovieFallbacks(id,tmdbId)];
-  if(fallback.length)return fallback;
-  const cached = playerCache.get(id);
+  const cacheKey=`${id}|${Number.isSafeInteger(Number(tmdbId))&&Number(tmdbId)>0?Number(tmdbId):'unknown'}`;
+  const cached = playerCache.get(cacheKey);
   if (!fresh && cached && Date.now()-cached.at < 10*60e3) return cached.value;
+  // Known identities still open immediately while a deliberate source refresh
+  // can replace old redirects, names and removed servers.
+  if(!fresh && fallback.length)return prioritizeHdtodayServers(fallback);
   // A user-requested refresh must not resurrect an old redirect on the next
   // request if the source no longer advertises any player.
-  if (fresh) playerCache.delete(id);
-  const choices = hdtodayServers(id), resolved = [];
+  if (fresh) playerCache.delete(cacheKey);
+  const deadline=Date.now()+Math.max(1,Math.min(15000,Number(refreshBudgetMs)||10000));
+  async function withinBudget(work) {
+    const timeoutMs=Math.min(5000,deadline-Date.now());
+    if(timeoutMs<=0)throw new Error('HDToday source refresh time budget reached');
+    let timer;
+    try{return await Promise.race([Promise.resolve().then(()=>work(timeoutMs)),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('HDToday source refresh time budget reached')),timeoutMs);})]);}
+    finally{clearTimeout(timer);}
+  }
+  let choices;
+  try { choices=fetchChoices?await withinBudget(timeoutMs=>fetchChoices(id,{fresh,timeoutMs})):hdtodayServers(id); }
+  catch { return prioritizeHdtodayServers(fallback); }
+  const resolved = [];
   let next = 0, inferred=null;
   await Promise.all(Array.from({length:Math.min(4,choices.length)},async()=>{
-    while (next < choices.length && !inferred) {
+    while (next < choices.length && !inferred && Date.now()<deadline) {
       const index=next++, server=choices[index];
       try {
-        const target=parseHdtodayPlayer(await fetchPlayer(server.embedUrl));
+        const target=parseHdtodayPlayer(await withinBudget(timeoutMs=>fetchPlayer(server.embedUrl,{timeoutMs})));
         if(target){
-          resolved[index]={...server,embedUrl:target,sandbox:null,sourceUrl:server.embedUrl,routeResolved:true};
+          resolved[index]={...server,embedUrl:target,sandbox:null,sourceUrl:server.sourceUrl||server.embedUrl,routeResolved:true};
           const url=new URL(target), movieId=/\/(?:embed\/)?movie\/([1-9]\d*)(?:\/|$)/.exec(url.pathname)?.[1] || (url.hostname==='multiembed.mov' && url.searchParams.get('tmdb')==='1' ? url.searchParams.get('video_id'):null);
-          if(movieId)inferred=hdtodayMovieFallbacks(id,Number(movieId));
+          if(movieId&&!fresh&&!fetchChoices)inferred=hdtodayMovieFallbacks(id,Number(movieId));
           if(!inferred?.length)inferred=null;
         }
       } catch { /* Never return HDToday wrapper pages as iframe players. */ }
     }
   }));
-  const result=inferred || resolved.filter(Boolean);
-  if(result.length)playerCache.set(id,{at:Date.now(),value:result});
+  const fallbackById=new Map(fallback.map(server=>[server.id,server]));
+  const serverLabel=server=>String(server.name||'').replace(/^HDToday\s*[·:-]\s*/i,'').replace(/\s+/g,' ').trim().toLowerCase();
+  // Preserve the currently advertised choices when only some wrappers answer
+  // within the budget. Numeric identity is still required for each template.
+  const current=choices.map((server,index)=>{
+    if(resolved[index])return resolved[index];
+    const route=fallbackById.get(server.id);
+    // Source indices are not permanent host identities. If an index now has a
+    // different label, its redirect must resolve before we can return a route.
+    return route&&serverLabel(server)===serverLabel(route)?{...route,name:server.name||route.name,sourceUrl:server.sourceUrl||server.embedUrl}:null;
+  }).filter(Boolean);
+  const result=prioritizeHdtodayServers(inferred || current);
+  if(result.length)playerCache.set(cacheKey,{at:Date.now(),value:result});
   if(playerCache.size>300)playerCache.delete(playerCache.keys().next().value);
   return result;
+}
+
+function prioritizeHdtodayServers(options) {
+  // The public TV Vidcore route was confirmed in the Android inline player on
+  // 2026-11-03 (advancing playback); this is not a claim about every title.
+  const rank=server=>server.embedUrl.startsWith('https://vidcore.io/tv/')?2:server.embedUrl.startsWith('https://vidfast.pro/tv/')?1:0;
+  return options.toSorted((a,b)=>rank(b)-rank(a));
 }

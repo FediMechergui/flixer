@@ -17,7 +17,9 @@ public class SourcePlayerPolicyTest {
                 "https://dood.to/e/mllbbbivrazw",
                 "https://dood.watch/e/mllbbbivrazw",
                 "https://shanelocaldog.com/e/wmg8hrklsbcl",
-                "https://ss.hd-vk.com/embed-lbycxnbhuk16.html"}) assertTrue(url, SourcePlayerPolicy.approved(url));
+                "https://ss.hd-vk.com/embed-lbycxnbhuk16.html",
+                "https://netu.frembed.bond/e/98REi4XoBV2S",
+                "https://netu.frembed.bond/e/GjvwOiHOfeKj"}) assertTrue(url, SourcePlayerPolicy.approved(url));
     }
 
     @Test public void sourceAdmissionIsRestrictedToRealHttpsPlayerPaths() {
@@ -31,7 +33,11 @@ public class SourcePlayerPolicyTest {
                 "https://frembed.uno/premium", "https://frembed.uno/embed/serie/246?sa=1&epi=1&redirect=https://evil.org",
                 "https://frembed.uno/embed/movie/../admin", "https://frembed.uno/embed/movie/%2e%2e",
                 "https://uqload.co/account", "https://dood.to/login", "https://shanelocaldog.com/advertising",
-                "https://ss.hd-vk.com/account", "https://ss.hd-vk.com.evil.org/embed-lbycxnbhuk16.html"}) assertFalse(url, SourcePlayerPolicy.approved(url));
+                "https://ss.hd-vk.com/account", "https://ss.hd-vk.com.evil.org/embed-lbycxnbhuk16.html",
+                "https://netu.frembed.bond/e/98REi4XoBV2S?redirect=https://evil.org",
+                "https://netu.frembed.bond/e/98REi4XoBV2S#redirect", "https://netu.frembed.bond/account",
+                "https://user@netu.frembed.bond/e/98REi4XoBV2S", "https://netu.frembed.bond:444/e/98REi4XoBV2S",
+                "https://netu.frembed.bond.evil.org/e/98REi4XoBV2S"}) assertFalse(url, SourcePlayerPolicy.approved(url));
     }
 
     @Test public void healthOriginsIncludeOnlyTheApprovedXtremestreamHost() {

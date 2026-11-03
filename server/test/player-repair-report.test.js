@@ -29,3 +29,13 @@ test('public repair reports exclude private URLs and headers while retaining ret
   assert.deepEqual(report.reports[0].routes[0].httpStatuses,[403]);
   const json=JSON.stringify(report);for(const value of ['PRIVATE','https://','Authorization','streamUrl'])assert.equal(json.includes(value),false);
 });
+
+test('native document failures retain bounded diagnostics without exporting upstream details',()=>{
+  const matrix={complete:true,cases:[{case:1,provider:'test',title:'Failed player',host:'source.test'}]};
+  const device={cases:[{case:1,nativeResults:[{result:{reason:'failed',sourceError:'HTTP_ERROR',httpStatus:403,networkErrorCode:0,url:'https://source.test/?token=PRIVATE',description:'PRIVATE'}}]}]};
+  const report=summarizePlayerRepair([{name:'test',matrix,device}]);
+  const route=report.reports[0].routes[0];
+  assert.equal(route.status,'access_denied');
+  assert.deepEqual(route.sourceDiagnostics,[{sourceError:'HTTP_ERROR',httpStatus:403,networkErrorCode:0}]);
+  assert.equal(JSON.stringify(report).includes('PRIVATE'),false);
+});

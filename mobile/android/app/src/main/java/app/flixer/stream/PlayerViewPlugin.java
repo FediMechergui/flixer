@@ -38,11 +38,11 @@ public class PlayerViewPlugin extends Plugin {
     static Set<String> playerOrigins(){Set<String> origins=new HashSet<>();for(String host:HOSTS)origins.add("https://"+host);origins.add("https://*.medmedia03.wiki");
         // Observed VidSrc content frame. Telemetry only: this does not authorize
         // new top-level navigation or expose the app's Capacitor bridge.
-        origins.add("https://stellarconductornexus.com");origins.addAll(SourcePlayerPolicy.originsFor(null));return origins;}
+        origins.add("https://stellarconductornexus.com");origins.addAll(SourcePlayerPolicy.originsFor(null));origins.addAll(HDTodayPlayerPolicy.origins());return origins;}
     private boolean approved(String value) {
         if (value == null || value.length() > 3000) return false;
         try { Uri u = Uri.parse(value); String host = u.getHost();
-            return "https".equals(u.getScheme()) && u.getUserInfo() == null && u.getPort() == -1 && host != null && (HOSTS.contains(host) || host.matches("(?:balance|[1-9])\\.medmedia03\\.wiki") || SourcePlayerPolicy.approved(value));
+            return "https".equals(u.getScheme()) && u.getUserInfo() == null && u.getPort() == -1 && host != null && (HOSTS.contains(host) || host.matches("(?:balance|[1-9])\\.medmedia03\\.wiki") || SourcePlayerPolicy.approved(value) || HDTodayPlayerPolicy.approved(value));
         } catch (Exception e) { return false; }
     }
     private int dp(int value) { return Math.round(value * getContext().getResources().getDisplayMetrics().density); }
@@ -61,8 +61,9 @@ public class PlayerViewPlugin extends Plugin {
             NativePlayerSurface dialog = new NativePlayerSurface((com.getcapacitor.BridgeActivity)getActivity(),getBridge().getWebView(),call.getObject("bounds"));
             playerDialog = dialog;
             String[] reason={"closed"};boolean[] played={false};boolean[] verifying={false};boolean[] challengeDocument={false};double[] latest={0,0};
+            PlayerFailureDiagnostics diagnostics=new PlayerFailureDiagnostics();
             android.os.Handler watchdog=new android.os.Handler(android.os.Looper.getMainLooper());
-            Runnable startupTimeout=()->{if(dialog.isShowing()&&!played[0]){reason[0]="failed";dialog.dismiss();}};JSObject media=new JSObject();boolean captureMedia=call.getBoolean("captureMedia",true);
+            Runnable startupTimeout=()->{if(dialog.isShowing()&&!played[0]){diagnostics.timeout();reason[0]="failed";dialog.dismiss();}};JSObject media=new JSObject();boolean captureMedia=call.getBoolean("captureMedia",true);
             LinearLayout layout = new LinearLayout(getActivity()); layout.setOrientation(LinearLayout.VERTICAL); layout.setBackgroundColor(Color.rgb(12,18,16));
             LinearLayout toolbar = new LinearLayout(getActivity()); toolbar.setPadding(dp(8),dp(6),dp(8),dp(6)); toolbar.setGravity(android.view.Gravity.CENTER_VERTICAL);
             Button close = new Button(getActivity()); close.setText("Close player"); close.setAllCaps(false); close.setTextSize(14); close.setBackgroundColor(Color.TRANSPARENT); close.setContentDescription("Close in-app player"); close.setTextColor(Color.rgb(243,178,87)); close.setOnClickListener(v -> dialog.dismiss());
@@ -93,14 +94,14 @@ public class PlayerViewPlugin extends Plugin {
                 Set<String> origins=sessionOrigins;
                 WebViewCompat.addWebMessageListener(web,"FlixerPlayback",origins,(view,message,origin,main,reply)->{
                     if(playerDialog!=dialog)return;
-                    if("playing".equals(message.getData())){played[0]=true;watchdog.removeCallbacks(startupTimeout);}
-                    if("missing".equals(message.getData())&&!played[0]){reason[0]="failed";dialog.dismiss();}
+                    if("playing".equals(message.getData())){diagnostics.clear();played[0]=true;watchdog.removeCallbacks(startupTimeout);}
+                    if("missing".equals(message.getData())&&!played[0]){diagnostics.unavailable();reason[0]="failed";dialog.dismiss();}
                     if(message.getData()!=null&&message.getData().length()<14000)try{
                         JSONObject data=new JSONObject(message.getData());String target=data.optString("url"),format=data.optString("format");Uri uri=Uri.parse(target);
                         if("progress".equals(data.optString("type"))){
                             double position=data.optDouble("position",-1),duration=data.optDouble("duration",0);
                             if(Double.isFinite(position)&&Double.isFinite(duration)&&position>0&&duration>0&&position<=duration+1){
-                                latest[0]=Math.min(position,duration);latest[1]=duration;played[0]=true;watchdog.removeCallbacks(startupTimeout);
+                                diagnostics.clear();latest[0]=Math.min(position,duration);latest[1]=duration;played[0]=true;watchdog.removeCallbacks(startupTimeout);
                                 JSObject progress=new JSObject();progress.put("session",session);progress.put("position",latest[0]);progress.put("duration",duration);progress.put("playing",data.optBoolean("playing"));progress.put("final",data.optBoolean("final"));notifyListeners("progress",progress);
                                 if(data.optBoolean("ended")&&duration-position<=2){reason[0]="ended";dialog.dismiss();}
                             }
@@ -118,15 +119,17 @@ public class PlayerViewPlugin extends Plugin {
                 @Override public android.webkit.WebResourceResponse shouldInterceptRequest(WebView view,WebResourceRequest request){return PlayerAdBlock.intercept(request);}
                 @Override public boolean shouldOverrideUrlLoading(WebView view, String target) { return !approved(target); }
                 @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) { return request.isForMainFrame() && !approved(request.getUrl().toString()); }
-                @Override public void onPageStarted(WebView view,String target,android.graphics.Bitmap favicon){challengeDocument[0]=false;title.setText(Uri.parse(target).getHost());}
+                @Override public void onPageStarted(WebView view,String target,android.graphics.Bitmap favicon){if(playerDialog!=dialog)return;diagnostics.clear();challengeDocument[0]=false;title.setText(SourcePlayerFrame.ORIGIN.equals(target)?source.getHost():Uri.parse(target).getHost());}
                 @Override public void onPageFinished(WebView view,String target){
                     // Document load is not video playback. Keep the bounded startup
                     // deadline until a content clock or playing signal arrives.
                     if(!challengeDocument[0])verifying[0]=false;
                 }
                 @Override public void onReceivedHttpError(WebView view,WebResourceRequest request,android.webkit.WebResourceResponse response){
-                    if(!request.isForMainFrame()||response.getStatusCode()<400)return;
-                    if(PlayerHttpPolicy.needsBrowserVerification(response.getStatusCode(),response.getResponseHeaders())){
+                    if(playerDialog!=dialog||!request.isForMainFrame()||response.getStatusCode()<400)return;
+                    boolean verification=PlayerHttpPolicy.needsBrowserVerification(response.getStatusCode(),response.getResponseHeaders());
+                    diagnostics.http(response.getStatusCode(),verification);
+                    if(verification){
                         challengeDocument[0]=true;
                         title.setText("Browser verification");
                         // Give normal JavaScript/cookie verification a bounded opportunity.
@@ -136,7 +139,7 @@ public class PlayerViewPlugin extends Plugin {
                     }
                     reason[0]="failed";dialog.dismiss();
                 }
-                @Override public void onReceivedError(WebView view,WebResourceRequest request,android.webkit.WebResourceError error){if(request.isForMainFrame()){reason[0]="failed";dialog.dismiss();}}
+                @Override public void onReceivedError(WebView view,WebResourceRequest request,android.webkit.WebResourceError error){if(playerDialog==dialog&&request.isForMainFrame()){diagnostics.network(error.getErrorCode());reason[0]="failed";dialog.dismiss();}}
             });
             web.setWebChromeClient(new WebChromeClient() {
                 private View video;
@@ -154,8 +157,11 @@ public class PlayerViewPlugin extends Plugin {
                 @Override public boolean onJsPrompt(WebView view,String target,String message,String initial,android.webkit.JsPromptResult result){result.cancel();return true;}
             });
             stage.addView(web,new FrameLayout.LayoutParams(-1,-1)); dialog.setContentView(layout);
-            dialog.setOnDismissListener(d -> { watchdog.removeCallbacksAndMessages(null);web.stopLoading();web.loadUrl("about:blank");stage.removeAllViews();web.destroy();playerWebView=null;playerDialog=null;JSObject result=new JSObject();result.put("reason",reason[0]);result.put("played",played[0]);result.put("media",media);result.put("position",latest[0]);result.put("duration",latest[1]);call.resolve(result); });
-            dialog.show();watchdog.postDelayed(startupTimeout,observableFile?30000:60000);web.loadUrl(url,headers);
+            dialog.setOnDismissListener(d -> { watchdog.removeCallbacksAndMessages(null);playerDialog=null;playerWebView=null;web.stopLoading();web.loadUrl("about:blank");stage.removeAllViews();web.destroy();JSObject result=new JSObject();result.put("reason",reason[0]);result.put("played",played[0]);result.put("media",media);result.put("position",latest[0]);result.put("duration",latest[1]);if(!diagnostics.sourceError().isEmpty())result.put("sourceError",diagnostics.sourceError());if(diagnostics.httpStatus()>0)result.put("httpStatus",diagnostics.httpStatus());if(diagnostics.networkErrorCode()<0)result.put("networkErrorCode",diagnostics.networkErrorCode());call.resolve(result); });
+            dialog.show();watchdog.postDelayed(startupTimeout,observableFile?30000:60000);
+            String framed=SourcePlayerFrame.html(url);
+            if(framed!=null)web.loadDataWithBaseURL(SourcePlayerFrame.ORIGIN,framed,"text/html","UTF-8",null);
+            else web.loadUrl(url,headers);
         });
     }
     @PluginMethod public void close(PluginCall call) { getActivity().runOnUiThread(() -> { if(playerDialog!=null)playerDialog.dismiss();call.resolve(); }); }

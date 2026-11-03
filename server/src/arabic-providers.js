@@ -66,14 +66,14 @@ export function arabicId(provider,type,value){
   }else if(['kirmalk','ahwaktv'].includes(provider)){
     if(u.pathname!==(type==='s'?'/category.php':'/watch.php'))return null;
     token=u.searchParams.get(type==='s'?'cat':'vid');
-  }else{if(u.search||u.hash)return null;try{token=Buffer.from(decodeURIComponent(u.pathname)).toString('base64url');}catch{return null;}if(token.length>200)return null;}
+  }else{if(u.search||u.hash)return null;try{let pathname=decodeURIComponent(u.pathname);if(provider==='egydead'&&type==='e')pathname=pathname.replace(/^\/episodes\//,'/episode/');token=Buffer.from(pathname).toString('base64url');}catch{return null;}if(token.length>200)return null;}
   const id=`sp:${provider}:${type}:${token}`;return parseArabicId(id)?id:null;
 }
 export function arabicIdFromUrl(value){
   const cimafu=cimafuIdFromUrl(value);if(cimafu)return cimafu;
   for(const [provider,cfg] of Object.entries(ARABIC_PROVIDERS)){
     const u=fixed(value,cfg.origin);if(!u)continue;
-    const type=u.pathname==='/view-serie.php'||u.pathname==='/category.php'||u.pathname.startsWith('/series/')||u.pathname.startsWith('/serie/')||u.pathname.startsWith('/season/')?'s':u.pathname.startsWith('/episode/')?'e':'m';
+    const type=u.pathname==='/view-serie.php'||u.pathname==='/category.php'||u.pathname.startsWith('/series/')||u.pathname.startsWith('/serie/')||u.pathname.startsWith('/season/')?'s':u.pathname.startsWith('/episode/')||provider==='egydead'&&u.pathname.startsWith('/episodes/')?'e':'m';
     return arabicId(provider,type,u.href);
   }return null;
 }
@@ -87,16 +87,42 @@ export async function arabicSnapshot(id){
   if(stamp!==savedStamp){const data=JSON.parse(fs.readFileSync(file,'utf8'));savedRows=new Map((Array.isArray(data)?data:data.items||[]).filter(r=>parseArabicId(r.id)).map(r=>[r.id,r]));savedEpisodes=new Map();for(const row of savedRows.values())for(const episode of row.episodes||[])savedEpisodes.set(episode.id,row);savedStamp=stamp;}
   return savedRows.get(id)||savedEpisodes.get(id)||null;
 }
-export async function arabicPage(url,{view=false,fresh=false}={}){
+function ahwakTitlePage(value){try{const u=new URL(value);return u.origin===ARABIC_PROVIDERS.ahwaktv.origin&&!u.username&&!u.password&&!u.hash&&/^\/(?:watch|see)\.php$/.test(u.pathname)&&[...u.searchParams.keys()].length===1&&/^[A-Za-z0-9_-]{1,100}$/.test(u.searchParams.get('vid')||'');}catch{return false;}}
+const ahwakRedirectCache=new Map();
+// This source rotates public title IDs through long chains of permanent moves.
+// Follow only its title routes, with a total deadline and cycle/hop limits.
+export async function fetchAhwakPage(url,{fetchImpl=safeRemoteFetch,now=Date.now,redirectCache=ahwakRedirectCache}={}){
+  if(!ahwakTitlePage(url))throw new Error('Invalid Ahwak title destination');
+  const initial=url,started=now(),cached=redirectCache.get(initial),deadline=started+12000,seen=new Set();
+  let usingCached=!!(cached&&started-cached.at<6*3600000&&ahwakTitlePage(cached.url));
+  if(usingCached)url=cached.url;
+  for(let redirects=0;redirects<=24;redirects++){
+    if(seen.has(url))throw new Error('Ahwak source redirect loop');seen.add(url);
+    const remaining=deadline-now();if(remaining<=0)throw new Error('Ahwak source redirect deadline exceeded');
+    const response=await fetchImpl(url,{manualRedirect:true,timeoutMs:Math.min(6500,remaining),headers:{'User-Agent':'Flixer/1.6 (public catalogue metadata)',Accept:'text/html'}});
+    if(usingCached&&[404,410].includes(response.status)){
+      await response.body?.cancel();redirectCache.delete(initial);usingCached=false;url=initial;seen.clear();continue;
+    }
+    const location=response.headers.get('location');
+    if(![301,302,303,307,308].includes(response.status)||!location){
+      if(response.ok&&url!==initial){redirectCache.set(initial,{url,at:now()});if(redirectCache.size>512)redirectCache.delete(redirectCache.keys().next().value);}
+      return response;
+    }
+    await response.body?.cancel();
+    const next=new URL(location,url).href;if(!ahwakTitlePage(next))throw new Error('Ahwak source redirect destination changed');url=next;
+  }
+  throw new Error('Too many Ahwak source redirects');
+}
+export async function arabicPage(url,{view=false,fresh=false,onResolvedUrl}={}){
   url=currentArabicUrl(url);
-  const key=`${view}:${url}`,old=cache.get(key);if(!fresh&&old&&Date.now()-old.at<120000)return old.promise;
+  const key=`${view}:${url}`,old=cache.get(key);if(!fresh&&old&&Date.now()-old.at<120000){const result=await old.promise;onResolvedUrl?.(result.url);return result.html;}
   const promise=(async()=>{
-    const r=await safeRemoteFetch(url,{timeoutMs:6500,method:view?'POST':'GET',body:view?'View=1':undefined,headers:{'User-Agent':'Flixer/1.6 (public catalogue metadata)',Accept:'text/html',...(view?{'Content-Type':'application/x-www-form-urlencoded'}:{})}});
+    const r=!view&&ahwakTitlePage(url)?await fetchAhwakPage(url):await safeRemoteFetch(url,{timeoutMs:6500,method:view?'POST':'GET',body:view?'View=1':undefined,headers:{'User-Agent':'Flixer/1.6 (public catalogue metadata)',Accept:'text/html',...(view?{'Content-Type':'application/x-www-form-urlencoded'}:{})}});
     if(!r.ok){await r.body?.cancel();throw new Error(`Arabic source HTTP ${r.status}`);}
     if(new URL(r.url).origin!==new URL(url).origin){await r.body?.cancel();throw new Error('Arabic source origin changed');}
-    const html=await r.text();if(!html.trim()||/<title[^>]*>\s*(?:Just a moment|Access denied|Quick check)/i.test(html))throw new Error('Arabic source verification required');return html;
+    const html=await r.text();if(!html.trim()||/<title[^>]*>\s*(?:Just a moment|Access denied|Quick check)/i.test(html))throw new Error('Arabic source verification required');return {html,url:r.url};
   })();cache.set(key,{at:Date.now(),promise});if(cache.size>500)cache.delete(cache.keys().next().value);
-  try{return await promise;}catch(e){cache.delete(key);throw e;}
+  try{const result=await promise;onResolvedUrl?.(result.url);return result.html;}catch(e){cache.delete(key);throw e;}
 }
 function row(id,title,poster,{collection='',country=null}={}){
   const p=parseArabicId(id),kind=p.type==='m'?'film':'series';
@@ -185,14 +211,15 @@ export function parseArabicDetails(id,html){
     item.sourceSeasons=$('a[href*="/season/"]').toArray().map(a=>({url:fixed($(a).attr('href'),cfg.origin)?.href,number:Number(/(\d+)/.exec($(a).text())?.[1])||null})).filter(s=>s.url);item.episodesComplete=false;
   }else if(p.type==='s'){
     const season=Number(/الموسم\s*(\d+)/.exec(title)?.[1])||null;
-    const links=p.provider==='streamtunisie'?$('article .entry-content a[href]'):p.provider==='egydead'?$('.EpsList a[href*="/episode/"]').length?$('.EpsList a[href*="/episode/"]'):$('a[href*="/episode/"]'):$('.category-videos .video-card a[href*="watch.php?vid="][title],.pm-ul-browse-videos a[href*="watch.php?vid="][title],.pm-ul-search-videos a[href*="watch.php?vid="][title]');
+    const egyEpisodes='a[href*="/episode/"],a[href*="/episodes/"]';
+    const links=p.provider==='streamtunisie'?$('article .entry-content a[href]'):p.provider==='egydead'?$('.EpsList').find(egyEpisodes).length?$('.EpsList').find(egyEpisodes):$(egyEpisodes):$('.category-videos .video-card a[href*="watch.php?vid="][title],.pm-ul-browse-videos a[href*="watch.php?vid="][title],.pm-ul-search-videos a[href*="watch.php?vid="][title]');
     links.each((_,a)=>{
       const label=clean($(a).attr('title')||$(a).text()),u=fixed($(a).attr('href'),cfg.origin);if(!u||!label)return;
       if(p.provider==='streamtunisie'&&!/episode|حلقة/i.test(label+' '+u.pathname))return;
       if(p.query&&clean(label).replace(/^(?:مشاهدة\s+)?مسلسل\s+/,'').split(/الحلقة|حلقه/)[0].trim()!==p.query)return;
       if(p.provider==='egydead'){
         const stem=decodeURIComponent(p.pathname).split('/').filter(Boolean).at(-1).replace(/-(?:19|20)\d{2}$/,'');
-        if(!$(a).closest('.EpsList').length&&!decodeURIComponent(u.pathname).startsWith(`/episode/${stem}-`))return;
+        if(!$(a).closest('.EpsList').length&&!decodeURIComponent(u.pathname).replace(/^\/episodes\//,'/episode/').startsWith(`/episode/${stem}-`))return;
       }
       const epId=arabicId(p.provider,'e',u.href);if(!epId)return;
       const slot=/-s(\d+)e(\d+)\/$/i.exec(u.pathname);
@@ -322,8 +349,9 @@ export async function cinetimesCommonsServers(html,{fetchJson=async url=>{
   return servers;
 }
 export function egydeadWatchLink(id,html){
- const p=parseArabicId(id);if(p?.provider!=='egydead'||p.type==='s')return null;const base=new URL(arabicUrl(id)),expected=base.pathname.replace(/\/$/,'')+'/watch/',$=load(html);
- for(const el of $('.watchNow a[href]').toArray())try{const u=fixed($(el).attr('href'),base.origin,base.href);if(u&&u.pathname===expected&&!u.search&&!u.hash&&u.port==='')return u.href;}catch{}
+ const p=parseArabicId(id);if(p?.provider!=='egydead'||p.type==='s')return null;const base=new URL(arabicUrl(id)),expected=new Set([base.pathname.replace(/\/$/,'')+'/watch/']),$=load(html);
+ if(p.type==='e'&&/^\/episodes?\//.test(base.pathname))for(const prefix of ['episode','episodes'])expected.add(base.pathname.replace(/^\/episodes?\//,`/${prefix}/`).replace(/\/$/,'')+'/watch/');
+ for(const el of $('.watchNow a[href]').toArray())try{const u=fixed($(el).attr('href'),base.origin,base.href);if(u&&expected.has(u.pathname)&&!u.search&&!u.hash&&u.port==='')return u.href;}catch{}
  return null;
 }
 export async function resolveArabicServers(id,{fresh=false,transport,fetchPage=arabicPage,readSnapshot=arabicSnapshot}={}){
@@ -343,19 +371,20 @@ export async function resolveArabicServers(id,{fresh=false,transport,fetchPage=a
     if(data?.sourceUrl&&/^https:\/\/cimatnwatchingg\.blogspot\.com\/p\/[a-z0-9-]+\.html$/.test(data.sourceUrl))players.push({id:'cimatn:original-page',provider:'cimatn',name:'CimaTN - original player page',type:'browser',embedUrl:data.sourceUrl,sandbox:null});
     return players;
   }
-  const p=parseArabicId(id);if(!p||p.type==='s')return [];let html;
-  try{html=await fetchPage(arabicUrl(id),{fresh});}
+  const p=parseArabicId(id);if(!p||p.type==='s')return [];let html,playbackPageUrl=arabicUrl(id);
+  const fetchPlaybackPage=(url,extra={})=>{playbackPageUrl=currentArabicUrl(url);return fetchPage(url,{fresh,...extra,onResolvedUrl:resolved=>{playbackPageUrl=resolved;}});};
+  try{html=await fetchPlaybackPage(arabicUrl(id));}
   catch(error){if(!fresh&&cached.length&&!/HTTP (?:404|410)\b/.test(error.message||''))return cached.map(server=>({...server,cached:true}));throw error;}
   try{
   if(p.provider==='egydead'){
     const watch=egydeadWatchLink(id,html);
-    if(watch)html=await fetchPage(watch,{fresh});
-    else if(!parseArabicServers(id,html).length)html=await fetchPage(arabicUrl(id),{view:true,fresh});
+    if(watch)html=await fetchPlaybackPage(watch);
+    else if(!parseArabicServers(id,html).length)html=await fetchPlaybackPage(arabicUrl(id),{view:true});
   }
   if(p.provider==='streamtunisie'&&p.type==='m'){
     const $=load(html),link=$('article a[href*="/watch-movie-"]').first().attr('href'),u=fixed(link,ARABIC_PROVIDERS[p.provider].origin);if(u&&/^\/watch-movie-[^/?]+\/$/.test(u.pathname))html=await fetchPage(u.href,{fresh});
   }
-  if(p.provider==='ahwaktv'){let url=`${ARABIC_PROVIDERS.ahwaktv.origin}/see.php?vid=${p.slug}`;html=await fetchPage(url,{fresh});for(let step=0;step<2;step++){const next=ahwakPlaybackLink(html);if(!next||next===url)break;url=next;html=await fetchPage(url,{fresh});}}
+  if(p.provider==='ahwaktv'){let url=ahwakPlaybackLink(html)||`${ARABIC_PROVIDERS.ahwaktv.origin}/see.php?vid=${p.slug}`;html=await fetchPlaybackPage(url);for(let step=0;step<2;step++){const next=ahwakPlaybackLink(html);if(!next||next===url)break;url=next;html=await fetchPlaybackPage(url);}}
   if(p.provider==='tuniflix'){
     const $=load(html),choices=$('iframe[src]').toArray().map(a=>fixed($(a).attr('src'),ARABIC_PROVIDERS.tuniflix.origin)).filter(u=>u&&u.pathname==='/'&&/^\d+$/.test(u.searchParams.get('trembed')||'')&&/^\d+$/.test(u.searchParams.get('trid')||'')&&/^[12]$/.test(u.searchParams.get('trtype')||''));
     const firstId=choices[0]?.searchParams.get('trid');
@@ -366,7 +395,7 @@ export async function resolveArabicServers(id,{fresh=false,transport,fetchPage=a
   }
   const servers=parseArabicServers(id,html);
   if(p.provider==='cinetimes'&&!servers.length)return cinetimesCommonsServers(html);
-  return servers;
+  return ['ahwaktv','egydead'].includes(p.provider)?servers.map(server=>({...server,headers:{...server.headers,Referer:currentArabicUrl(playbackPageUrl)}})):servers;
   }catch(error){if(!fresh&&cached.length&&!/HTTP (?:404|410)\b/.test(error.message||''))return cached.map(server=>({...server,cached:true}));throw error;}
 }
 

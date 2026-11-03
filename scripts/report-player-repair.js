@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {classifyPlayback} from './playback-outcome.js';
+import {classifyPlayback,nativePlaybackDiagnostics} from './playback-outcome.js';
 
 const finite=value=>Number.isFinite(value)&&value>=0;
 const label=value=>String(value||'').replace(/https?:\/\/[^\s"<>]+/gi,'[source URL]').replace(/\b(?:token|signature|authorization|cookie|key)\s*[=:]\s*\S+/gi,'[redacted]').replace(/[A-Za-z0-9_-]{80,}/g,'[token]').slice(0,240);
@@ -26,7 +26,8 @@ export function playbackEvidence(result){
 
 function publicAttempt(result){
   const proof=playbackEvidence(result),status=proof?'playback_confirmed':result?.playbackConfirmed?'unverified_clock_attribution':classifyPlayback({...result,playbackConfirmed:false});
-  return {status,testedAt:date(result?.at),appVersion:label(result?.appVersion),...(proof?{proof}:{}),errorCodes:[...new Set((result?.nativeResults||[]).flatMap(row=>[row.error,row.result?.error]).filter(value=>typeof value==='string'&&/^ERROR_CODE_[A-Z0-9_]+$/.test(value)))]};
+  const sourceDiagnostics=nativePlaybackDiagnostics(result||{});
+  return {status,testedAt:date(result?.at),appVersion:label(result?.appVersion),...(proof?{proof}:{}),...(sourceDiagnostics.length?{sourceDiagnostics}:{}),errorCodes:[...new Set((result?.nativeResults||[]).flatMap(row=>[row.error,row.result?.error]).filter(value=>typeof value==='string'&&/^ERROR_CODE_[A-Z0-9_]+$/.test(value)))]};
 }
 
 export function summarizePlayerRepair(groups,{titleById=new Map()}={}){

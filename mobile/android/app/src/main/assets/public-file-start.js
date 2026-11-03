@@ -3,6 +3,7 @@
 // No source URL extraction, ad clicks, verification or access-token changes.
 (()=>{
  const eligible=location.hostname==='uqload.vc'&&/^\/embed-[a-z0-9]+\.html$/i.test(location.pathname)
+  ||location.hostname==='morencius.com'&&/^\/v\/[a-z0-9]+$/.test(location.pathname)
   ||location.hostname==='watch.strp2p.site'&&(/^\/e\/[a-z0-9]+\/?$/i.test(location.pathname)||location.pathname==='/'&&Boolean(location.search));
  if(!eligible)return;
  const attempted=new WeakSet(),encrypted=new WeakSet();

@@ -45,13 +45,14 @@ export function parseDessinNetDetails(id,html){
 export async function getDessinNetDetails(id,options={}){return parseDessinNetDetails(id,await request(dessinNetUrl(id),options));}
 export function parseDessinNetPlayers(reply){
   const $=load(reply),out=[];
-  $('iframe[src]').each((_,e)=>{try{const u=new URL($(e).attr('src'));if(u.protocol!=='https:'||u.port||u.username||u.password)return;
-    const xs=/^lecteur\d*\.xtremestream\.(?:co|com|net|xyz)$/.test(u.hostname)&&u.pathname==='/player/index.php'&&/^[A-Za-z0-9]+$/.test(u.searchParams.get('data')||'');
-    const embed=u.hostname==='emmmmbed.com'&&/^\/embed\/[A-Za-z0-9_-]+$/.test(u.pathname);
+  $('iframe[src]').each((_,e)=>{try{const u=new URL($(e).attr('src'));if(u.protocol!=='https:'||u.port||u.username||u.password||u.hash)return;
+    const xs=/^lecteur\d*\.xtremestream\.(?:co|com|net|xyz)$/.test(u.hostname)&&u.pathname==='/player/index.php'&&/^\?data=[A-Za-z0-9]+$/.test(u.search);
+    const embed=u.hostname==='emmmmbed.com'&&/^\/embed\/[A-Za-z0-9_-]+$/.test(u.pathname)&&!u.search;
     if(!xs&&!embed)return;
     const base={provider:'dessinanimenet',sourceOrigin:DESSIN_NET_ORIGIN};
-    if(xs){const stream=new URL(u);stream.pathname='/player/xs1.php';out.push({...base,id:'dessinanimenet:hls:'+u.searchParams.get('data'),name:'DessinAnime.net · Direct',type:'hls',streamUrl:stream.href,headers:{Referer:u.origin+'/','User-Agent':'Mozilla/5.0'}});}
-    out.push({...base,id:'dessinanimenet:embed:'+out.length,name:'DessinAnime.net · '+u.hostname,type:'embed',embedUrl:u.href,sandbox:null});
+    // Current Xtremestream pages use their own fragment loader. The formerly
+    // inferred xs1.php playlist has dead segments and is not an advertised source.
+    out.push({...base,id:'dessinanimenet:embed:'+out.length,name:'DessinAnime.net · '+u.hostname,type:'embed',embedUrl:u.href,sandbox:null,headers:{Referer:DESSIN_NET_ORIGIN+'/'}});
   }catch{}});return out;
 }
 export async function resolveDessinNetServers(id,options={}){

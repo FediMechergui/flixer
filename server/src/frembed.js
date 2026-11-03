@@ -68,28 +68,44 @@ export async function resolveFrembedServers(id,options={}){
   const referer=`${FREMBED_ORIGIN}/${p.type==='m'?'films':'series'}?${params}`;
   try{
     const payload=JSON.parse(await request(`/api/${p.type==='m'?'films':'series'}?${params}`,{...options,referer}));
-    const routes=parseFrembedRoutes(id,payload),resolved=await Promise.allSettled(routes.slice(0,8).map(route=>resolveHostRoute(route,{...options,referer})));
+    const routes=selectFrembedRoutes(parseFrembedRoutes(id,payload)),resolved=await Promise.allSettled(routes.map(route=>resolveHostRoute(route,{...options,referer})));
     const hosts=[...new Map(resolved.flatMap(result=>result.status==='fulfilled'&&result.value?[result.value]:[]).map(server=>[server.embedUrl,server])).values()];
     return [...hosts,fallback];
   }catch{return [fallback];}
 }
 
-const hostFamilies={voe:new Set(['voe.sx','derricknationtop.com']),dood:new Set(['doodstream.com','dood.to','dood.watch','playmogo.com']),uqload:new Set(['uqload.vc','uqload.net','uqload.co'])};
+const hostFamilies={voe:new Set(['voe.sx','derricknationtop.com']),dood:new Set(['doodstream.com','dood.to','dood.watch','playmogo.com']),uqload:new Set(['uqload.vc','uqload.net','uqload.co']),netu:new Set(['netu.frembed.bond'])};
+export function selectFrembedRoutes(routes){
+  // Keep the existing eight-host budget plus one actual Netu choice per language.
+  // Appending the legacy choices must not hide them behind a full modern list.
+  const netu=new Map();for(const route of routes)if(route.host==='netu'&&!netu.has(route.language))netu.set(route.language,route);
+  return [...routes.filter(route=>route.host!=='netu').slice(0,8),...[...netu.values()].slice(0,3)];
+}
 export function parseFrembedRoutes(id,data){
   const p=parseFrembedId(id);if(!p||p.type==='s'||String(data?.tmdb)!==p.slug||data.error||data.is_visible===false||p.type==='e'&&(data.sa!==p.season||data.epi!==p.number))throw Error('Frembed server identity mismatch');
-  if(!Array.isArray(data.links))return [];
+  if(data.premium||data.vip||data.requiresAuth)return [];
   const seen=new Set(),out=[];
-  for(const link of data.links){try{
+  for(const link of Array.isArray(data.links)?data.links:[]){try{
     if(link.premium||link.vip||link.requiresAuth||!Number.isSafeInteger(link.id)||link.id<1||!['vf','vff','vfq','vostfr','vo'].includes(link.lang))continue;
     const u=new URL(link.url,FREMBED_ORIGIN),q=u.searchParams;
     if(u.origin!==FREMBED_ORIGIN||u.username||u.password||u.hash||u.pathname!=='/api/stream'||q.get('type')!==(p.type==='m'?'movie':'serie')||q.get('tmdb')!==p.slug||q.get('server')!==`id:${link.id}`)continue;
     const keys=p.type==='e'?['type','tmdb','sa','epi','server']:['type','tmdb','server'];
     if([...q.keys()].some(k=>!keys.includes(k))||keys.some(k=>q.getAll(k).length!==1)||p.type==='e'&&(q.get('sa')!==String(p.season)||q.get('epi')!==String(p.number))||seen.has(link.id))continue;
     seen.add(link.id);out.push({id:`frembed:${id}:${link.id}`,url:u.href,host:link.host?.slug,name:clean(link.label||link.host?.name||'Player').slice(0,60),language:link.lang});
-  }catch{}}return out;
+  }catch{}}
+  // The free API still publishes its Netu choice in the legacy link2 fields.
+  // Do not invent missing slots or expose the other obsolete legacy hosts.
+  for(const [key,language] of [['link2','vf'],['link2vostfr','vostfr'],['link2vo','vo']])try{
+    if(typeof data[key]!=='string'||!data[key])continue;
+    const u=new URL(data[key],FREMBED_ORIGIN),q=u.searchParams,keys=p.type==='e'?['type','tmdb','sa','epi','server']:['type','tmdb','server'];
+    if(u.origin!==FREMBED_ORIGIN||u.username||u.password||u.hash||u.pathname!=='/api/stream'||q.get('type')!==(p.type==='m'?'movie':'serie')||q.get('tmdb')!==p.slug||q.get('server')!==key)continue;
+    if([...q.keys()].some(k=>!keys.includes(k))||keys.some(k=>q.getAll(k).length!==1)||p.type==='e'&&(q.get('sa')!==String(p.season)||q.get('epi')!==String(p.number)))continue;
+    out.push({id:`frembed:${id}:legacy:${key}`,url:u.href,host:'netu',name:'Netu',language});
+  }catch{}
+  return out;
 }
 export function frembedHostServer(route,location){
-  try{const u=new URL(location);if(u.protocol!=='https:'||u.username||u.password||u.port||!hostFamilies[route.host]?.has(u.hostname))return null;
+  try{const u=new URL(location);if(u.protocol!=='https:'||u.username||u.password||u.port||u.search||u.hash||!hostFamilies[route.host]?.has(u.hostname))return null;
     if(route.host==='uqload'?!/^\/embed-[a-z0-9]+\.html$/i.test(u.pathname):!/^\/e\/[a-z0-9]+\/?$/i.test(u.pathname))return null;
     return {id:route.id,provider:'frembed',name:`Frembed · ${route.language.toUpperCase()} · ${route.name}`,type:'embed',embedUrl:u.href,sourceOrigin:FREMBED_ORIGIN,sandbox:null,...languages(route.language),headers:{Referer:FREMBED_ORIGIN+'/'},resolution:'source-player-link'};
   }catch{return null;}

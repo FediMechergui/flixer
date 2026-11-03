@@ -8,6 +8,11 @@ function page({host='uqload.vc',pathname='/embed-public.html',search='',duration
  listeners.get('loadedmetadata')?.({target:video});listeners.get('canplay')?.({target:video});return calls;
 }
 test('a paused public file-host film gets one ordinary play request',()=>{assert.equal(page(),1);assert.equal(page({host:'watch.strp2p.site',pathname:'/e/public'}),1);assert.equal(page({host:'watch.strp2p.site',pathname:'/',search:'?file=public'}),1);});
+test('the observed Morencius content video starts normally only on its public player route',()=>{
+ const source={host:'morencius.com',pathname:'/v/fpwfee6gjhji',duration:2246.6,text:'0 seconds of 37 minutes 26 seconds'};
+ assert.equal(page(source),1);
+ for(const changed of [{pathname:'/account'},{pathname:'/v/fpwfee6gjhji/extra'},{host:'morencius.com.evil.org'},{duration:30},{encrypted:true},{keys:{}},{text:'Verify you are human'},{text:'Premium required'}])assert.equal(page({...source,...changed}),0);
+});
 test('source initialization never starts ads, encrypted video, verification or paid access',()=>{
  for(const options of [{duration:30},{encrypted:true},{keys:{}},{text:'Verify you are human'},{text:'Premium only'},{text:'Subscription required'},{host:'other.example'},{pathname:'/login'}])assert.equal(page(options),0,JSON.stringify(options));
 });

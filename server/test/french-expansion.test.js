@@ -5,7 +5,7 @@ import {parseDessinNetId,dessinNetIdFromUrl,parseDessinNetList,parseDessinNetDet
 import {specialistJobs,parseSpecialistId,specialistIdFromUrl} from '../src/specialist-providers.js';
 import {mergeLibrary} from '../src/merge-library.js';
 import {mergeDessinPlayback,getDessinDetails} from '../src/dessinanime.js';
-import {frembedOfferingFor,parseFrembedRoutes,frembedHostServer} from '../src/frembed.js';
+import {frembedOfferingFor,parseFrembedRoutes,frembedHostServer,selectFrembedRoutes} from '../src/frembed.js';
 import {unifiedStream} from '../src/library-service.js';
 
 const seriesId='sp:frembed:s:246';
@@ -20,6 +20,21 @@ test('Frembed free server links bind to the requested title, episode, language a
   for(const change of [{premium:true},{url:link.url.replace('epi=1','epi=2')},{url:link.url+'&tmdb=999'},{url:link.url.replace('id:21687','id:1')},{url:'https://evil.org'+link.url}])assert.deepEqual(parseFrembedRoutes(id,{...data,links:[{...link,...change}]}),[]);
   for(const location of ['https://uqload.vc.evil.org/embed-x.html','https://127.0.0.1/e/private','https://user@uqload.vc/embed-x.html','https://uqload.vc/account'])assert.equal(frembedHostServer(routes[0],location),null);
   const dubbed=frembedHostServer({...routes[0],language:'vostfr'},host.embedUrl);assert.equal(dubbed.audioLanguages,undefined);assert.deepEqual(dubbed.subtitleLanguages,['fr']);
+});
+
+test('Frembed retains explicitly published legacy Netu choices with exact episode and language identity',()=>{
+  const id='sp:frembed:e:246:1:1',url='/api/stream?type=serie&tmdb=246&sa=1&epi=1&server=link2',data={tmdb:'246',sa:1,epi:1,links:[],link2:url};
+  const routes=parseFrembedRoutes(id,data);assert.equal(routes.length,1);assert.equal(routes[0].host,'netu');assert.equal(routes[0].language,'vf');
+  const player=frembedHostServer(routes[0],'https://netu.frembed.bond/e/GjvwOiHOfeKj');assert.equal(player.type,'embed');assert.deepEqual(player.audioLanguages,['fr']);
+  const subtitled=parseFrembedRoutes(id,{...data,link2:null,link2vostfr:url.replace('server=link2','server=link2vostfr')});assert.equal(subtitled[0].language,'vostfr');assert.deepEqual(frembedHostServer(subtitled[0],player.embedUrl).subtitleLanguages,['fr']);
+  for(const change of [{link2:null},{premium:true},{vip:true},{requiresAuth:true},{link2:url.replace('epi=1','epi=2')},{link2:url+'&tmdb=999'},{link2:url.replace('server=link2','server=link1')},{link2:'https://evil.org'+url}])assert.deepEqual(parseFrembedRoutes(id,{...data,...change}),[]);
+  for(const destination of ['https://netu.frembed.bond.evil.org/e/GjvwOiHOfeKj','https://netu.frembed.bond/account','https://user@netu.frembed.bond/e/GjvwOiHOfeKj','https://netu.frembed.bond/e/GjvwOiHOfeKj?url=elsewhere','https://netu.frembed.bond/e/GjvwOiHOfeKj#other','https://playmogo.com/e/GjvwOiHOfeKj'])assert.equal(frembedHostServer(routes[0],destination),null);
+});
+
+test('a full Frembed modern list cannot crowd out the advertised Netu language alternatives',()=>{
+  const modern=Array.from({length:14},(_,i)=>({id:String(i),host:'voe',language:'vf'})),netu=['vf','vostfr','vo'].map(language=>({id:'netu:'+language,host:'netu',language}));
+  const selected=selectFrembedRoutes([...modern,...netu,{id:'duplicate-netu',host:'netu',language:'vf'}]);
+  assert.equal(selected.length,11);assert.deepEqual(selected.slice(-3),netu);assert.deepEqual(selected.slice(0,8),modern.slice(0,8));
 });
 test('verified French titles discover missing Frembed offerings without inventing episode coordinates',async()=>{
   const show={id:'sp:dessinanime:s:246-avatar',kind:'series',title:'Avatar',tmdbId:246,collections:['french'],offerings:[{provider:'dessinanime',id:'sp:dessinanime:s:246-avatar'}],episodes:[{id:'sp:dessinanime:e:246-avatar:2:3',season:2,number:3,offerings:[{provider:'dessinanime',id:'sp:dessinanime:e:246-avatar:2:3'}]}]};
@@ -79,14 +94,14 @@ test('DessinAnime.net broken search slugs require unique source title plus match
   assert.deepEqual(parseDessinNetList('<main>0 résultat trouvé</main>',{search:true}).items,[]);
   assert.throws(()=>parseDessinNetList('<title>Just a moment</title>'),/format/);
 });
-test('DessinAnime.net maps public Xtremestream frames to inline HLS and rejects untrusted hosts',()=>{
+test('DessinAnime.net retains the actual public frames without inventing legacy HLS routes',()=>{
   const parsed=parseDessinNetPlayers('<iframe src="https://lecteur1.xtremestream.co/player/index.php?data=Abc123"></iframe><iframe src="https://emmmmbed.com/embed/21laX8xe"></iframe><iframe src="https://lecteur1.xtremestream.co.evil.org/player/index.php?data=abc"></iframe><iframe src="https://127.0.0.1/private"></iframe>');
-  assert.equal(parsed.length,3);assert.equal(parsed[0].type,'hls');assert.equal(parsed[0].streamUrl,'https://lecteur1.xtremestream.co/player/xs1.php?data=Abc123');assert.equal(parsed[0].headers.Referer,'https://lecteur1.xtremestream.co/');assert.equal(parsed[2].embedUrl,'https://emmmmbed.com/embed/21laX8xe');
+  assert.equal(parsed.length,2);assert.equal(parsed[0].type,'embed');assert.equal(parsed[0].embedUrl,'https://lecteur1.xtremestream.co/player/index.php?data=Abc123');assert.equal(parsed[0].headers.Referer,'https://dessinanime.net/');assert.equal(parsed[1].embedUrl,'https://emmmmbed.com/embed/21laX8xe');assert.ok(parsed.every(server=>!server.streamUrl));
 });
-test('the currently advertised Xtremestream.xyz host keeps source request headers for native HLS',()=>{
+test('the current Xtremestream.xyz player keeps its public source context and strict native route shape',()=>{
   const servers=parseDessinNetPlayers('<iframe src="https://lecteur1.xtremestream.xyz/player/index.php?data=0e01938fc48a2cfb5f2217fbfb00722d"></iframe>');
-  assert.equal(servers[0].type,'hls');assert.equal(servers[0].streamUrl,'https://lecteur1.xtremestream.xyz/player/xs1.php?data=0e01938fc48a2cfb5f2217fbfb00722d');assert.equal(servers[0].headers.Referer,'https://lecteur1.xtremestream.xyz/');assert.ok(servers[0].headers['User-Agent']);
-  for(const bad of ['https://lecteur1.xtremestream.xyz.evil.org/player/index.php?data=abc','https://user@lecteur1.xtremestream.xyz/player/index.php?data=abc','https://lecteur1.xtremestream.xyz/player/private.php?data=abc'])assert.deepEqual(parseDessinNetPlayers(`<iframe src="${bad}"></iframe>`),[]);
+  assert.equal(servers.length,1);assert.equal(servers[0].type,'embed');assert.equal(servers[0].embedUrl,'https://lecteur1.xtremestream.xyz/player/index.php?data=0e01938fc48a2cfb5f2217fbfb00722d');assert.equal(servers[0].headers.Referer,'https://dessinanime.net/');
+  for(const bad of ['https://lecteur1.xtremestream.xyz.evil.org/player/index.php?data=abc','https://user@lecteur1.xtremestream.xyz/player/index.php?data=abc','https://lecteur1.xtremestream.xyz/player/private.php?data=abc','https://lecteur1.xtremestream.xyz/player/index.php?data=abc&url=elsewhere','https://lecteur1.xtremestream.xyz/player/index.php?data=abc#other','https://emmmmbed.com/embed/abc?url=elsewhere'])assert.deepEqual(parseDessinNetPlayers(`<iframe src="${bad}"></iframe>`),[]);
 });
 test('both French sources participate in the provider registry and cartoon refresh scopes',()=>{
   const jobs=specialistJobs({collection:'french-cartoons'});for(const provider of ['frembed','dessinanimenet'])assert.deepEqual(jobs.filter(j=>j.provider===provider).map(j=>j.kind),['film','series']);
