@@ -26,6 +26,10 @@ on:
         description: 'Continue up to 600 free StarDima catalogue pages without restarting saved cursors'
         type: boolean
         default: false
+      carateen_backfill:
+        description: 'Import the public Carateen catalogue snapshot without crawling episode guides'
+        type: boolean
+        default: false
       dessin_browser_backfill:
         description: 'Export a fresh source seed for the independent DessinAnime browser runner'
         type: boolean
@@ -65,6 +69,17 @@ jobs:
           else
             node scripts/import-stardima.js --pages 24
           fi
+      - name: Import the public Carateen catalogue snapshot
+        if: inputs.carateen_backfill
+        run: node scripts/import-carateen.js --max-seconds 90
+      - name: Preserve Carateen source coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: carateen-source-coverage
+          path: artifacts/carateen-import.json
+          retention-days: 7
+          if-no-files-found: ignore
       - name: Preserve StarDima source coverage report
         if: always()
         uses: actions/upload-artifact@v4

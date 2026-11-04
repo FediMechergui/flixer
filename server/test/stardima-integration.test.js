@@ -30,6 +30,7 @@ test('adding StarDima historical lanes preserves active crawl cursors and leaves
   const ongoing={provider:'fmovies',kind:'film',page:39,cursor:'saved-position'},existing={provider:'stardima',kind:'series',collection:'',page:3,cursor:'saved-series'};
   const cache={specialistScopesVersion:9,completed:true,queue:[ongoing,existing]};
   const seeds=[...specialistJobs(),...STARDIMA_IMPORT_JOBS.filter(job=>job.collection).map(job=>({...job,page:1}))];
+  const carateenLanes=seeds.filter(job=>job.provider==='carateen').length;
   extendSpecialistScopes(cache,seeds,'flixer');
   assert.equal(cache.queue[0],ongoing);
   assert.equal(cache.queue[1],existing);
@@ -37,8 +38,8 @@ test('adding StarDima historical lanes preserves active crawl cursors and leaves
   assert.equal(cache.queue[1].cursor,'saved-series');
   assert.equal(cache.queue.filter(row=>row.provider==='stardima'&&row.kind==='series'&&row.collection==='').length,1);
   assert.equal(cache.queue.find(row=>row.provider==='stardima'&&row.kind==='film').page,1);
-  assert.equal(cache.queue.length,7,'only the six StarDima partitions join the existing unrelated cursor');
-  assert.equal(cache.specialistScopesVersion,10);
+  assert.equal(cache.queue.length,7+carateenLanes,'only StarDima and subsequently introduced Carateen partitions join the existing unrelated cursor');
+  assert.equal(cache.specialistScopesVersion,11);
   assert.equal(cache.completed,false);
   const size=cache.queue.length;extendSpecialistScopes(cache,seeds,'flixer');assert.equal(cache.queue.length,size);
   const dahsha={specialistScopesVersion:9,completed:true,queue:[ongoing]};
@@ -47,8 +48,8 @@ test('adding StarDima historical lanes preserves active crawl cursors and leaves
   const covered={specialistScopesVersion:9,completed:true,queue:[ongoing],stardimaCoverage:{version:1,partitions:Object.fromEntries(STARDIMA_IMPORT_JOBS.map(job=>[stardimaPartitionKey(job),{complete:true,nextPage:4}]))}};
   covered.stardimaCoverage.partitions['series:anime']={complete:false,nextPage:7};
   extendSpecialistScopes(covered,seeds,'flixer');
-  assert.equal(covered.queue.length,2,'the dedicated backfill must not be restarted by the regular refresh');
-  assert.deepEqual(covered.queue[1],{provider:'stardima',kind:'series',collection:'anime',page:7});
+  assert.equal(covered.queue.length,2+carateenLanes,'the dedicated backfill must not be restarted by the regular refresh');
+  assert.deepEqual(covered.queue.find(job=>job.provider==='stardima'),{provider:'stardima',kind:'series',collection:'anime',page:7});
 });
 
 test('verified StarDima titles retain Arabic alternatives and actual episode routes through merge, export and playback',async()=>{

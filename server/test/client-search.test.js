@@ -3,6 +3,26 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 
+test('Carateen Latin search evidence survives progressive updates and caching without inventing aliases',async()=>{
+ const row={id:'sp:carateen:s:sp-42',title:'مغامرة النجوم',kind:'series',sourceSearchText:'Space Adventure',altTitles:[],offerings:[{provider:'carateen',id:'sp:carateen:s:sp-42'}]};
+ const storage=new Map(),updates=[];
+ const context=vm.createContext({window:{FLIXER_CONFIG:{apiBase:'https://backend.test',live:false},dispatchEvent:()=>{}},console,URL,URLSearchParams,localStorage:{getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,value)},AbortController,setTimeout,clearTimeout,CustomEvent:class{},fetch:async input=>{
+  const url=new URL(String(input),'https://backend.test');let body={product:'flixer',shows:[]};
+  if(url.pathname==='/api/search')body=url.searchParams.has('providers')?{providers:['carateen','fmovies']}:url.searchParams.get('provider')==='carateen'?{items:[row]}:{items:[{id:'fm:t:default',title:'Unrelated upstream default',kind:'series'}]};
+  else if(/services|universes/.test(url.pathname))body={};
+  return {ok:true,status:200,headers:{get:()=>null},text:async()=>JSON.stringify(body)};
+ }});
+ for(const name of ['universes.js','tvmaze.js','api.js'])vm.runInContext(fs.readFileSync(new URL(`../../client-terrarium/js/${name}`,import.meta.url),'utf8'),context);
+ const api=new context.window.Api.FlixerApi();await api.catalog();await api._indexReady;api.liveEnabled=true;
+ const result=await api.search('Space Adventure',{onLocal:page=>updates.push(page)});
+ assert.deepEqual(Array.from(result.items,item=>item.id),[row.id]);
+ assert.ok(updates.some(page=>page.items.some(item=>item.id===row.id)));
+ assert.deepEqual(Array.from(api._byId.get(row.id).altTitles),[],'keywords are not title identity aliases');
+ assert.ok(JSON.parse(storage.get('flixer:delta')).some(item=>item.id===row.id&&item.sourceSearchText===row.sourceSearchText));
+ api.liveEnabled=false;
+ assert.deepEqual(Array.from((await api.search('Space Adventure')).items,item=>item.id),[row.id]);
+});
+
 test('native WCO search shares one card with a matching series and keeps independent versions playable',async()=>{
  const catalog={product:'flixer',shows:[{id:'fm:t:1',title:'Gravity Falls',kind:'series',year:2012,offerings:[{provider:'fmovies',id:'fm:t:1'}],episodes:[{id:'fm:e:1',season:1,number:1}]}]};
  const wco={id:'sp:wco:s:gravity-falls',title:'Gravity Falls',kind:'series',offerings:[{provider:'wco',id:'sp:wco:s:gravity-falls'}],episodes:[{id:'sp:wco:e:gravity-falls:gravity-falls-episode-1',season:null,number:1}]};

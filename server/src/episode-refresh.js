@@ -2,6 +2,7 @@ import {getFmoviesDetails} from './fmovies.js';
 import {getTitleDetails} from './myflixer.js';
 import {getSpecialistDetails,parseSpecialistId} from './specialist-providers.js';
 import {mergeShow} from './merge-library.js';
+import {hasNewEpisodeContent,newEpisodeContent,resolveEpisodeReference} from '../../shared/episode-updates.js';
 
 const provider=row=>row.id.startsWith('mf:')?'myflixer':row.id.startsWith('fm:')?'fmovies':parseSpecialistId(row.id)?.provider;
 async function resolve(row){if(row.id.startsWith('mf:'))return getTitleDetails(row.id);if(row.id.startsWith('fm:'))return getFmoviesDetails(row);return getSpecialistDetails(row.id,{fresh:true});}
@@ -13,9 +14,15 @@ export async function refreshSeriesEpisodes(rows,{limit=120,now=Date.now(),resol
   const updates=new Map();let cursor=0;
   await Promise.all(Array.from({length:Math.min(4,jobs.length)},async()=>{while(cursor<jobs.length){const row=jobs[cursor++],at=new Date(now).toISOString();try{
     const fresh=await resolveDetails(row);if(!fresh||fresh.id!==row.id||fresh.kind!=='series')throw Error('Episode refresh identity mismatch');
-    const previous=new Set((row.episodes||[]).map(e=>e.id));const added=(fresh.episodes||[]).filter(e=>!previous.has(e.id));
+    const added=newEpisodeContent(row,fresh);
     const merged=mergeShow(row,fresh);merged.episodesCheckedAt=at;merged.detailsFetchedAt=at;
-    if(added.length){const latest=[...merged.episodes].sort((a,b)=>(b.season??-1)-(a.season??-1)||(b.number??-1)-(a.number??-1))[0];merged.latestEpisode=latest?.id;merged.providerUpdatedAt=at;merged.contentUpdatedAt=at;report.changedShows++;report.addedEpisodes+=added.length;}
+    report.addedEpisodes+=Math.max(0,merged.episodes.length-(row.episodes||[]).length);
+    if(hasNewEpisodeContent(row,fresh)){
+      const published=episode=>Date.parse(episode.publishedAt||'')||0;
+      const latest=[...added].sort((a,b)=>published(b)-published(a)||(b.season??-1)-(a.season??-1)||(b.number??-1)-(a.number??-1))[0];
+      if(latest)merged.latestEpisode=resolveEpisodeReference(merged,latest.id)?.id||latest.id;
+      merged.providerUpdatedAt=at;merged.contentUpdatedAt=at;report.changedShows++;
+    }
     updates.set(row.id,merged);report.checked++;
   }catch(error){updates.set(row.id,{...row,episodesCheckedAt:at});report.errors.push({id:row.id,provider:provider(row),error:error.message});}}}));
   return {items:rows.map(row=>updates.get(row.id)||row),report};

@@ -36,7 +36,7 @@
   const RATING_STEPS = [[0, "Any rating"], [6, "6+"], [7, "7+"], [8, "8+"]];
 
   /* ---------- State ---------- */
-  const defaultFilters = () => ({ sort: "added", genres: [], yearFrom: null, yearTo: null, services: [], minRating: 0, universe: "", country: "", lang: "", collection: "" });
+  const defaultFilters = type => ({ sort: type==='all'?"updated":"added", genres: [], yearFrom: null, yearTo: null, services: [], minRating: 0, universe: "", country: "", lang: "", collection: "" });
   const state = {
     settings: Object.assign({ autoplay: true }, store.get("settings", {})),
     watchlist: store.get("watchlist", []),
@@ -123,11 +123,46 @@
     const sources=providers.map(provider=>provider.name).join(', ');
     return `<span class="card__provider${inline?' card__provider--inline':''}" title="${esc(sources)}" aria-label="Sources: ${esc(sources)}">${esc(label)}</span>`;
   }
+  function recentItems(items) {
+    // Only shared catalogue/source identities establish that two cards are the
+    // same title. Equal names can still be different remakes or language cuts.
+    const aliases=new Map(),groups=[];
+    for(const item of items||[]){
+      const ids=[item.id,...(item.offerings||[]).map(source=>source.id)].filter(Boolean).map(id=>item.type+':'+id);
+      const matches=[...new Set(ids.map(id=>aliases.get(id)).filter(Boolean))].sort((a,b)=>a.order-b.order);
+      const group=matches[0]||{item:{...item},ids:new Set(),active:true,order:groups.length};
+      if(!matches.length)groups.push(group);
+      for(const other of matches.slice(1)){
+        group.item.providers=[...new Map([...(group.item.providers||[]),...(other.item.providers||[])].map(source=>[source.id,source])).values()];
+        for(const id of other.ids){group.ids.add(id);aliases.set(id,group);}other.active=false;
+      }
+      group.item.providers=[...new Map([...(group.item.providers||[]),...(item.providers||[])].map(source=>[source.id,source])).values()];
+      for(const id of ids){group.ids.add(id);aliases.set(id,group);}
+    }
+    return groups.filter(group=>group.active).map(group=>group.item);
+  }
+  function recentUpdateMeta(item, now=Date.now()) {
+    const episode=item.recentEpisode;
+    const number=Number(episode?.number),season=Number(episode?.season);
+    const numbered=episode?.number!=null&&Number.isFinite(number)&&number>0;
+    const coordinate=numbered?(episode.season!=null&&Number.isFinite(season)&&season>0?`S${season} · E${number}`:`Episode ${number}`):'';
+    const label=item.updateKind==='episodes'?(coordinate?`${coordinate} added`:'Episodes added'):item.updateKind==='release'?'Published':item.updateKind==='added'?'Added to library':'Source update';
+    const stamp=Date.parse(item.updatedAt||'');
+    let date='';
+    if(Number.isFinite(stamp)){
+      const today=new Date(now),day=new Date(stamp);
+      const dayNumber=value=>Date.UTC(value.getFullYear(),value.getMonth(),value.getDate())/86400000;
+      const age=dayNumber(today)-dayNumber(day);
+      date=age===0?'Today':age===1?'Yesterday':day.toLocaleDateString(undefined,{day:'numeric',month:'short',...(day.getFullYear()!==today.getFullYear()?{year:'numeric'}:{})});
+    }
+    const title=item.updateKind==='episodes'&&episode?.title&&!/^\s*(?:episode|ep\.?|épisode)\s*\d+\s*$/i.test(episode.title)?String(episode.title):'';
+    return `<div class="card__update"><span>${esc(label)}${date?` · <time datetime="${esc(new Date(stamp).toISOString())}" title="${esc(new Date(stamp).toLocaleString())}">${esc(date)}</time>`:''}</span>${title?`<span class="card__episode" title="${esc(title)}">${esc(title)}</span>`:''}</div>`;
+  }
   function card(item, opts = {}) {
     const fresh = isFresh(item);
-    const artHtml = item.poster ? `<img src="${esc(item.poster)}" alt="" decoding="async" referrerpolicy="no-referrer" loading="lazy" data-art="${esc(item.id)}">` : artPlaceholder(item);
+    const artHtml = item.poster ? `<img referrerpolicy="no-referrer" src="${esc(item.poster)}" alt="" decoding="async" loading="lazy" data-art="${esc(item.id)}">` : artPlaceholder(item);
     const r = opts.rating ? api.ratingOf(item.id) : null;
-    return `<a class="card" href="#/${item.type}/${esc(item.id)}" aria-label="${esc(item.title)}">
+    return `<a class="card" data-title-id="${esc(item.id)}" href="#/${item.type}/${esc(item.id)}" aria-label="${esc(item.title)}">
       <div class="card__art">${artHtml}${fresh ? '<span class="card__fresh" title="New"></span>' : ""}
         ${r ? `<span class="card__rating">${r.rating.toFixed(1)}</span>` : ""}
         ${opts.showType ? `<span class="card__type">${item.type === "tv" ? "TV" : "FILM"}</span>` : ""}
@@ -135,13 +170,13 @@
       </div>
       <p class="card__title">${esc(item.title)}</p>
       <div class="card__meta">${esc(item.year || "—")}${opts.genre && item.genreIds[0] ? " · " + esc(genreName(item.type, item.genreIds[0])) : ""}${item.type === "tv" && item.episodeCount > 1 ? ` · ${item.episodeCount} ep` : ""}</div>
-      ${opts.recent?`<div class="card__meta">${esc(({episodes:'Episodes added',release:'Published',added:'Added to library'})[item.updateKind]||'Source update')}${item.updatedAt?' · '+esc(item.updatedAt.slice(0,10)):''}</div>`:''}
+      ${opts.recent?recentUpdateMeta(item):''}
     </a>`;
   }
   function resumeCard(item, ep, pct) {
     const saved=progressFor(ep)?.episode;
     return `<a class="card" href="#/watch/${esc(item.id)}/${esc(ep)}" aria-label="Resume ${esc(item.title)}">
-      <div class="card__art">${item.poster ? `<img src="${esc(item.poster)}" alt="" loading="lazy" data-art="${esc(item.id)}">` : artPlaceholder(item)}
+      <div class="card__art">${item.poster ? `<img referrerpolicy="no-referrer" src="${esc(item.poster)}" alt="" loading="lazy" data-art="${esc(item.id)}">` : artPlaceholder(item)}
         <span class="card__resume">RESUME</span>
         <span class="card__bar"><i style="width:${pct}%"></i></span>
         ${providerBadge(item)}
@@ -242,7 +277,8 @@
 
   function renderTab(tab) {
     $$(".tab").forEach(t => t.classList.toggle("is-active", t.dataset.tab === tab));
-    if (state.renderedTab === tab && !(tab==='home'&&state.homeRevision!==(state.catalogRevision||0))) {
+    if (state.renderedTab === tab) {
+      if(tab==='home'&&state.homeRevision!==(state.catalogRevision||0))refreshRecentRow();
       if(tab==='home'&&state.homeProgressRevision!==(state.progressRevision||0))refreshContinueWatching();
       return;
     }
@@ -266,7 +302,7 @@
   function renderSources(view) {
     const groups = [
       ["French films, TV & cartoons", [["French Stream","https://fs27.lol","Integrated catalogue and source-confirmed VF/VOSTFR players"],["DessinAnime","https://dessinanime.cc","Catalogue and search integrated; playback pages currently require browser verification"],["TV5MONDEplus","https://www.tv5mondeplus.com/fr/series","Official free Francophone service; external catalogue"],["ARTE","https://www.arte.tv/fr/","Official films, series and entertainment; external catalogue"]]],
-      ["Arabic, Egyptian & Tunisian", [["StarDima","https://www.stardima.com/mosalsalat","Arabic cartoons and anime; free catalogue and source episode players"],["CimaTN","https://www.cimatn.com","Integrated Tunisian films and actual episode/server lists"],["Tuniflix","https://tuniflix.site","Tunisian catalogue; cached entries remain available when upstream access is blocked"],["Kirmalk","https://kirmalk.com","Integrated Egyptian series and theatre"],["AhwakTV","https://yam.ahwaktv.net","Integrated Arabic films and Egyptian series"],["EgyDead","https://tv10.egydead.live","Integrated Arabic films, series and player choices"],["StreamTunisie","https://streamtunisie.net","Integrated Tunisian episodes"],["Cinetimes","https://cinetimes.org","Free Tunisian archive films; availability varies"]]],
+      ["Arabic, Egyptian & Tunisian", [["Carateen","https://carateen.tv","Arabic cartoons, anime and film language editions with direct source video"],["StarDima","https://www.stardima.com/mosalsalat","Arabic cartoons and anime; free catalogue and source episode players"],["CimaTN","https://www.cimatn.com","Integrated Tunisian films and actual episode/server lists"],["Tuniflix","https://tuniflix.site","Tunisian catalogue; cached entries remain available when upstream access is blocked"],["Kirmalk","https://kirmalk.com","Integrated Egyptian series and theatre"],["AhwakTV","https://yam.ahwaktv.net","Integrated Arabic films and Egyptian series"],["EgyDead","https://tv10.egydead.live","Integrated Arabic films, series and player choices"],["StreamTunisie","https://streamtunisie.net","Integrated Tunisian episodes"],["Cinetimes","https://cinetimes.org","Free Tunisian archive films; availability varies"]]],
       ["K-drama & Asian drama", [["MyAsianTV","https://myasiantv.com.bz","Integrated catalogue and episode players"],["Rakuten Viki","https://www.viki.com","Official service; subtitles, account and region restrictions vary"],["AsianCrush","https://www.asiancrush.com","Listed in FMHY; regional availability varies"],["FMHY drama directory","https://fmhy.net/video#drama-streaming","More specialist providers; directory only"]]],
       ["Indian movies & TV", [["MultiMovies","https://multimovies.garden","Integrated movies, series, episodes and server choices"],["Einthusan","https://einthusan.tv","FMHY-listed South Asian movie catalogue; external website"],["IndianCine","https://indiancine.ma","Indian film archive; external website"],["FMHY Indian-language directory","https://fmhy.net/non-english#indian-languages","Movies, television and regional languages"]]],
       ["Anime - sub & dub", [["AnimeGG","https://www.animegg.org","Integrated anime with source-confirmed subbed and dubbed choices"],["Crunchyroll","https://www.crunchyroll.com","Official service; audio and subtitle availability depends on title and region"],["FMHY anime directory","https://fmhy.net/video#anime-streaming","Compare specialist catalogues and listed sub/dub coverage"]]],
@@ -283,6 +319,7 @@
       <div class="hero" id="hero"><div class="skel" style="position:absolute;inset:0;border-radius:0"></div></div>
       <div id="home-rows">${["Recently updated", "New movies", "New series"].map(t => `<section class="section"><div class="section__head"><h2 class="section__title">${t}</h2></div>${skelRow(5)}</section>`).join("")}</div>`;
 
+    const catalogRevision=state.catalogRevision||0;
     const results = await Promise.allSettled([api.trending()]);
     if (!current()) return;
     const [trend] = results.map(r => r.status === "fulfilled" ? r.value : null);
@@ -300,7 +337,7 @@
       if(!current())return;
       const s = slides[i]; if (!s) return;
       const genres = s.genreIds.slice(0, 2).map(g => genreName(s.type, g)).filter(Boolean).join(", ");
-      hero.innerHTML = `<img class="hero__bg" src="${esc(s.backdrop || s.poster)}" alt="" ${s.poster && s.backdrop !== s.poster ? `onerror="this.onerror=null;this.src='${esc(s.poster)}';this.onerror=()=>this.remove()"` : ""}>
+      hero.innerHTML = `<img referrerpolicy="no-referrer" class="hero__bg" src="${esc(s.backdrop || s.poster)}" alt="" ${s.poster && s.backdrop !== s.poster ? `onerror="this.onerror=null;this.src='${esc(s.poster)}';this.onerror=()=>this.remove()"` : ""}>
         <div class="hero__shade"></div>
         <div class="hero__dots" role="group" aria-label="Featured titles"><button type="button" data-slide="${(i+slides.length-1)%slides.length}" aria-label="Previous featured title">${ICON.prev}</button><span class="hero__position">${i+1} / ${slides.length}</span><button type="button" data-slide="${(i+1)%slides.length}" aria-label="Next featured title">${ICON.next}</button></div>
         <div class="hero__body">
@@ -331,9 +368,10 @@
     const resumeRow = continueWatchingRow();
     if (!current()) return;
     $('#home-rows',view).innerHTML='<div id="continue-watching"></div>'+
-      section('Recently updated','Movies and series from all providers',(trend||[]).slice(0,12),{showType:true,link:'#/recent',recent:true})+
+      '<div id="home-recent">'+section('Recently updated','Episode updates and additions across sources',recentItems(trend).slice(0,12),{showType:true,link:'#/recent',recent:true})+'</div>'+
       '<div id="home-main-rows"></div><div id="home-extras"></div>';
-    state.homeRevision=state.catalogRevision||0;state.homeProgressRevision=resumeRevision;
+    state.homeRevision=catalogRevision;state.homeProgressRevision=resumeRevision;
+    if(catalogRevision!==(state.catalogRevision||0))refreshRecentRow();
     resumeRow.then(html=>{if(current()&&resumeRevision===(state.progressRevision||0))$('#continue-watching',view).innerHTML=html;}).catch(()=>{});
     await new Promise(resolve=>requestAnimationFrame(()=>setTimeout(resolve,0)));
     if(!current())return;
@@ -360,9 +398,9 @@
     // Universes row: small scrollable logo tiles, in order of how much of each universe Flixer has.
     const universes = allUniverses.filter(u => u.count > 0);
     const universeRow = universes.length ? `<section class="section fade-in"><div class="section__head"><div><h2 class="section__title">Universes</h2><span class="section__sub eyebrow">Shared universes and franchises · watch orders</span></div><a class="section__link" href="#/universes">See all</a></div>
-      <div class="ulogos">${universes.map(u => `<a class="utile" href="#/universe/${esc(u.id)}" title="${esc(u.name)}">${u.logo ? `<img src="${esc(u.logo)}" alt="${esc(u.short)}" loading="lazy" onerror="this.outerHTML='<span class=\\'utile__mono\\'>'+this.alt.replace(/</g,'')+'</span>'">` : `<span class="utile__mono">${esc(u.short)}</span>`}<span class="utile__n">${u.count} titles</span></a>`).join("")}</div></section>` : "";
+      <div class="ulogos">${universes.map(u => `<a class="utile" href="#/universe/${esc(u.id)}" title="${esc(u.name)}">${u.logo ? `<img referrerpolicy="no-referrer" src="${esc(u.logo)}" alt="${esc(u.short)}" loading="lazy" onerror="this.outerHTML='<span class=\\'utile__mono\\'>'+this.alt.replace(/</g,'')+'</span>'">` : `<span class="utile__mono">${esc(u.short)}</span>`}<span class="utile__n">${u.count} titles</span></a>`).join("")}</div></section>` : "";
     const serviceRow = services.length ? `<section class="section fade-in"><div class="section__head"><div><h2 class="section__title">Streaming services</h2><span class="section__sub eyebrow">Where Flixer's series air or stream · tap to browse</span></div><a class="section__link" href="#/shows" data-svc-all>All series</a></div>
-      <div class="ulogos">${services.map(s => `<a class="utile utile--svc" href="#/shows" data-svc="${esc(s.name)}" title="${esc(s.name)}">${s.logo ? `<img src="${esc(s.logo)}" alt="${esc(s.name)}" loading="lazy" onerror="this.outerHTML='<span class=\\'utile__mono\\'>'+this.alt.replace(/</g,'')+'</span>'">` : `<span class="utile__mono">${esc(s.name)}</span>`}<span class="utile__n">${s.count} series</span></a>`).join("")}</div></section>` : "";
+      <div class="ulogos">${services.map(s => `<a class="utile utile--svc" href="#/shows" data-svc="${esc(s.name)}" title="${esc(s.name)}">${s.logo ? `<img referrerpolicy="no-referrer" src="${esc(s.logo)}" alt="${esc(s.name)}" loading="lazy" onerror="this.outerHTML='<span class=\\'utile__mono\\'>'+this.alt.replace(/</g,'')+'</span>'">` : `<span class="utile__mono">${esc(s.name)}</span>`}<span class="utile__n">${s.count} series</span></a>`).join("")}</div></section>` : "";
     $("#home-extras",view).innerHTML =
       collectionRow + genreRow + universeRow + serviceRow +
       '<div id="home-universe-rails"></div>';
@@ -371,7 +409,7 @@
     });
 
     $$("[data-collection]", view).forEach(b => b.addEventListener("click", () => {
-      state.filters.all = Object.assign(defaultFilters(), { collection:b.dataset.collection }); saveFilters(); state.renderedTab = null;
+      state.filters.all = Object.assign(defaultFilters('all'), { collection:b.dataset.collection }); saveFilters(); state.renderedTab = null;
     }));
     $$("[data-svc]", view).forEach(b => b.addEventListener("click", () => {
       state.filters.tv = Object.assign(defaultFilters(), { services: [b.dataset.svc], sort: "popularity" }); saveFilters(); state.renderedTab = null;
@@ -382,8 +420,35 @@
     }));
   }
 
+  async function refreshRecentRow() {
+    const box=$('#home-recent');
+    if(!box||state.renderedTab!=='home')return;
+    const generation=state.homeGeneration,revision=state.catalogRevision||0;
+    const request=state.recentRequest=(state.recentRequest||0)+1;
+    let items;
+    try{items=await api.trending();}catch{return;}
+    if(!box.isConnected||state.renderedTab!=='home'||state.homeGeneration!==generation||request!==state.recentRequest||revision!==(state.catalogRevision||0))return;
+    // Keep the title under the reader's finger in place when newer entries are
+    // inserted. Other home rows, the hero and the page scroll stay untouched.
+    const rail=$('.row',box),scroll=rail?.scrollLeft||0,edge=rail?.getBoundingClientRect().left||0;
+    const cards=rail?$$('[data-title-id]',rail):[];
+    const anchor=scroll>0?cards.find(card=>card.getBoundingClientRect().right>edge+2):null;
+    const anchorId=anchor?.dataset.titleId,offset=anchor?anchor.getBoundingClientRect().left-edge:0;
+    const focusedId=cards.find(card=>card===document.activeElement||card.contains(document.activeElement))?.dataset.titleId;
+    box.innerHTML=section('Recently updated','Episode updates and additions across sources',recentItems(items).slice(0,12),{showType:true,link:'#/recent',recent:true});
+    $('.section',box)?.classList.remove('fade-in');
+    const nextRail=$('.row',box),nextCards=nextRail?$$('[data-title-id]',nextRail):[];
+    if(nextRail){
+      nextRail.scrollLeft=scroll;
+      const nextAnchor=nextCards.find(card=>card.dataset.titleId===anchorId);
+      if(nextAnchor)nextRail.scrollLeft+=nextAnchor.getBoundingClientRect().left-nextRail.getBoundingClientRect().left-offset;
+      nextCards.find(card=>card.dataset.titleId===focusedId)?.focus({preventScroll:true});
+    }
+    state.homeRevision=revision;
+  }
+
   /* ---------- Universes: all of them, and one universe in watch order ---------- */
-  const uniLogo = (u, cls) => u.logo ? `<img src="${esc(u.logo)}" alt="${esc(u.name)}" loading="lazy" onerror="this.outerHTML='<span class=\\'ucard__mono\\'>'+this.alt.replace(/</g,'')+'</span>'">` : `<span class="${cls || "ucard__mono"}">${esc(u.short)}</span>`;
+  const uniLogo = (u, cls) => u.logo ? `<img referrerpolicy="no-referrer" src="${esc(u.logo)}" alt="${esc(u.name)}" loading="lazy" onerror="this.outerHTML='<span class=\\'ucard__mono\\'>'+this.alt.replace(/</g,'')+'</span>'">` : `<span class="${cls || "ucard__mono"}">${esc(u.short)}</span>`;
   async function renderUniverses(view) {
     view.innerHTML = `<div class="section__head" style="margin-top:14px"><div><h2 class="section__title">Universes</h2><span class="section__sub eyebrow">Shared universes and franchises · logos and orders from Wikidata</span></div></div><div class="ugrid">${Array(6).fill('<div class="ucard"><div class="ucard__logo skel" style="height:56px"></div><div class="skel skel-line"></div></div>').join("")}</div>`;
     const list = await api.universeList();
@@ -415,7 +480,7 @@
         const it = m.item;
         const n = order === "numbered" && m.ordinal != null ? m.ordinal : i + 1;
         const inner = `<span class="orow__n">${n}</span>
-          <div class="orow__art">${it && it.poster ? `<img src="${esc(it.poster)}" alt="" loading="lazy" data-art="${esc(it.id)}">` : ""}</div>
+          <div class="orow__art">${it && it.poster ? `<img referrerpolicy="no-referrer" src="${esc(it.poster)}" alt="" loading="lazy" data-art="${esc(it.id)}">` : ""}</div>
           <div><p class="orow__title">${esc(m.title)}</p><div class="meta orow__meta">${esc(m.year || "—")} · ${m.type === "tv" ? "Series" : "Film"}${it && it.rating ? ` · ${ICON.star} ${it.rating.toFixed(1)}` : ""}${it && it.service ? ` · ${esc(it.service)}` : ""}</div></div>
           ${it ? `<span class="orow__go" title="Play">${ICON.play}</span>` : "<span></span>"}`;
         return it ? `<a class="orow" href="#/${it.type}/${esc(it.id)}">${inner}</a>` : `<div class="orow orow--out">${inner}</div>`;
@@ -539,12 +604,19 @@
       const r = await api.discover(type, state.filters[type], b.page + 1);
       if (seq !== b.seq||state.browse!==b||!grid.isConnected) return;
       b.page = r.page; b.totalPages = r.totalPages;
-      b.loaded = (reset ? 0 : (b.loaded || 0)) + r.items.length;
-      const html = r.items.map(i => card(i, { rating: true, showType:type==="all" })).join("");
+      if(reset)b.renderedIds=new Set();
+      b.renderedIds ||=new Set();
+      const recent=state.filters[type].sort==='updated';
+      const items=(recent?recentItems(r.items):r.items).filter(item=>{
+        const ids=[item.id,...(item.offerings||[]).map(source=>source.id)].filter(Boolean).map(id=>item.type+':'+id);
+        const seen=ids.some(id=>b.renderedIds.has(id));for(const id of ids)b.renderedIds.add(id);return !seen;
+      });
+      b.loaded = (reset ? 0 : (b.loaded || 0)) + items.length;
+      const html = items.map(i => card(i, { rating: true, showType:type==="all", recent })).join("");
       if (reset) grid.innerHTML = html; else grid.insertAdjacentHTML("beforeend", html);
       $("#count").innerHTML = r.total ? `<b>${r.total.toLocaleString()}</b> ${type === "all" ? "titles" : type === "tv" ? "series" : "films"}` : "No results";
       if (!r.items.length && reset) grid.innerHTML = `<div style="grid-column:1/-1">${emptyState("Nothing matches these filters", "Loosen the year range or remove a genre to see more.", `<button class="btn btn--outline" data-reset>Reset filters</button>`)}</div>`;
-      $("[data-reset]", grid)?.addEventListener("click", () => applyFilters(defaultFilters()));
+      $("[data-reset]", grid)?.addEventListener("click", () => applyFilters(defaultFilters(type)));
     } catch (e) {
       if (seq !== b.seq||state.browse!==b||!grid.isConnected) return;
       grid.innerHTML = `<div style="grid-column:1/-1">${emptyState("Could not load titles", e.message, `<button class="btn btn--primary" data-retry>Try again</button>`)}</div>`;
@@ -555,14 +627,14 @@
 
   function applyFilters(next) {
     const type = state.browse.type;
-    state.filters[type] = Object.assign(defaultFilters(), next); saveFilters();
+    state.filters[type] = Object.assign(defaultFilters(type), next); saveFilters();
     closeSheet(); renderRail(); loadPage(true);
   }
 
   /* ---------- Filter sheets ---------- */
   function openFilter(key) {
     const type = state.browse.type, f = state.filters[type];
-    if (key === "reset") return applyFilters(defaultFilters());
+    if (key === "reset") return applyFilters(defaultFilters(type));
     if (key === "sort") return openRadioSheet("Sort by", SORT_OPTIONS[type], f.sort, v => applyFilters(Object.assign({}, f, { sort: v })));
     if (key === "collection") {
       api.collections().then(list => openRadioSheet("Collection", [["", "All titles", ""], ...list.map(c => [c.id,c.name,c.count + " saved titles; more load while browsing"])], f.collection || "", v => applyFilters(Object.assign({}, f, {collection:v}))));
@@ -687,7 +759,7 @@
         if (!r.items.length && r.pending) { out.innerHTML = emptyState("Searching sources", "Results will appear as sources respond."); return; }
         if (!r.items.length) { out.innerHTML = emptyState("No matches for “" + t + "”", "Check the spelling or try a shorter title."); return; }
         out.innerHTML = `<div class="list fade-in">${r.items.map(i => `<a class="list-item" href="#/${i.type}/${esc(i.id)}">
-          <div class="list-item__art">${i.poster ? `<img src="${esc(i.poster)}" alt="" loading="lazy" data-art="${esc(i.id)}">` : artPlaceholder(i)}</div>
+          <div class="list-item__art">${i.poster ? `<img referrerpolicy="no-referrer" src="${esc(i.poster)}" alt="" loading="lazy" data-art="${esc(i.id)}">` : artPlaceholder(i)}</div>
           <div><p class="list-item__title">${esc(i.title)}</p><div class="meta list-item__meta">${i.type === "tv" ? "Series" : "Film"} · ${esc(i.year || "—")}${i.type === "tv" && i.episodeCount > 1 ? ` · ${i.episodeCount} ep` : ""}</div>${providerBadge(i,true)}</div></a>`).join("")}</div>`;
       };
       try {
@@ -730,7 +802,7 @@
     const pct = pctOf(e);
     const status = p && p.finished ? `<span class="episode__watched">Watched</span>` : pct ? `${pct}% watched` : "";
     return `<a class="episode ${e.id === activeId ? "is-active" : ""}" href="#/watch/${esc(d.id)}/${esc(e.id)}">
-      <div class="episode__still">${e.still ? `<img src="${esc(e.still)}" alt="" loading="lazy" data-art="${esc(d.id)}">` : artPlaceholder(d)}<span class="episode__play">${ICON.play}</span></div>
+      <div class="episode__still">${e.still ? `<img referrerpolicy="no-referrer" src="${esc(e.still)}" alt="" loading="lazy" data-art="${esc(d.id)}">` : artPlaceholder(d)}<span class="episode__play">${ICON.play}</span></div>
       <div><div class="episode__num">${epLabel(d.type, e)}${status ? " · " + status : ""}</div><p class="episode__title">${esc(e.title)}</p>${e.overview ? `<div class="episode__ov">${esc(e.overview)}</div>` : ""}</div>
     </a>`;
   }
@@ -766,9 +838,9 @@
     el.innerHTML = `
       <button class="detail__back" data-back aria-label="Back">${ICON.back}</button>
       <button class="detail__back detail__save ${saved ? "is-on" : ""}" data-save aria-label="${saved ? "Remove from my list" : "Save to my list"}">${ICON.bookmark}</button>
-      <div class="detail__backdrop">${d.backdrop || d.poster ? `<img src="${esc(d.backdrop || d.poster)}" alt="" ${d.poster && d.backdrop !== d.poster ? `onerror="this.onerror=null;this.src='${esc(d.poster)}';this.onerror=()=>this.remove()"` : ""}>` : ""}</div>
+      <div class="detail__backdrop">${d.backdrop || d.poster ? `<img referrerpolicy="no-referrer" src="${esc(d.backdrop || d.poster)}" alt="" ${d.poster && d.backdrop !== d.poster ? `onerror="this.onerror=null;this.src='${esc(d.poster)}';this.onerror=()=>this.remove()"` : ""}>` : ""}</div>
       <div class="detail__head">
-        <div class="detail__poster">${d.posterLarge || d.poster ? `<img src="${esc(d.posterLarge || d.poster)}" alt="" data-art="${esc(d.id)}">` : artPlaceholder(d)}</div>
+        <div class="detail__poster">${d.posterLarge || d.poster ? `<img referrerpolicy="no-referrer" src="${esc(d.posterLarge || d.poster)}" alt="" data-art="${esc(d.id)}">` : artPlaceholder(d)}</div>
         <div>
           <div class="eyebrow" style="margin-bottom:6px">${type === "tv" ? "Series" : "Film"}${isFresh(d) ? ' · <span style="color:var(--fern)">New</span>' : ""}</div>
           <h1 class="h-display detail__title">${esc(d.title)}</h1>
@@ -825,7 +897,7 @@
           </div>
           ${where ? `<section class="sub-section"><h3 class="sub-section__title">Where it airs or streams</h3><div class="providers">${where}</div>${x.schedule ? `<p class="attrib">${esc(x.schedule)} · data by TVmaze</p>` : `<p class="attrib">Data by TVmaze</p>`}</section>` : ""}
           ${!d.overview && x.summary ? `<p class="overview" style="margin-top:12px">${esc(x.summary)}</p>` : ""}
-          ${x.cast.length ? `<section class="sub-section"><h3 class="sub-section__title">Cast</h3><div class="cast">${x.cast.map(c => `<div class="person"><div class="person__pic">${c.pic ? `<img src="${esc(c.pic)}" alt="" loading="lazy">` : ""}</div><div class="person__name">${esc(c.name)}</div><div class="person__role">${esc(c.role)}</div></div>`).join("")}</div></section>` : ""}`;
+          ${x.cast.length ? `<section class="sub-section"><h3 class="sub-section__title">Cast</h3><div class="cast">${x.cast.map(c => `<div class="person"><div class="person__pic">${c.pic ? `<img referrerpolicy="no-referrer" src="${esc(c.pic)}" alt="" loading="lazy">` : ""}</div><div class="person__name">${esc(c.name)}</div><div class="person__role">${esc(c.role)}</div></div>`).join("")}</div></section>` : ""}`;
       }).catch(() => { const box = $("#extras", el); if (box) box.innerHTML = ""; });
     }
 
@@ -971,7 +1043,7 @@
     api.posterFallback(img.dataset.art,failed).then(src=>{if(src&&!failed.includes(src))img.src=src;else removeBroken();}).catch(removeBroken);
   }, true);
 
-  const missingArt=new IntersectionObserver(entries=>{for(const entry of entries)if(entry.isIntersecting){const node=entry.target;missingArt.unobserve(node);api.posterFallback(node.dataset.missingArt).then(src=>{if(!src||!node.isConnected)return;const img=document.createElement('img');img.src=src;img.alt='';img.dataset.art=node.dataset.missingArt;img.addEventListener('load',()=>node.replaceWith(img),{once:true});node.parentElement?.appendChild(img);}).catch(()=>{});}},{rootMargin:'200px'});
+  const missingArt=new IntersectionObserver(entries=>{for(const entry of entries)if(entry.isIntersecting){const node=entry.target;missingArt.unobserve(node);api.posterFallback(node.dataset.missingArt).then(src=>{if(!src||!node.isConnected)return;const img=document.createElement('img');img.referrerPolicy='no-referrer';img.src=src;img.alt='';img.dataset.art=node.dataset.missingArt;img.addEventListener('load',()=>node.replaceWith(img),{once:true});node.parentElement?.appendChild(img);}).catch(()=>{});}},{rootMargin:'200px'});
   const observeMissing=node=>{if(node.nodeType!==1)return;for(const art of [...(node.matches?.('[data-missing-art]')?[node]:[]),...node.querySelectorAll('[data-missing-art]')])if(!art.dataset.artRequested){art.dataset.artRequested='1';missingArt.observe(art);}};
   new MutationObserver(records=>records.forEach(record=>record.addedNodes.forEach(observeMissing))).observe(document.body,{childList:true,subtree:true});
 
@@ -982,7 +1054,7 @@
     if(n) toast(`${n} new title${n === 1 ? "" : "s"} added`);
     state.meta.genres = {};
     state.catalogRevision=(state.catalogRevision||0)+1;
-    if (state.renderedTab === "home" && /^(?:#\/home)?$/.test(location.hash) && !$("#sheet-root > .detail,#sheet-root > .watch") && !$$("#home-rows .row").some(row=>row.scrollLeft>0)) { renderTab("home"); }
+    if (state.renderedTab === "home" && /^(?:#\/home)?$/.test(location.hash) && !$("#sheet-root > .detail,#sheet-root > .watch"))refreshRecentRow();
   });
 
   window.addEventListener('flixer:title',async event=>{
@@ -991,7 +1063,7 @@
     if(detail?.dataset.titleId===item.id){
       const overview=$('#ov',detail);if(overview&&item.overview){overview.textContent=item.overview;overview.classList.remove('is-clamped');$('[data-more]',detail)?.remove();}
       if(detail.refreshEpisodes){const raw=await api.show(item.id),fresh=await api._build(raw,{guide:false});if(detail.isConnected&&detail.dataset.titleId===fresh.id)detail.refreshEpisodes(fresh);}
-      const poster=$('.detail__poster',detail);if(poster&&item.poster&&!$('img',poster)){const img=document.createElement('img');img.src=item.poster;img.alt='';img.dataset.art=item.id;poster.appendChild(img);}
+      const poster=$('.detail__poster',detail);if(poster&&item.poster&&!$('img',poster)){const img=document.createElement('img');img.referrerPolicy='no-referrer';img.src=item.poster;img.alt='';img.dataset.art=item.id;poster.appendChild(img);}
     }
   });
 

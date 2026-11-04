@@ -56,7 +56,7 @@ Release signing uses a private `mobile/keystore.properties` and keystore; neithe
 
 Flixer's Android APK integrates Myflixer, FMovies, cached HDToday, WCO, AnimeGG,
 MegaCartoons, ToonTales, MyAsianTV, MultiMovies, YoTurkish, Tuniflix, CimaTN,
-StreamTunisie, Kirmalk, AhwakTV, EgyDead, Cinetimes and StarDima. Search and catalogue discovery combine
+StreamTunisie, Kirmalk, AhwakTV, EgyDead, Cinetimes, StarDima and Carateen. Search and catalogue discovery combine
 providers; matching titles retain existing IDs and gain player choices. Uncertain
 editions remain selectable rather than having their episode lists silently merged.
 
@@ -70,6 +70,17 @@ Specialist history crawls are incremental and receive independent turns alongsid
 regional FMovies scans. Recently advertised episodes refresh independently of the
 historical crawl. This does not guarantee every upstream title or server is
 available. See [specialist source contracts](docs/specialist-sources.md).
+
+Carateen supplies its two public catalogue sections, source episode guides and
+direct inline HLS players. Film language editions remain player choices, and
+unknown source seasons stay unclassified. Its keyword search can find Arabic
+titles with published Latin terms without treating character names as title
+aliases. See [Carateen integration and verification](docs/carateen.md).
+
+Recently updated uses content evidence rather than crawl timestamps. Matching
+episode routes share one update, delayed older provider guides cannot replace a
+newer episode, and exact episode labels survive offline caching. Background home
+updates preserve the recent row's scroll position and the rest of the screen.
 
 `netlify.toml` deploys one shared API function and small service/universe metadata files. The Android app is the supported interface; this deployment does not publish a Flixer website. Run `npx netlify-cli login`, link the Flixer API site, then `npm run publish`. Video goes directly from the source to the device, keeping media traffic off the backend. Netlify does not need a stream-proxy secret.
 

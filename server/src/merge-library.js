@@ -1,4 +1,5 @@
 import {artworkUrl} from '../../shared/artwork.js';
+import {selectLatestEpisode} from '../../shared/episode-updates.js';
 export const titleKey = value => String(value || '').normalize('NFKD').replace(/\p{M}/gu,'').toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim();
 const unique = values => [...new Map(values.map(v => [`${v.provider}:${v.id}`,v])).values()];
 const hasArtwork=poster=>poster&&Object.values(poster).some(value=>artworkUrl(typeof value==='string'?value:value?.url));
@@ -31,6 +32,7 @@ export function mergeShow(existing, incoming) {
       if (!current.synopsis && candidate.synopsis) current.synopsis = candidate.synopsis;
       if (/^Episode \d+$/i.test(current.title || '') && candidate.title) current.title = candidate.title;
       if (!current.durationSec && candidate.durationSec) current.durationSec = candidate.durationSec;
+      if (!current.publishedAt && candidate.publishedAt) current.publishedAt = candidate.publishedAt;
     } else {
       const e = {...candidate,showId:existing.id,offerings:episodeOfferings(candidate)};
       episodes.push(e); byId.set(e.id,e);
@@ -61,15 +63,23 @@ export function mergeShow(existing, incoming) {
     documentary:existing.documentary === true || incoming.documentary === true,
     tags:[...new Set([...(existing.tags || []),...(incoming.tags || [])])],
     altTitles:[...new Set([...(existing.altTitles || []),...(incoming.altTitles || []),incoming.title].filter(t => t && t !== existing.title))],
+    sourceSearchText:[...new Set([existing.sourceSearchText,incoming.sourceSearchText].filter(value=>typeof value==='string').flatMap(value=>value.split('\n').map(part=>part.trim().slice(0,4000))).filter(Boolean))].join('\n').slice(0,8000)||undefined,
     offerings:unique([...showOfferings(existing),...showOfferings(incoming)]),
     episodes, episodeCount:episodes.length,
+    // Editions are an individual source film's language/player choices. Only a
+    // complete refresh of that same title may replace its old edition list.
+    ...((Array.isArray(existing.filmVersions)||Array.isArray(incoming.filmVersions))?{
+      filmVersions:existing.kind==='film'&&incoming.kind==='film'&&incoming.id===existing.id&&Array.isArray(incoming.filmVersions)
+        ? incoming.episodesComplete===true?incoming.filmVersions:[...new Map([...(existing.filmVersions||[]),...incoming.filmVersions].map(edition=>[edition.id,edition])).values()]
+        : existing.filmVersions,
+    }:{}),
     ...(incoming.id===existing.id?{
       episodesComplete:incoming.episodesComplete??existing.episodesComplete,
       detailsFetchedAt:incoming.detailsFetchedAt||existing.detailsFetchedAt,
       metadataVersion:Math.max(incoming.metadataVersion||0,existing.metadataVersion||0),
     }:{}),
     seasons:[...new Set(episodes.map(e => e.season).filter(Number.isInteger))].sort((a,b) => a-b),
-    latestEpisode:incoming.latestEpisode || existing.latestEpisode,
+    latestEpisode:selectLatestEpisode(existing,incoming,episodes),
   };
 }
 

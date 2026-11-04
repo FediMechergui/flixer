@@ -2,6 +2,7 @@ import fs from 'node:fs';import path from 'node:path';
 import {createHash} from 'node:crypto';import {createGzip,gzipSync} from 'node:zlib';import {pipeline} from 'node:stream/promises';
 import {writeTitlePacks} from './title-packs.js';import {leanCatalog} from './export-catalog.js';import {writeJsonFile} from './json-files.js';
 import {validateRuntimeManifest} from './runtime-source.js';
+import {rankRecentTitles} from '../../shared/recent-updates.js';
 
 export async function buildRuntimePublication(catalog,outDir,{providerRows=[]}={}){
  if(catalog.product!=='flixer'||!catalog.shows?.length||!Number.isFinite(Date.parse(catalog.generatedAt)))throw Error('A complete Flixer catalogue is required');
@@ -22,8 +23,7 @@ export async function buildRuntimePublication(catalog,outDir,{providerRows=[]}={
   const flush=async()=>{if(!rows.length)return;if(section>=4)throw Error('Catalogue index group exceeds part limit');const key='index-'+String(group*4+section++).padStart(4,'0');await small(key,{product:'flixer',shows:rows});indexParts.push(key);rows=[];bytes=0};
   for(const row of members.sort((a,b)=>a.id.localeCompare(b.id))){const size=Buffer.byteLength(JSON.stringify(row));if(size>1500000)throw Error('Catalogue index record exceeds part limit');if(bytes+size>1500000)await flush();rows.push(row);bytes+=size+1;}await flush();
  }
- recent.sort((a,b)=>String(b.providerUpdatedAt||b.latestAt||b.publishedAt||'').localeCompare(String(a.providerUpdatedAt||a.latestAt||a.publishedAt||'')));
- await small('bootstrap',{product:'flixer',lite:true,generatedAt:catalog.generatedAt,stats:lean.stats,tags:lean.tags,shows:recent.slice(0,600)});
+ await small('bootstrap',{product:'flixer',lite:true,generatedAt:catalog.generatedAt,stats:lean.stats,tags:lean.tags,shows:rankRecentTitles(recent,{limit:600})});
  const packs=fs.mkdtempSync(path.join(outDir,'packs-'));
  try{writeTitlePacks(catalog.shows,packs,{bucketBits:6});for(const name of fs.readdirSync(packs).filter(name=>/^[a-f0-9]{2}\.json\.gz$/.test(name)))await retain('title-'+name.slice(0,2),path.join(packs,name));for(const name of fs.readdirSync(path.join(packs,'owners')))await retain('owner-'+name.slice(0,2),path.join(packs,'owners',name))}finally{if(!path.resolve(packs).startsWith(outDir+path.sep))throw Error('Invalid runtime staging path');fs.rmSync(packs,{recursive:true,force:true})}
  const providerFiles={};if(providerRows.length){const sourceDir=fs.mkdtempSync(path.join(outDir,'sources-'));try{writeTitlePacks(providerRows,sourceDir,{bucketBits:4});for(const name of fs.readdirSync(sourceDir).filter(name=>/^[a-f0-9]{2}\.json\.gz$/.test(name)))await retain('source-'+name.slice(0,2),path.join(sourceDir,name),providerFiles);for(const name of fs.readdirSync(path.join(sourceDir,'owners')))await retain('source-owner-'+name.slice(0,2),path.join(sourceDir,'owners',name),providerFiles)}finally{if(!path.resolve(sourceDir).startsWith(outDir+path.sep))throw Error('Invalid source staging path');fs.rmSync(sourceDir,{recursive:true,force:true})}}

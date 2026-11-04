@@ -9,9 +9,22 @@ import {fetchMovies,fetchSeries} from './myflixer.js';
 import {getSpecialistDetails} from './specialist-providers.js';
 import {refreshSeriesEpisodes} from './episode-refresh.js';
 import {STARDIMA_IMPORT_JOBS,stardimaPartitionKey,alignStardimaQueue} from './stardima-import.js';
+import {alignCarateenQueue} from './carateen-import.js';
+import {hasNewEpisodeContent,newEpisodeContent,resolveEpisodeReference} from '../../shared/episode-updates.js';
 
 const running=new Map();
 const filename=product=>`providers-${product}.json`;
+export function mergeProviderObservation(previous,row,at=new Date().toISOString()) {
+  const {episodeUpdateFeed,...merged}=previous?mergeShow(previous,row):row;
+  const changed=hasNewEpisodeContent(previous,row);
+  if(changed&&!row.latestEpisode){
+    const latest=newEpisodeContent(previous,row).sort((a,b)=>(Date.parse(b.publishedAt||'')||0)-(Date.parse(a.publishedAt||'')||0)||(b.season??-1)-(a.season??-1)||(b.number??-1)-(a.number??-1))[0];
+    if(latest)merged.latestEpisode=resolveEpisodeReference(merged,latest.id)?.id||latest.id;
+  }
+  return {...merged,firstSeenAt:previous?.firstSeenAt||row.firstSeenAt||at,
+    contentUpdatedAt:changed?at:merged.contentUpdatedAt,
+    providerUpdatedAt:changed?row.providerUpdatedAt||at:previous?.providerUpdatedAt||row.providerUpdatedAt||at};
+}
 export function providerCache(product) {
   return readJson(filename(product),{version:1,items:[],queue:[],completed:false,lastRefreshAt:null,errors:{}});
 }
@@ -68,18 +81,20 @@ export async function refreshProviders({product='dahsha',full=false,latestOnly=f
 export function extendSpecialistScopes(cache,seeds,product){
   if(product!=='flixer')return;
   cache.queue=alignStardimaQueue(cache.queue,cache.stardimaCoverage);
-  if(cache.specialistScopesVersion===10)return;
+  cache.queue=alignCarateenQueue(cache.queue,cache.carateenCoverage);
+  if(cache.specialistScopesVersion>=11)return;
   const key=job=>JSON.stringify([job.provider,job.kind,job.country,job.language,job.genre,job.year,job.collection]);
   const known=new Set(cache.queue.map(key));
-  // Version 9 already completed the previous source migration. Adding StarDima
-  // must not restart every completed provider's historical traversal.
-  const additions=cache.specialistScopesVersion===9?seeds.filter(job=>job.provider==='stardima'):seeds;
+  // Source additions must not restart completed providers' history. Version 9
+  // predates StarDima; version 10 already has its independently saved cursors.
+  const addedProviders=cache.specialistScopesVersion===10?['carateen']:cache.specialistScopesVersion===9?['stardima','carateen']:null;
+  const additions=addedProviders?seeds.filter(job=>addedProviders.includes(job.provider)):seeds;
   cache.queue.push(...additions.filter(job=>(job.country||job.language||!['fmovies','hdtoday'].includes(job.provider))&&!known.has(key(job))).flatMap(job=>{
-    const progress=job.provider==='stardima'?cache.stardimaCoverage?.partitions?.[stardimaPartitionKey(job)]:null;
+    const progress=job.provider==='stardima'?cache.stardimaCoverage?.partitions?.[stardimaPartitionKey(job)]:job.provider==='carateen'&&!job.collection?cache.carateenCoverage:null;
     if(progress?.complete)return [];
     return [Number.isSafeInteger(progress?.nextPage)&&progress.nextPage>1?{...job,page:progress.nextPage}:job];
   }));
-  cache.specialistScopesVersion=10;cache.completed=false;
+  cache.specialistScopesVersion=11;cache.completed=false;
 }
 async function scan({product,full,latestOnly,pageBudget,log}) {
   const cache=providerCache(product),items=new Map(cache.items.map(i=>[i.id,i]));
@@ -91,14 +106,7 @@ async function scan({product,full,latestOnly,pageBudget,log}) {
   // Independent feeds require explicit configuration, never just a file's presence.
   const feed=process.env.HDTODAY_EXTERNAL_FEED==='1'?validateHdtodayFeed(readJson('hdtoday-feed.json',null)):null;
   const paused=new Set([...(feed?['hdtoday']:[]),...Object.entries(cache.retryState||{}).filter(([,state])=>providerCoolingDown(state)).map(([provider])=>provider)]);
-  const put=rows=>{for(const row of rows){const old=items.get(row.id);const now=new Date().toISOString();
-    const fresh=!old?.latestAt || !row.latestAt || row.latestAt>=old.latestAt;
-    const merged=old?mergeShow(old,row):row;
-    const priorEpisodes=new Set((old?.episodes||[]).map(e=>e.id));
-    const addedEpisodes=!!old&&(row.episodes||[]).some(e=>!priorEpisodes.has(e.id));
-    items.set(row.id,{...merged,firstSeenAt:old?.firstSeenAt||now,contentUpdatedAt:old&&(addedEpisodes||fresh&&row.latestEpisode&&row.latestEpisode!==old.latestEpisode)?now:old?.contentUpdatedAt||row.contentUpdatedAt,latestEpisode:fresh?row.latestEpisode||old?.latestEpisode:old.latestEpisode,
-      providerUpdatedAt:addedEpisodes || fresh && row.latestEpisode && row.latestEpisode!==old?.latestEpisode ? row.providerUpdatedAt||now : old?.providerUpdatedAt||row.providerUpdatedAt||now});
-  }};
+  const put=rows=>{for(const row of rows)items.set(row.id,mergeProviderObservation(items.get(row.id),row));};
   if(feed){
     put(feed.items.filter(row=>product!=='dahsha'||row.documentary===true&&row.tags?.includes('documentary')));
     cache.externalFeeds={...cache.externalFeeds,hdtoday:{updatedAt:feed.updatedAt,records:feed.items.length,complete:feed.complete===true}};

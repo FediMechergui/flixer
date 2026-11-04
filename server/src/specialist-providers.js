@@ -11,6 +11,7 @@ import {DESSIN_PROVIDERS,parseDessinId,dessinUrl,fetchDessinPage,getDessinDetail
 import {FREMBED_PROVIDERS,parseFrembedId,frembedUrl,frembedIdFromUrl,fetchFrembedPage,getFrembedDetails,resolveFrembedServers} from './frembed.js';
 import {DESSIN_NET_PROVIDERS,parseDessinNetId,dessinNetUrl,dessinNetIdFromUrl,fetchDessinNetPage,getDessinNetDetails,resolveDessinNetServers} from './dessinanimenet.js';
 import {STARDIMA_PROVIDERS,parseStardimaId,stardimaUrl,stardimaIdFromUrl,fetchStardimaPage,getStardimaDetails,resolveStardimaServers} from './stardima.js';
+import {CARATEEN_PROVIDERS,parseCarateenId,carateenUrl,carateenIdFromUrl,fetchCarateenPage,getCarateenDetails,resolveCarateenServers} from './carateen.js';
 import {WCO_PROVIDERS,parseWcoId,wcoUrl,wcoIdFromUrl,getWcoDetails,fetchWcoPage,resolveWcoServers} from './wco.js';
 
 // Public catalogue/player pages only. IDs reconstruct a fixed origin and a strict
@@ -23,6 +24,7 @@ export const SPECIALISTS = {
   ...FREMBED_PROVIDERS,
   ...DESSIN_NET_PROVIDERS,
   ...STARDIMA_PROVIDERS,
+  ...CARATEEN_PROVIDERS,
   ...ONEPACE_PROVIDERS,
   ...OFFICIAL_PROVIDERS,
   ...WCO_PROVIDERS,
@@ -35,6 +37,7 @@ export const SPECIALISTS = {
 };
 const slugPattern='[a-z0-9][a-z0-9_-]{0,259}';
 export function parseSpecialistId(id){
+  const carateen=parseCarateenId(id);if(carateen)return carateen;
   const stardima=parseStardimaId(id);if(stardima)return stardima;
   const frembed=parseFrembedId(id);if(frembed)return frembed;
   const dessinNet=parseDessinNetId(id);if(dessinNet)return dessinNet;
@@ -52,6 +55,7 @@ export function parseSpecialistId(id){
   return {provider:m[1],type:m[2],slug:m[3],...(m[4]?{season:Number(m[4]),number:Number(m[5])}:{})};
 }
 export function specialistUrl(id){
+  const carateen=carateenUrl(id);if(carateen)return carateen;
   const stardima=stardimaUrl(id);if(stardima)return stardima;
   const frembed=frembedUrl(id);if(frembed)return frembed;
   const dessinNet=dessinNetUrl(id);if(dessinNet)return dessinNet;
@@ -69,6 +73,7 @@ export function specialistUrl(id){
   return `${SPECIALISTS[p.provider].origin}${prefix}${p.slug}${p.provider==='animegg'?'':'/'}`;
 }
 export function specialistIdFromUrl(value){
+  const carateen=carateenIdFromUrl(value);if(carateen)return carateen;
   const stardima=stardimaIdFromUrl(value);if(stardima)return stardima;
   const frembed=frembedIdFromUrl(value);if(frembed)return frembed;
   const dessinNet=dessinNetIdFromUrl(value);if(dessinNet)return dessinNet;
@@ -77,7 +82,7 @@ export function specialistIdFromUrl(value){
   const official=officialIdFromUrl(value);if(official)return official;
   const arabic=arabicIdFromUrl(value);if(arabic)return arabic;
   try{const u=new URL(value);for(const [provider,cfg] of Object.entries(SPECIALISTS)){
-    if(ARABIC_PROVIDERS[provider]||['frenchstream','wco','frembed','dessinanimenet','stardima'].includes(provider))continue;
+    if(ARABIC_PROVIDERS[provider]||['frenchstream','wco','frembed','dessinanimenet','stardima','carateen'].includes(provider))continue;
     if(provider==='youtubeoriginals'){continue;}
     if(provider==='onepace'){if(u.origin===cfg.origin&&u.pathname==='/en/watch'&&!u.search&&!u.username&&!u.password){const id='sp:onepace:s:'+u.hash.slice(1);if(parseOnePaceId(id))return id;}continue;}
     if(provider==='dessinanime'){if(u.origin===cfg.origin&&!u.search&&!u.hash&&!u.username&&!u.password){const m=/^\/(movie|tv)\/([^/]+)\/?$/.exec(u.pathname);const id=m&&`sp:dessinanime:${m[1]==='movie'?'m':'s'}:${decodeURIComponent(m[2])}`;if(parseDessinId(id))return id;}continue;}
@@ -237,6 +242,7 @@ export function parseSpecialistDetails(id,html){
   return {...result,...pagination($,url,result.episodeCount)};
 }
 export async function getSpecialistDetails(id,{fresh=false}={}){
+  if(parseCarateenId(id))return getCarateenDetails(id,{fresh});
   if(parseStardimaId(id))return getStardimaDetails(id,{fresh});
   if(parseFrembedId(id))return getFrembedDetails(id,{fresh});
   if(parseDessinNetId(id))return getDessinNetDetails(id,{fresh});
@@ -267,6 +273,7 @@ export function specialistJobs({kind,collection='',latest=false}={}){
     .flatMap(([provider,cfg])=>(!cfg.kind&&!kind?['film','series']:[kind||cfg.kind]).map(kind=>({provider,kind,page:1,latest,collection})));
 }
 export async function fetchSpecialistPage({provider,page:pageNum=1,cursor,search,latest=false,kind='series',collection=''}={}){
+  if(provider==='carateen')return fetchCarateenPage({page:pageNum,cursor,search,latest,kind,collection});
   if(provider==='stardima')return fetchStardimaPage({page:pageNum,cursor,search,latest,kind,collection});
   if(provider==='frembed')return fetchFrembedPage({page:pageNum,search,latest,kind,collection});
   if(provider==='dessinanimenet')return fetchDessinNetPage({page:pageNum,search,latest,kind,collection});
@@ -361,7 +368,10 @@ export async function searchSpecialists(q,{provider:only,timeoutMs=9000}={}){
     let timer;try{return await Promise.race([fetchSpecialistPage({provider,search:q}),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Specialist search timeout')),timeoutMs);})]);}finally{clearTimeout(timer);}
   }));
   return results.flatMap(r=>r.status==='fulfilled'?r.value.items:[]).filter(r=>{
-    return matchesSearch([r.title,...(r.altTitles||[])].join(' '),q);
+    // Carateen publishes Latin search keywords alongside Arabic display
+    // titles. They are search evidence, not aliases for identity merging.
+    const sourceText=parseCarateenId(r.id)?r.sourceSearchText:'';
+    return matchesSearch([r.title,...(r.altTitles||[]),sourceText].join(' '),q);
   });
 }
 export function parseSpecialistServers(id,html){
@@ -403,6 +413,7 @@ export function parseSpecialistServers(id,html){
   return [...new Map(servers.map(s=>[s.embedUrl||s.streamUrl,s])).values()];
 }
 export async function resolveSpecialistServers(id,options={}){
+  if(parseCarateenId(id))return resolveCarateenServers(id,options);
   if(parseStardimaId(id))return resolveStardimaServers(id,options);
   if(parseFrembedId(id))return resolveFrembedServers(id,options);
   if(parseDessinNetId(id))return resolveDessinNetServers(id,options);

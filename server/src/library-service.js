@@ -9,6 +9,8 @@ import { fileURLToPath } from 'node:url';
 import { PRODUCT } from './product.js';
 import { matchesSearch } from '../../shared/search.js';
 import {matchesCollection} from '../../shared/collections.js';
+import {rankRecentTitles} from '../../shared/recent-updates.js';
+import {contentFreshness} from '../../shared/freshness.js';
 import { DATA_DIR, readJson } from './store.js';
 import { mergeLibrary, mergeShow, episodeOfferings, showOfferings, titleKey } from './merge-library.js';
 import { getFmoviesDetails, parseFmoviesId, searchFmovies, fmoviesServers, FMOVIES_BASE, fetchFmoviesPage } from './fmovies.js';
@@ -219,7 +221,7 @@ export function libraryPage(catalog,{kind,page=1,perPage=24,genre,year,search}={
 }
 export function libraryHome(catalog=readLibrary()) {
   const saved=homeResults.get(catalog);if(saved&&saved.shows===catalog.shows&&saved.revision===catalog.generatedAt&&saved.size===(catalog.shows?.length||0))return saved.value;
-  const recent={...catalog,shows:[...(catalog.shows||[])].sort((a,b)=>String(b.providerUpdatedAt||b.latestAt||b.publishedAt||'').localeCompare(String(a.providerUpdatedAt||a.latestAt||a.publishedAt||'')))};
+  const recent={...catalog,shows:rankRecentTitles(catalog.shows)};
   const trendingMovies=libraryPage(recent,{kind:'film',perPage:16}).items;
   const trendingSeries=libraryPage(recent,{kind:'series',perPage:16}).items;
   const value={featured:trendingMovies[0]||trendingSeries[0]||null,trendingMovies,trendingSeries,rails:[
@@ -239,13 +241,16 @@ export async function discoverLibrary({kind='film',page=1,genre,year,collection=
   if(collection==='plays' && kind==='series')return {items:[],page,totalPages:page,providers:[],providerErrors:[]};
   genre=regional?.genre || genre;
   latest=latest===true||latest==='true';
+  // Ordinary catalogue pagination retains its existing order when dates tie.
+  // The source-balanced mashup is specific to the latest-updates view.
+  const order=rows=>latest?rankRecentTitles(rows):rows.map(row=>({row,at:contentFreshness(row).at})).sort((a,b)=>b.at.localeCompare(a.at)).map(({row})=>row);
   if(cachedOnly){
-    const rows=(catalog.shows||[]).filter(show=>show.kind===kind&&matchesCollection(show,collection)&&(!documentary||show.documentary===true||show.tags?.includes('documentary'))&&(!genre||show.tags?.includes(genre))&&(!year||Number(show.year)===Number(year))).sort((a,b)=>String(b.providerUpdatedAt||b.latestAt||b.publishedAt||'').localeCompare(String(a.providerUpdatedAt||a.latestAt||a.publishedAt||'')));
+    const rows=order((catalog.shows||[]).filter(show=>show.kind===kind&&matchesCollection(show,collection)&&(!documentary||show.documentary===true||show.tags?.includes('documentary'))&&(!genre||show.tags?.includes(genre))&&(!year||Number(show.year)===Number(year))));
     return {items:rows.slice((page-1)*24,page*24),page,total:rows.length,totalPages:Math.max(1,Math.ceil(rows.length/24)),providers:[],providerErrors:[],cached:true,generatedAt:catalog.generatedAt};
   }
   const jobs=product==='flixer'?specialistJobs({kind,collection,latest}):[];
   const cachedPage=provider=>{
-    const saved=(catalog.shows||[]).filter(show=>show.kind===kind&&showOfferings(show).some(o=>o.provider===provider)&&matchesCollection(show,collection)&&(!documentary||show.documentary===true||show.tags?.includes('documentary'))&&(!genre||show.tags?.includes(genre))&&(!year||Number(show.year)===Number(year))).sort((a,b)=>String(b.providerUpdatedAt||b.latestAt||b.publishedAt||'').localeCompare(String(a.providerUpdatedAt||a.latestAt||a.publishedAt||'')));
+    const saved=order((catalog.shows||[]).filter(show=>show.kind===kind&&showOfferings(show).some(o=>o.provider===provider)&&matchesCollection(show,collection)&&(!documentary||show.documentary===true||show.tags?.includes('documentary'))&&(!genre||show.tags?.includes(genre))&&(!year||Number(show.year)===Number(year))));
     return {items:saved.slice((page-1)*24,page*24),totalPages:Math.ceil(saved.length/24),cached:true};
   };
   const sources=fetchers || [

@@ -79,7 +79,7 @@
   const backdropFor = wpId => wpId ? `${SOURCE}/wp-content/uploads/posters/${wpId}.jpg` : null;
   const artwork=value=>typeof value==='string'&&/^https:\/\//.test(value)&&!/(?:^|\/)(?:undefined|null|none)(?:\.[a-z]+)?$/i.test(value)?value:null;
   const byAdded = (a, b) => (b.date || "").localeCompare(a.date || "") || a.title.localeCompare(b.title);
-  const byUpdated = (a,b) => (b.updatedAt || "").localeCompare(a.updatedAt || "") || byAdded(a,b);
+  const byUpdated = (a,b) => (b.updatedAt || "").localeCompare(a.updatedAt || "") || String(a.id).localeCompare(String(b.id));
   // Home rails need only a few winners, not a sorted copy of the entire index.
   function topItems(items,compare,limit,accept=()=>true){
     const top=[];if(limit<=0)return top;
@@ -89,6 +89,37 @@
       top.splice(lo,0,item);if(top.length>limit)top.pop();
     }
     return top;
+  }
+  const recentProvider=item=>item.offerings?.[0]?.provider||/^sp:([^:]+):/.exec(String(item.id))?.[1]||({mf:'myflixer',fm:'fmovies',hd:'hdtoday'}[String(item.id).split(':')[0]])||item.channelId||'other';
+  // Keep in step with shared/recent-updates.js. Real update times remain in
+  // order; source lanes rotate only inside an identical observed timestamp.
+  function rankRecentItems(items,limit=Infinity){
+    const unique=new Map();
+    for(const item of items||[])if(item?.id&&!unique.has(item.id))unique.set(item.id,item);
+    const ranked=[...unique.values()].sort(byUpdated),result=[];
+    for(let start=0;start<ranked.length&&result.length<limit;){
+      let end=start+1;while(end<ranked.length&&(ranked[end].updatedAt||'')===(ranked[start].updatedAt||''))end++;
+      const lanes=new Map();
+      for(let i=start;i<end;i++){const item=ranked[i],provider=recentProvider(item);if(!lanes.has(provider))lanes.set(provider,[]);lanes.get(provider).push(item);}
+      const queues=[...lanes].sort(([a],[b])=>a.localeCompare(b)).map(([,lane])=>lane);
+      for(let round=0;queues.some(lane=>round<lane.length)&&result.length<limit;round++)for(const lane of queues)if(round<lane.length&&result.length<limit)result.push(lane[round]);
+      start=end;
+    }
+    return result;
+  }
+  function topRecentItems(items,limit=24){
+    if(limit<=0)return [];
+    const lanes=new Map(),seen=new Set();
+    for(const item of items){
+      if(!item?.id||seen.has(item.id))continue;seen.add(item.id);
+      const provider=recentProvider(item);let top=lanes.get(provider);if(!top)lanes.set(provider,top=[]);
+      if(top.length===limit&&byUpdated(item,top[top.length-1])>=0)continue;
+      let lo=0,hi=top.length;while(lo<hi){const mid=(lo+hi)>>>1;if(byUpdated(item,top[mid])<0)hi=mid;else lo=mid+1;}
+      top.splice(lo,0,item);if(top.length>limit)top.pop();
+    }
+    // At most `limit` candidates per provider reach this sort, independently
+    // of the full catalogue size. Other home rails keep their existing ranks.
+    return rankRecentItems([...lanes.values()].flat(),limit);
   }
   const byYearDesc = (a, b) => (+b.year || 0) - (+a.year || 0) || byAdded(a, b);
   const byYearAsc = (a, b) => (+a.year || 0) - (+b.year || 0) || byAdded(a, b);
@@ -119,7 +150,7 @@
     if(window.FlixerCatalogueSource?.enabled())try{const body=await window.FlixerCatalogueSource.title(id);if(body)return {body};}catch(error){console.warn('[flixer] Published title unavailable:',error.message);}
     return getJson(`${DATA_BASE}/data/shows/${encodeURIComponent(encodeURIComponent(id))}.json`,ms);
   }
-  const PROVIDER_NAMES={stardima:'StarDima',aloula:'Aloula',myflixer:'MyFlixer',fmovies:'FMovies',hdtoday:'HDToday',wco:'WCO',animegg:'AnimeGG',megacartoons:'MegaCartoons',toontales:'ToonTales',myasiantv:'MyAsianTV',multimovies:'MultiMovies',yoturkish:'YoTurkish',dessinanime:'DessinAnime',onepace:'One Pace',youtubeoriginals:'YouTube',youtube:'YouTube',cimafu:'Cimafu',streamtunisie:'StreamTunisie',kirmalk:'Kirmalk',ahwaktv:'AhwakTV',egydead:'EgyDead',tuniflix:'Tuniflix',cinetimes:'Cinetimes',cimatn:'CimaTN',frenchstream:'FrenchStream'};
+  const PROVIDER_NAMES={carateen:'Carateen',stardima:'StarDima',aloula:'Aloula',myflixer:'MyFlixer',fmovies:'FMovies',hdtoday:'HDToday',wco:'WCO',animegg:'AnimeGG',megacartoons:'MegaCartoons',toontales:'ToonTales',myasiantv:'MyAsianTV',multimovies:'MultiMovies',yoturkish:'YoTurkish',dessinanime:'DessinAnime',onepace:'One Pace',youtubeoriginals:'YouTube',youtube:'YouTube',cimafu:'Cimafu',streamtunisie:'StreamTunisie',kirmalk:'Kirmalk',ahwaktv:'AhwakTV',egydead:'EgyDead',tuniflix:'Tuniflix',cinetimes:'Cinetimes',cimatn:'CimaTN',frenchstream:'FrenchStream'};
   function providersOf(show) {
     const ids=new Set(),seen=new Set();
     const visit=row=>{if(!row||seen.has(row))return;seen.add(row);
@@ -162,9 +193,27 @@
   // Keep in step with shared/freshness.js (covered by shared fixture tests).
   function contentFreshness(show,now=Date.now()){
     const valid=value=>{const stamp=Date.parse(value||'');return Number.isFinite(stamp)&&stamp<=now+86400000?new Date(stamp).toISOString():'';};
-    const episode=valid(show.contentUpdatedAt)||valid(show.latestAt),published=valid(show.publishedAt),added=valid(show.firstSeenAt);
+    const episode=[valid(show.contentUpdatedAt),valid(show.latestAt)].sort().at(-1),published=valid(show.publishedAt),added=valid(show.firstSeenAt);
     const content=[episode,published].filter(Boolean).sort().at(-1)||'';
     return {at:content||added,kind:episode&&episode>=published&&show.kind==='series'?'episodes':published?'release':added?'added':'unknown'};
+  }
+  function recentEpisodeOf(show){
+    if(show.kind!=='series'||!show.latestEpisode)return null;
+    const pointer=String(show.latestEpisode),episodes=show.episodes||[];
+    let episode=episodes.find(e=>e.id===pointer||(e.offerings||[]).some(o=>o.id===pointer));
+    if(!episode){const match=/^(\d+):(\d+)$/.exec(pointer)||/^sp:frembed:e:\d+:(\d+):(\d+)$/.exec(pointer);if(match){const found=episodes.filter(e=>e.season===+match[1]&&e.number===+match[2]);if(found.length===1)episode=found[0];}}
+    if(!episode&&show.recentEpisode?.id===pointer)episode=show.recentEpisode;
+    return episode?{id:episode.id,title:decodeEntities(episode.title||''),season:Number.isInteger(episode.season)?episode.season:null,number:Number.isInteger(episode.number)?episode.number:null,providers:episode.providers||[...new Set((episode.offerings||[]).map(o=>o.provider).filter(Boolean))]}:null;
+  }
+  function newerEpisodePointer(current,incoming){
+    if(!incoming.latestEpisode)return false;if(!current.latestEpisode)return true;
+    const before=recentEpisodeOf(current),after=recentEpisodeOf(incoming);
+    if(before&&after&&Number.isInteger(before.number)&&Number.isInteger(after.number)){
+      if(before.season!==null&&after.season!==null)return after.season>before.season||after.season===before.season&&after.number>before.number;
+      const parent=id=>String(id).slice(0,String(id).lastIndexOf(':'));
+      if(before.season===null&&after.season===null&&parent(before.id)===parent(after.id))return after.number>before.number;
+    }
+    return contentFreshness(incoming).at>contentFreshness(current).at;
   }
   function normalize(s) {
     const type = s.kind === "series" ? "tv" : "movie";
@@ -176,6 +225,7 @@
     const slugName=slugTitle(s.slug),alternate=slugName&&UNI.norm(slugName)!==UNI.norm(title)?slugName:"";
     return {
       id: s.id,
+      channelId:s.channelId,
       offerings: s.offerings || [],
       providers: providersOf(s),
       access:s.access,
@@ -184,9 +234,11 @@
       type,
       title,
       altTitles: s.altTitles || [],
+      sourceSearchText: String(s.sourceSearchText || '').slice(0,4000),
       date: String(s.publishedAt || s.firstSeenAt || "").slice(0,10),
       updatedAt:freshness.at,
       updateKind:freshness.kind,
+      recentEpisode:recentEpisodeOf(s),
       year: s.year ? String(s.year) : "",
       poster: artwork(s.portrait) || artwork(poster.custom) || artwork(poster.default) || artwork(tvm?.img) || posterFor(s.wpId),
       backdrop: artwork(poster.backdrop) || artwork(poster.hq) || artwork(poster.custom) || artwork(s.portrait) || backdropFor(s.wpId),
@@ -229,7 +281,7 @@
     const thumbs = e.thumbs || {};
     const slug = e.slug || String(e.id || "").replace(/^mf:[mse]:/, "");
     const sourceProvider=(e.offerings||[]).find(o=>o.id.startsWith('sp:'))?.provider || '';
-    const sourceGroups=['animegg','megacartoons','myasiantv','yoturkish','wco'];
+    const sourceGroups=['animegg','megacartoons','myasiantv','yoturkish','wco','carateen'];
     return {
       id: e.id,
       offerings: e.offerings || [],
@@ -667,6 +719,7 @@
           this._rowRevisions ||= new Map();
           const revision=Number(r._catalogRevision)||Date.parse(snapshotAt)||(snapshotAt?0:Date.now());
           const fresh=revision>=(this._rowRevisions.get(cur.id)||0),sameTitle=cur.id===r.id;
+          const latestChanged=newerEpisodePointer(cur,r);
           const oldKeys=keys(cur);
           if(fresh)this._rowRevisions.set(cur.id,revision);
           if(sameTitle&&fresh&&r.access&&!(r.access==='catalogue-only'&&(cur.offerings||[]).some(o=>o.provider!=='dessinanime'&&o.availability!=='catalogue-only')))cur.access=r.access;
@@ -675,10 +728,13 @@
           if(fresh&&sameTitle&&(r.title && r.title!==cur.title || r.year && +r.year!==+cur.year))this._universeDirty=true;
           if (r.title && (!cur.title||fresh&&sameTitle)) cur.title = r.title;
           const synopsis=r.synopsis||r.blurb;if(synopsis&&(!cur.synopsis||synopsis.length>cur.synopsis.length))cur.synopsis=synopsis;
+          if(r.sourceSearchText)cur.sourceSearchText=[...new Set([cur.sourceSearchText,r.sourceSearchText].filter(Boolean))].join(' ').slice(0,4000);
           if (r.tags && r.tags.length) cur.tags = [...new Set([...(cur.tags || []),...r.tags])];
           if (r.year && (!cur.year||fresh&&sameTitle)) cur.year = r.year;
           for (const key of ["publishedAt","latestAt","providerUpdatedAt","contentUpdatedAt"]) if(r[key]&&(!cur[key]||r[key]>cur[key]))cur[key]=r[key];
-          for (const key of ["slug","latestEpisode","firstSeenAt","tmdbId","imdbId","firstEpisodeId","originalLanguage"]) if (r[key]&&(!cur[key]||fresh&&sameTitle)) cur[key] = r[key];
+          for (const key of ["slug","firstSeenAt","tmdbId","imdbId","firstEpisodeId","originalLanguage"]) if (r[key]&&(!cur[key]||fresh&&sameTitle)) cur[key] = r[key];
+          if(latestChanged)cur.latestEpisode=r.latestEpisode;
+          if(r.recentEpisode?.id===cur.latestEpisode)cur.recentEpisode=r.recentEpisode;
           for(const key of ['countries','audioModes','audioLanguages','subtitleLanguages','collections','altTitles'])if(r[key])cur[key]=[...new Set([...(cur[key]||[]),...r[key]])];
           if(r.title&&r.title!==cur.title)cur.altTitles=[...new Set([...(cur.altTitles||[]),r.title])];
           if (r.episodeCount) cur.episodeCount = Math.max(cur.episodeCount || 0,r.episodeCount);
@@ -690,6 +746,8 @@
           if (r.poster&&Object.values(r.poster).some(Boolean)&&(!cur.poster||!Object.values(cur.poster).some(Boolean)||fresh&&sameTitle)) cur.poster = r.poster;
           if (r.portrait&&(!cur.portrait||fresh&&sameTitle))cur.portrait=r.portrait;
           if (Array.isArray(r.episodes)&&r.episodes.length) { const previous=cur.episodes||[],ordered=fresh&&sameTitle?[...r.episodes,...previous]:[...previous,...r.episodes];cur.episodes=coalesceEpisodes(ordered,new Set(previous.map(episode=>episode.id)));cur.episodeCount=cur.episodes.length; }
+          cur.recentEpisode=recentEpisodeOf(cur);
+          if(cur.recentEpisode)cur.latestEpisode=cur.recentEpisode.id;
           const currentKeys=keys(cur);for(const key of oldKeys)if(!currentKeys.has(key)){this._identities.get(key)?.delete(cur);if(!this._identities.get(key)?.size)this._identities.delete(key);}addIdentity(cur,currentKeys);
         } else {
           this._universeDirty=true;
@@ -703,7 +761,7 @@
     }
     _persistDelta(rows) {
       const delta = store.get("delta", []);
-      const incoming=new Map(rows.map(r=>[r.id, {id:r.id,kind:r.kind,title:r.title,altTitles:r.altTitles,year:r.year,tags:r.tags,slug:r.slug,wpId:r.wpId,publishedAt:r.publishedAt,firstSeenAt:r.firstSeenAt,latestAt:r.latestAt,latestEpisode:r.latestEpisode,firstEpisodeId:r.firstEpisodeId,contentUpdatedAt:r.contentUpdatedAt,providerUpdatedAt:r.providerUpdatedAt,tvm:r.tvm,offerings:r.offerings,versions:r.versions,sourceUrl:r.sourceUrl,poster:r.poster,portrait:r.portrait,tmdbId:r.tmdbId,documentary:r.documentary,originalLanguage:r.originalLanguage,countries:r.countries,audioModes:r.audioModes,collections:r.collections,access:r.access,audioLanguages:r.audioLanguages,subtitleLanguages:r.subtitleLanguages,_catalogRevision:this._rowRevisions?.get(r.id)||Date.now()}]));
+      const incoming=new Map(rows.map(r=>[r.id, {id:r.id,kind:r.kind,title:r.title,altTitles:r.altTitles,sourceSearchText:r.sourceSearchText,year:r.year,tags:r.tags,slug:r.slug,wpId:r.wpId,publishedAt:r.publishedAt,firstSeenAt:r.firstSeenAt,latestAt:r.latestAt,latestEpisode:recentEpisodeOf(r)?.id||r.latestEpisode,recentEpisode:recentEpisodeOf(r),firstEpisodeId:r.firstEpisodeId,contentUpdatedAt:r.contentUpdatedAt,providerUpdatedAt:r.providerUpdatedAt,tvm:r.tvm,offerings:r.offerings,versions:r.versions,sourceUrl:r.sourceUrl,poster:r.poster,portrait:r.portrait,tmdbId:r.tmdbId,documentary:r.documentary,originalLanguage:r.originalLanguage,countries:r.countries,audioModes:r.audioModes,collections:r.collections,access:r.access,audioLanguages:r.audioLanguages,subtitleLanguages:r.subtitleLanguages,_catalogRevision:this._rowRevisions?.get(r.id)||Date.now()}]));
       store.set("delta",[...incoming.values(),...delta.filter(r=>!incoming.has(r.id))].slice(0,DELTA_CAP));
     }
 
@@ -827,7 +885,9 @@
 
     /* ----- Home rails ----- */
     async trending() {
-      return this._homeRail('recent',byUpdated,24);
+      const items=await this.all();this._homeRails ||=new Map();
+      if(!this._homeRails.has('recent'))this._homeRails.set('recent',topRecentItems(items,24));
+      return this._homeRails.get('recent').slice();
     }
     async _homeRail(key,compare,limit,accept){
       const items=await this.all();this._homeRails ||=new Map();
@@ -907,7 +967,7 @@
       if (f.collection) list = list.filter(i => this.inCollection(i, f.collection));
       if (f.universe) list = list.filter(i => i.universes.includes(f.universe));
       const sorters = { updated: byUpdated, added: byAdded, year: byYearDesc, oldest: byYearAsc, episodes: byEpisodes, title: byTitle, popularity: byWeight, rating: byRating };
-      return list.slice().sort(sorters[f.sort] || byAdded);
+      return f.sort==='updated'?rankRecentItems(list):list.slice().sort(sorters[f.sort] || byAdded);
       };
       let list=filterList(cachedList);
       // Saved cards paint immediately. With an empty selection, the first
@@ -916,8 +976,9 @@
       while(!list.some(i=>!session.seen.has(i.id))&&waiting.size){const done=await Promise.race(waiting.values());waiting.delete(done);list=filterList(await this.all(type));}
       const ranked=new Map(list.map(i=>[i.id,i]));
       const priority=session.buffer.map(id=>ranked.get(id)).filter(Boolean);
-      if(f.sort==="updated") priority.sort(byUpdated);
-      const available=[...priority,...list].filter(i=>!session.seen.has(i.id));
+      // A provider response can contain old additions. Its arrival cannot put
+      // those entries ahead of more recent saved updates.
+      const available=(f.sort==='updated'?list:[...priority,...list]).filter(i=>!session.seen.has(i.id));
       const items=[];
       for(const item of available) { if(session.seen.has(item.id)) continue; session.seen.add(item.id); items.push(item); if(items.length===PER_PAGE) break; }
       session.buffer=session.buffer.filter(id=>!session.seen.has(id));
@@ -1053,7 +1114,7 @@
         if (guide) episodes.forEach(e => { const g = e.season>0 && guide.get(e.season + ":" + e.n); if (g) { if (g.still) e.still = g.still; if (g.date) e.date = g.date; if (g.runtime) e.runtime = g.runtime; if (g.overview) e.overview = g.overview; if (g.title && /^episode \d+$/i.test(e.title)) e.title = g.title; } });
       }
       const seasonNums = [...new Set(episodes.map(e => e.season))].sort((a, b) => (a <= 0) - (b <= 0) || a - b); // numbered seasons first, source lists last
-      const sourceNames={animegg:'AnimeGG',megacartoons:'MegaCartoons',myasiantv:'MyAsianTV',yoturkish:'YoTurkish',wco:'Watch Cartoon Online'};
+      const sourceNames={animegg:'AnimeGG',megacartoons:'MegaCartoons',myasiantv:'MyAsianTV',yoturkish:'YoTurkish',wco:'Watch Cartoon Online',carateen:'Carateen'};
       const seasons = seasonNums.map(n => ({ season_number: n, name: n<=0?`Source episodes - ${sourceNames[episodes.find(e=>e.season===n)?.sourceProvider]||'Original numbering'}`:"Season " + n, episode_count: episodes.filter(e => e.season === n).length }));
       return Object.assign(item, {
         tagline: "",
@@ -1158,41 +1219,44 @@
       if(!terms.length)return {items:[],totalPages:1};
       const hit = value => {const text=norm(value);return terms.every(term=>text.includes(term));};
       await this.catalog(); if(!API_BASE||!this.liveEnabled)await this._indexReady;
-      const local = (await this.all()).filter(i => hit(i.title) || (i.alt && hit(i.alt)) || i.altTitles.some(hit)).sort(byWeight).slice(0, 60);
+      const local = (await this.all()).filter(i => hit(i.title) || (i.alt && hit(i.alt)) || i.altTitles.some(hit) || (i.sourceSearchText && hit(i.sourceSearchText))).sort(byWeight).slice(0, 60);
       const localItems=this._groupSearchItems(local.map(item=>item.id));
       if (onLocal) onLocal({ items:localItems, totalPages:1,pending:this.liveEnabled?1:0 });
       if (!this.liveEnabled) return { items: localItems, totalPages: 1 };
       if(API_BASE){
         if(signal?.aborted)return {items:localItems,totalPages:1};
-        const native=nativeStardima(),ids=new Set(local.map(i=>i.id)),nativeResultIds=new Set();let pending=2+(native?1:0);
+        const native=nativeStardima(),ids=new Set(local.map(i=>i.id)),sourceResultIds=new Set();let pending=2+(native?1:0);
         const exact=local.find(item=>[item.title,...(item.altTitles||[])].some(value=>norm(value)===norm(q)));
         const aliases=[...new Set(exact?[exact.title,...(exact.altTitles||[])]:[])].filter(value=>value&&norm(value)!==norm(q)&&value.length<=120).slice(0,2);
-        const matches=item=>hit(item.title)||(item.alt&&hit(item.alt))||(item.altTitles||[]).some(hit)||(item.versions||[]).some(version=>hit(version.title)||(version.altTitles||[]).some(hit));
+        const matches=item=>hit(item.title)||(item.alt&&hit(item.alt))||(item.altTitles||[]).some(hit)||(item.sourceSearchText&&hit(item.sourceSearchText))||(item.versions||[]).some(version=>hit(version.title)||(version.altTitles||[]).some(hit));
         const result=()=>{
           // The source can match a Latin query while displaying an Arabic
           // title. Keep that query evidence by ID, without inventing aliases.
-          const nativeMatches=new Set([...nativeResultIds].map(id=>this._byId.get(id)?.id||id));
-          return {items:this._groupSearchItems(ids).filter(item=>matches(item)||nativeMatches.has(item.id)||(item.versions||[]).some(version=>nativeMatches.has(version.id))),totalPages:1,pending};
+          const sourceMatches=new Set([...sourceResultIds].map(id=>this._byId.get(id)?.id||id));
+          return {items:this._groupSearchItems(ids).filter(item=>matches(item)||sourceMatches.has(item.id)||(item.versions||[]).some(version=>sourceMatches.has(version.id))),totalPages:1,pending};
         };
         // Android searches the public source immediately, while the hosted
         // provider registry and other providers load independently.
         const device=native?native.search(q,{aliases,signal}).then(rows=>{
           if(signal?.aborted)return;const accepted=this._mergeNativeStardima(rows).rows;
-          for(const row of accepted){nativeResultIds.add(row.id);ids.add(row.id);ids.add((this._byId.get(row.id)||row).id);}
+          for(const row of accepted){sourceResultIds.add(row.id);ids.add(row.id);ids.add((this._byId.get(row.id)||row).id);}
         }).catch(()=>{}).finally(()=>{pending--;if(!signal?.aborted&&onLocal)onLocal(result());}):null;
         const saved=Promise.resolve(this._indexReady).then(async()=>{
           if(signal?.aborted)return;const rows=await this.all();if(signal?.aborted)return;
-          rows.filter(i=>hit(i.title)||(i.alt&&hit(i.alt))||i.altTitles.some(hit)).sort(byWeight).slice(0,60).forEach(i=>ids.add(i.id));
+          rows.filter(i=>hit(i.title)||(i.alt&&hit(i.alt))||i.altTitles.some(hit)||(i.sourceSearchText&&hit(i.sourceSearchText))).sort(byWeight).slice(0,60).forEach(i=>ids.add(i.id));
         }).finally(()=>{pending--;if(!signal?.aborted&&onLocal)onLocal(result());});
         this._searchProviders ||= getJson(`${API_BASE}/api/search?providers=1`,3000).then(({body})=>body.providers).catch(()=>null);
-        const names=[...new Set([...(await this._searchProviders||['stardima','aloula','youtubeoriginals','myflixer','fmovies','hdtoday','streamtunisie','kirmalk','ahwaktv','egydead','tuniflix','cinetimes','cimatn','animegg','megacartoons','toontales','myasiantv','multimovies','yoturkish','frenchstream','dessinanime']),...(window.Capacitor?.Plugins?.WcoSource?['wco']:[])])].filter(provider=>!native||provider!=='stardima');
+        const names=[...new Set([...(await this._searchProviders||['carateen','stardima','aloula','youtubeoriginals','myflixer','fmovies','hdtoday','streamtunisie','kirmalk','ahwaktv','egydead','tuniflix','cinetimes','cimatn','animegg','megacartoons','toontales','myasiantv','multimovies','yoturkish','frenchstream','dessinanime']),...(window.Capacitor?.Plugins?.WcoSource?['wco']:[])])].filter(provider=>!native||provider!=='stardima');
         pending+=names.length-1;
         if(signal?.aborted)return {items:localItems,totalPages:1};
         await Promise.allSettled([...names.map(async provider=>{try{
           const params=new URLSearchParams({q,provider});for(const alias of aliases)params.append('alias',alias);
           const {body}=provider==='wco'&&window.Capacitor?.Plugins?.WcoSource?{body:{items:await window.FlixerWcoSource.search(q,{aliases,signal})}}:await getJson(`${API_BASE}/api/search?${params}`,12000,signal);
           if(signal?.aborted)return;
-          const rows=body.items||[];this._merge(rows);for(const row of rows)ids.add((this._byId.get(row.id)||row).id);
+          const rows=body.items||[];this._merge(rows);for(const row of rows){
+            if(provider==='carateen'&&(/^sp:carateen:[ms]:/.test(row.id)||(row.offerings||[]).some(o=>o.provider==='carateen'&&/^sp:carateen:[ms]:/.test(o.id))))sourceResultIds.add(row.id);
+            ids.add((this._byId.get(row.id)||row).id);
+          }
         }finally{pending--;if(!signal?.aborted&&onLocal)onLocal(result());}}),saved,device]);
         this._reindex();return result();
       }

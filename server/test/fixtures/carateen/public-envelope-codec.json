@@ -1,0 +1,44 @@
+{
+  "note": "Synthetic metadata only; generated using the official public guest format, with no source accounts or media URLs.",
+  "array": {
+    "expected": [
+      {
+        "id": 17,
+        "title": "مغامرة الأصدقاء",
+        "episodes_count_real": 4,
+        "enabled": true
+      }
+    ],
+    "envelope": {
+      "iv": "000102030405060708090a0b0c0d0e0f",
+      "encryptedData": "84fc6f8dd72faf9b80577d256bd4a85751520c6bfdee4dc074a6fc2a16b4f7e4eb7339869c9cd2b188d6c26a0f377daba39b13573a54b9dff685a1a4c7f33837b6bc0072cdd0816b55582eadf2df2819742e52adfbd466521382fa4296bec21e"
+    }
+  },
+  "object": {
+    "expected": {
+      "episodes": [
+        {
+          "id": 81,
+          "episode_number": 3,
+          "title": "A public episode"
+        }
+      ]
+    },
+    "envelope": {
+      "iv": "000102030405060708090a0b0c0d0e0f",
+      "encryptedData": "ec6e25dc04998485877667bbac02c47a5a99b0e722fccd951446dda9458cc1315cb77e97d4b44673a4bd01b89cc4037233cba4530bd291c7a8b74de6e8d8614615bcf5a553ce452e215477831b930aaf"
+    }
+  },
+  "invalidJson": {
+    "iv": "000102030405060708090a0b0c0d0e0f",
+    "encryptedData": "147cd5e2033adad3420d18e8792bdee3"
+  },
+  "invalidUtf8": {
+    "iv": "000102030405060708090a0b0c0d0e0f",
+    "encryptedData": "66f30274ed5d99a2af2f8d976f37aaeb"
+  },
+  "primitive": {
+    "iv": "000102030405060708090a0b0c0d0e0f",
+    "encryptedData": "62fadcdd168fd82b834c4959e659a204"
+  }
+}
