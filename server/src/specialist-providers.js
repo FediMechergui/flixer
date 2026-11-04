@@ -138,7 +138,7 @@ export function parseSpecialistList(provider,html,url){
       const ep=/^(.+)-episode-(\d+)$/.exec(m[1]);
       const item=row(provider,'s',ep?ep[1]:m[1],title.replace(/\s*[–—-]\s*Episode\s+\d+$/i,''),image($(a).find('img').attr('src'),cfg.origin));
       item.countries=['TR'];item.collections=['turkish'];
-      if(ep){item.episodes=[episode(provider,m[1],`Episode ${ep[2]}`,{number:Number(ep[2]),audioModes:['sub']})];item.episodeCount=1;item.latestEpisode=m[1];}
+      if(ep){item.episodes=[episode(provider,m[1],`Episode ${ep[2]}`,{number:Number(ep[2]),audioModes:['sub']})];item.episodeCount=1;item.latestEpisode=item.episodes[0].id;if(/^\/episodes(?:\/|$)/.test(new URL(url).pathname)){item.episodeUpdateFeed=true;item.recentUpdate={kind:'episodes',source:'feed',at:'',episodeId:item.latestEpisode};}}
       rows.push(item);
     });
     if(!rows.length && !/nothing found|no results/i.test($('body').text()))throw new Error('YoTurkish listing format changed');
@@ -312,7 +312,7 @@ export async function fetchSpecialistPage({provider,page:pageNum=1,cursor,search
   }
   if(provider==='toontales'){
     // The home grid is random; its page URLs repeat titles. The public sitemap
-    // is the stable catalogue cursor, including images and real modification dates.
+    // is the stable catalogue cursor. Sitemap edits are metadata, not releases.
     const index=load(await page(`${cfg.origin}/sitemap_index.xml`),{xmlMode:true});
     const maps=index('sitemap > loc').toArray().map(a=>index(a).text()).filter(url=>new RegExp(`^https://www\\.toontales\\.net/video-sitemap\\d*\\.xml$`).test(url));
     if(!maps.length)throw new Error('ToonTales sitemap missing');
@@ -323,11 +323,11 @@ export async function fetchSpecialistPage({provider,page:pageNum=1,cursor,search
         const poster=image($(a).find('image\\:loc').text(),cfg.origin);
         const label=poster?decodeURIComponent(new URL(poster).pathname.split('/').pop()).replace(/\.\w+$/,'').replaceAll('-',' '):m[1].replaceAll('-',' ');
         const item=row(provider,'m',m[1],label,poster);
-        const modified=new Date($(a).children('lastmod').text());if(Number.isFinite(+modified)&&+modified<=Date.now())item.latestAt=modified.toISOString();
+        const modified=new Date($(a).children('lastmod').text());if(Number.isFinite(+modified)&&+modified<=Date.now())item.providerUpdatedAt=modified.toISOString();
         return [item];
       });
     })).filter(item=>!search || clean(item.title).toLowerCase().includes(clean(search).toLowerCase()));
-    items.sort((a,b)=>String(b.latestAt||'').localeCompare(String(a.latestAt||''))||a.id.localeCompare(b.id));
+    items.sort((a,b)=>String(b.providerUpdatedAt||'').localeCompare(String(a.providerUpdatedAt||''))||a.id.localeCompare(b.id));
     return {items:items.slice((n-1)*24,n*24),page:n,totalPages:Math.ceil(items.length/24),hasNext:n*24<items.length};
   }
   if(provider==='animegg' && latest && !search){
@@ -338,8 +338,9 @@ export async function fetchSpecialistPage({provider,page:pageNum=1,cursor,search
       const item=row(provider,'s',show.uri,show.title,image(show.thumbnailUrl,cfg.origin));
       const audioModes=video.version==='subbed'?['sub']:video.version==='dubbed'?['dub']:[];
       item.episodes=[episode(provider,ep.uri,`Episode ${ep.numberLabel||ep.number}`,{number:Number(ep.number)||null,audioModes})];
-      item.audioModes=audioModes;item.episodeCount=1;item.latestEpisode=ep.uri;
-      const date=new Date(video.releaseDate);if(Number.isFinite(+date) && +date<=Date.now()){item.latestAt=date.toISOString();item.providerUpdatedAt=item.latestAt;}
+      item.audioModes=audioModes;item.episodeCount=1;item.latestEpisode=item.episodes[0].id;item.episodeUpdateFeed=true;
+      const date=new Date(video.releaseDate);if(Number.isFinite(+date) && +date<=Date.now()){item.latestAt=date.toISOString();item.providerUpdatedAt=item.latestAt;item.episodes[0].publishedAt=item.latestAt;}
+      item.recentUpdate={kind:'episodes',source:'feed',at:item.latestAt||'',episodeId:item.latestEpisode};
       return [item];
     });
     // The feed can contain both versions of the same show; preserve both versions.
@@ -447,9 +448,9 @@ export function parseMultiMoviesList(html,url){
     const title=clean($(a).find('h3').text());if(!title)return;
     const item=row('multimovies','s',m[1],title,null),id=`sp:multimovies:e:${m[1]}:${m[2]}:${m[3]}`;
     item.episodes=[{id,title:clean($(a).find('p').text())||`Episode ${m[3]}`,season:Number(m[2]),number:Number(m[3]),sourceUrl:u.href,offerings:[{provider:'multimovies',id}]}];
-    item.episodeCount=1;item.latestEpisode=id;items.push(item);
+    item.episodeCount=1;item.latestEpisode=id;if(/^\/episodes(?:\/|$)/.test(new URL(url).pathname)){item.episodeUpdateFeed=true;item.recentUpdate={kind:'episodes',source:'feed',at:'',episodeId:id};}items.push(item);
   });
-  const grouped=new Map();for(const item of items){const old=grouped.get(item.id);if(old){old.episodes=unique([...old.episodes,...item.episodes]);old.episodeCount=old.episodes.length;old.latestEpisode ||= item.latestEpisode;}else grouped.set(item.id,item);}
+  const grouped=new Map();for(const item of items){const old=grouped.get(item.id);if(old){old.episodes=unique([...old.episodes,...item.episodes]);old.episodeCount=old.episodes.length;old.latestEpisode ||= item.latestEpisode;if(!old.recentUpdate&&item.recentUpdate){old.recentUpdate=item.recentUpdate;old.episodeUpdateFeed=true;}}else grouped.set(item.id,item);}
   if(!grouped.size && !/no (?:results|movies|series|episodes)|nothing found/i.test($('body').text()))throw new Error('MultiMovies listing format changed');
   const pageNumber=Number(new URL(url).searchParams.get('page'))||1;
   const match=/Page\s+(\d+)\s+of\s+(\d+)/i.exec($('body').text());

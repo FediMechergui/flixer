@@ -4,7 +4,7 @@
 /* Cards: resume progress */
 .card__bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgba(234,240,235,.18); }
 .card__bar i { display: block; height: 100%; background: var(--amber); }
-.card__resume { position: absolute; left: 6px; bottom: 8px; font-family: var(--mono); font-size: 10px; letter-spacing: .08em; padding: 2px 6px; border-radius: 6px; background: rgba(12,18,16,.8); color: var(--amber); }
+.card__resume { position: absolute; left: 6px; top: 8px; font-family: var(--mono); font-size: 10px; letter-spacing: .08em; padding: 2px 6px; border-radius: 6px; background: rgba(12,18,16,.8); color: var(--amber); }
 
 /* Episodes with play links */
 .episode { color: inherit; }
@@ -46,7 +46,7 @@
 .order { padding: 0 var(--gutter); }
 .orow { display: grid; grid-template-columns: 34px 56px 1fr auto; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); color: inherit; }
 .orow__n { font-family: var(--mono); font-size: 12px; color: var(--amber); text-align: right; }
-.orow__art { aspect-ratio: 2/3; border-radius: 6px; overflow: hidden; background: var(--surface); }
+.orow__art { position: relative; aspect-ratio: 2/3; border-radius: 6px; overflow: hidden; background: var(--surface); }
 .orow__art img { width: 100%; height: 100%; object-fit: cover; }
 .orow__title { font-weight: 500; font-size: 14px; margin: 0; line-height: 1.3; }
 .orow__meta { margin-top: 2px; }

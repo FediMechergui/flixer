@@ -11,6 +11,7 @@ import { matchesSearch } from '../../shared/search.js';
 import {matchesCollection} from '../../shared/collections.js';
 import {rankRecentTitles} from '../../shared/recent-updates.js';
 import {contentFreshness} from '../../shared/freshness.js';
+import {observeRecentUpdate} from '../../shared/recent-observation.js';
 import { DATA_DIR, readJson } from './store.js';
 import { mergeLibrary, mergeShow, episodeOfferings, showOfferings, titleKey } from './merge-library.js';
 import { getFmoviesDetails, parseFmoviesId, searchFmovies, fmoviesServers, FMOVIES_BASE, fetchFmoviesPage } from './fmovies.js';
@@ -227,7 +228,7 @@ export function libraryHome(catalog=readLibrary()) {
   const value={featured:trendingMovies[0]||trendingSeries[0]||null,trendingMovies,trendingSeries,rails:[
     {id:'trending-movies',title:'Latest movies',items:trendingMovies},
     {id:'trending-series',title:'Latest series',items:trendingSeries},
-    ...['action','sci-fi','comedy','horror'].map(genre=>({id:genre,title:genre,items:libraryPage(recent,{kind:'film',genre,perPage:12}).items})),
+    ...['action','sci-fi','comedy','horror'].map(genre=>({id:genre,title:genre,items:libraryPage(catalog,{kind:'film',genre,perPage:12}).items})),
   ]};
   homeResults.set(catalog,{shows:catalog.shows,revision:catalog.generatedAt,size:catalog.shows?.length||0,value});return value;
 }
@@ -269,13 +270,14 @@ export async function discoverLibrary({kind='film',page=1,genre,year,collection=
   });
   if(results.every(result=>result.status==='rejected')&&!pages.some(result=>result.items.length))throw new Error('All catalogue providers are temporarily unavailable');
   const rows=pages.flatMap(result=>result.items);
+  if(latest){const savedById=new Map((catalog.shows||[]).map(row=>[row.id,row]));for(let i=0;i<rows.length;i++)rows[i]={...rows[i],recentUpdate:observeRecentUpdate(savedById.get(rows[i].id),rows[i])};}
   const aliases=readJson(`provider-aliases-${product}.json`,{});
   const {catalog:merged,report}=mergeLibrary(await matchingCatalogue(catalog,rows,aliases),rows,{product,aliases});
   const ids=new Set(rows.map(row=>report.aliases[row.id]||row.id));
   for(const pending of report.pending)if(pending.candidates[0])ids.add(pending.candidates[0]);
   const items=merged.shows.filter(s=>ids.has(s.id)&&s.kind===kind&&matchesCollection(s,collection)&&(!year||Number(s.year)===Number(year))&&(!genre||documentary||s.tags?.includes(genre)));
   const providers=results.map((r,i)=>({provider:names[i],page,totalPages:pages[i].totalPages,ok:r.status==='fulfilled',cached:!!pages[i].cached}));
-  return {items,page,totalPages:Math.max(page,...pages.map(result=>Number(result.totalPages)||page)),providers,providerErrors:results.map((r,i)=>r.status==='rejected'?{provider:providers[i].provider,error:r.reason.message}:null).filter(Boolean)};
+  return {items:latest?rankRecentTitles(items):items,page,totalPages:Math.max(page,...pages.map(result=>Number(result.totalPages)||page)),providers,providerErrors:results.map((r,i)=>r.status==='rejected'?{provider:providers[i].provider,error:r.reason.message}:null).filter(Boolean)};
 }
 export async function unifiedStream(id,{showId,source,prefix='/api/stream',catalog,product=PRODUCT,quick=false,fresh=false,transport='proxy',resolveTitle=unifiedTitle,resolveMyflixer=resolveMyflixerStream,resolveHdtoday=resolveHdtodayServers,resolveSpecialist=resolveSpecialistServers}={}) {
   if(!catalog){const saved=product==='flixer'&&showId?await readPackedTitle(showId):null;catalog=saved?{product,shows:[saved]}:product==='flixer'&&specialistUrl(showId||id)?{product,shows:[]}:readLibrary();}

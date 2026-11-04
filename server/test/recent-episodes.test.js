@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {gunzipSync} from 'node:zlib';
 import {rankRecentTitles} from '../../shared/recent-updates.js';
-import {contentFreshness} from '../../shared/freshness.js';
+import {contentFreshness,recentFreshness} from '../../shared/freshness.js';
 import {compactRecentEpisode,hasNewEpisodeContent,newEpisodeContent} from '../../shared/episode-updates.js';
 import {mergeShow} from '../src/merge-library.js';
 import {leanCatalog,writeCatalog} from '../src/export-catalog.js';
@@ -15,7 +15,7 @@ import {refreshSeriesEpisodes} from '../src/episode-refresh.js';
 import {libraryHome,discoverLibrary} from '../src/library-service.js';
 
 const episode=(id,season,number,extra={})=>({id,title:`Episode ${number}`,season,number,...extra});
-const series=(id,episodes=[],extra={})=>({id,title:id,kind:'series',episodes,...extra});
+const series=(id,episodes=[],extra={})=>({id,title:id,kind:'series',episodes,episodesComplete:episodes.length>0,...((extra.contentUpdatedAt||extra.latestAt)?{recentUpdate:{kind:'episodes',source:'feed',at:extra.contentUpdatedAt||extra.latestAt,episodeId:extra.latestEpisode||episodes.at(-1)?.id||id+':event'}}:{}),...extra});
 
 test('recent ordering uses content chronology and rotates providers only within identical update batches',()=>{
   const at='2026-11-03T12:00:00Z',now=Date.parse('2026-11-04T12:00:00Z');
@@ -53,8 +53,8 @@ test('merging delayed providers preserves the latest episode and resolves its ca
   const same=mergeShow(old,series('fm:s:7',[episode('fm:e:7:2:10',2,10,{offerings:[{provider:'fmovies',id:'fm:e:7:2:10'}]})],{latestEpisode:'fm:e:7:2:10'}));
   assert.equal(same.latestEpisode,'mf:e:10');assert.deepEqual(compactRecentEpisode(same).providers,['fmovies','myflixer']);
   const next=mergeShow(same,series('fm:s:7',[episode('fm:e:7:3:1',3,1)],{latestEpisode:'fm:e:7:3:1'}));
-  assert.equal(next.latestEpisode,'fm:e:7:3:1');assert.equal(compactRecentEpisode(next).season,3);
-  assert.equal(compactRecentEpisode({...next,latestEpisode:'missing'}),null,'do not invent a recent episode from a large guide');
+  assert.equal(next.latestEpisode,'fm:e:7:3:1');assert.equal(compactRecentEpisode(next).season,2,'a newly filled guide does not rewrite the episode attached to the existing update event');
+  assert.equal(compactRecentEpisode({...next,recentUpdate:null,latestEpisode:'missing'}),null,'do not invent a recent episode from a large guide');
 });
 
 test('unknown season episode numbers advance only within the same source and never regress on guide backfill',()=>{
@@ -68,7 +68,7 @@ test('unknown season episode numbers advance only within the same source and nev
 });
 
 test('refreshes add historical guides without reviving releases, then record a new season once and retain it through failure',async()=>{
-  const at='2026-11-03T12:00:00Z',old=series('fm:s:9',[episode('fm:e:9:2:10',2,10)],{latestEpisode:'fm:e:9:2:10',contentUpdatedAt:'2026-11-01'});
+  const at='2026-11-03T12:00:00.000Z',old=series('fm:s:9',[episode('fm:e:9:2:10',2,10)],{latestEpisode:'fm:e:9:2:10',contentUpdatedAt:'2026-11-01'});
   const backfill={...old,episodes:[episode('fm:e:9:1:1',1,1)],latestEpisode:'fm:e:9:1:1'};
   const first=mergeProviderObservation(old,backfill,at);assert.equal(first.contentUpdatedAt,old.contentUpdatedAt);assert.equal(first.latestEpisode,old.latestEpisode);
   const refreshed=await refreshSeriesEpisodes([old],{now:Date.parse(at),resolveDetails:async()=>backfill});
@@ -84,9 +84,9 @@ test('refreshes add historical guides without reviving releases, then record a n
 test('an explicit source recent feed advances a known title on its first observed episode without turning full-guide imports into updates',()=>{
   const title=series('sp:carateen:s:sp-10',[],{firstSeenAt:'2026-11-01T12:00:00Z'});
   const latest=episode('sp:carateen:e:sp-10:24',null,24),feed={...title,episodes:[latest],latestEpisode:latest.id,episodeUpdateFeed:true};
-  const first=mergeProviderObservation(title,feed,'2026-11-03T12:00:00Z');assert.equal(first.contentUpdatedAt,'2026-11-03T12:00:00Z');assert.equal(first.episodeUpdateFeed,undefined);
+  const first=mergeProviderObservation(title,feed,'2026-11-03T12:00:00Z');assert.equal(first.contentUpdatedAt,'2026-11-03T12:00:00.000Z');assert.equal(first.episodeUpdateFeed,undefined);
   assert.equal(mergeProviderObservation(title,{...feed,episodeUpdateFeed:undefined},'2026-11-03T12:00:00Z').contentUpdatedAt,null);
-  assert.equal(mergeProviderObservation(undefined,feed,'2026-11-03T12:00:00Z').contentUpdatedAt,undefined,'brand new catalogue entries remain additions');
+  assert.equal(mergeProviderObservation(undefined,feed,'2026-11-03T12:00:00Z').recentUpdate.source,'feed','a brand new title in an actual episode feed has source evidence');
   assert.equal(mergeProviderObservation(first,feed,'2026-11-04T12:00:00Z').contentUpdatedAt,first.contentUpdatedAt);
   const older=episode('sp:carateen:e:sp-10:20',null,20);
   const repeated=mergeProviderObservation(first,{...feed,episodes:[older],latestEpisode:older.id},'2026-11-04T12:00:00Z');
@@ -102,14 +102,14 @@ test('live cached home and latest discovery agree on actual updates instead of p
 
 test('metadata-only discoveries do not fill recent pages or inflate totals, but ordinary catalogue paging retains them',async()=>{
   const additions=Array.from({length:100},(_,i)=>series(`sp:carateen:s:sp-${i+100}`,[],{firstSeenAt:'2026-11-04T14:00:00Z'}));
-  const ep=episode('sp:carateen:e:sp-1:24',null,24),feed=series('sp:carateen:s:sp-1',[ep],{latestEpisode:ep.id,firstSeenAt:'2026-11-03T12:00:00Z'}),dated=series('fm:s:updated',[],{contentUpdatedAt:'2026-11-03T13:00:00Z'});
+  const ep=episode('sp:carateen:e:sp-1:24',null,24),feed=series('sp:carateen:s:sp-1',[ep],{latestEpisode:ep.id,firstSeenAt:'2026-11-03T12:00:00Z',recentUpdate:{kind:'episodes',source:'feed',at:'',observedAt:'2026-11-03T12:00:00Z',episodeId:ep.id}}),dated=series('fm:s:updated',[],{contentUpdatedAt:'2026-11-03T13:00:00Z'});
   const catalog={product:'flixer',shows:[...additions,feed,dated],tags:[],channels:[]};
   const recent=await discoverLibrary({kind:'series',latest:true,cachedOnly:true,catalog});
   assert.deepEqual(recent.items.map(row=>row.id),[dated.id,feed.id]);assert.equal(recent.total,2);assert.equal(recent.totalPages,1);
   const tail=await discoverLibrary({kind:'series',latest:true,cachedOnly:true,catalog,page:2});assert.equal(tail.items.length,0);assert.equal(tail.totalPages,1);
   const ordinary=await discoverLibrary({kind:'series',cachedOnly:true,catalog});assert.equal(ordinary.total,102);assert.equal(ordinary.totalPages,5);assert.equal(ordinary.items.length,24);
   assert.deepEqual(libraryHome(catalog).trendingSeries.map(row=>row.id),[dated.id,feed.id]);
-  assert.equal(rankRecentTitles(additions).length,100,'initial catalogues still fall back to additions when they have no content evidence');
+  assert.equal(rankRecentTitles(additions).length,0,'an empty verified feed never falls back to catalogue additions');
 });
 
 test('static and published bootstraps expose the same chronological source mix with compact episode evidence',async t=>{

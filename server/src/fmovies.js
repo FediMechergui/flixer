@@ -115,6 +115,7 @@ export function parseFmoviesDetails(html, sourceUrl) {
   const item = baseItem({ id:route[2], kind, title:text(data.name), year:Number(String(data.dateCreated || '').slice(0, 4)) || null, poster:typeof data.image === 'string' ? data.image : data.image?.url, tags, sourceUrl:url.origin + url.pathname, synopsis:text(data.description) });
   item.imdbId = /tt\d+/.exec((data.sameAs || []).join(' '))?.[0] || null;
   item.releaseDate = data.dateCreated || null;
+  item.publishedAt = item.releaseDate;
   const duration = /^PT(?:(\d+)H)?(?:(\d+)M)?/.exec(data.duration || '');
   if (duration) item.totalDurationSec = Number(duration[1] || 0)*3600 + Number(duration[2] || 0)*60;
   if (kind === 'film') { item.episodes[0].durationSec = item.totalDurationSec; return item; }
@@ -164,6 +165,7 @@ export async function getFmoviesDetails(record, { allSeasons = true, season, num
       }));
       item.episodes = [...collected.values()].sort((a,b) => a.season-b.season || a.number-b.number);
       item.episodeCount = item.episodes.length;
+      item.episodesComplete = !item.providerErrors?.length && item.seasons.every(s=>item.episodes.some(e=>e.season===s));
     }
     return item;
   })();

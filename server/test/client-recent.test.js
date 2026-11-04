@@ -3,7 +3,7 @@ import vm from 'node:vm';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {rankRecentTitles} from '../../shared/recent-updates.js';
-import {contentFreshness} from '../../shared/freshness.js';
+import {recentFreshness} from '../../shared/freshness.js';
 
 const source=fs.readFileSync(new URL('../../client-terrarium/js/api.js',import.meta.url),'utf8');
 const deferred=()=>{let resolve;const promise=new Promise(done=>resolve=done);return {promise,resolve};};
@@ -11,9 +11,9 @@ const episode=(number,{provider='carateen',parent='tg-453',season=null,id}={})=>
   const key=id||`sp:${provider}:e:${parent}:${4000+number}`;
   return {id:key,title:`A real episode ${number}`,season,number,offerings:[{provider,id:key}]};
 };
-const show=(ep,extra={})=>({id:'sp:carateen:s:tg-453',kind:'series',title:'المحقق كونان',year:1996,access:'public',offerings:[{provider:'carateen',id:'sp:carateen:s:tg-453'}],episodes:ep?[ep]:[],latestEpisode:ep?.id,contentUpdatedAt:'2026-11-01T12:00:00Z',...extra});
+const show=(ep,extra={})=>{const row={id:'sp:carateen:s:tg-453',kind:'series',title:'المحقق كونان',year:1996,access:'public',offerings:[{provider:'carateen',id:'sp:carateen:s:tg-453'}],episodes:ep?[ep]:[],latestEpisode:ep?.id,contentUpdatedAt:'2026-11-01T12:00:00Z',...extra};if(ep&&!Object.hasOwn(extra,'recentUpdate'))row.recentUpdate={kind:'episodes',source:'feed',at:row.contentUpdatedAt||'',episodeId:row.latestEpisode};return row;};
 
-async function client({shows=[],storage=new Map(),index,request}={}){
+async function client({shows=[],storage=new Map(),index,request,native}={}){
   const catalog={product:'flixer',generatedAt:'2026-11-01T00:00:00Z',shows:structuredClone(shows)};
   const requests=[];
   const context=vm.createContext({window:{FLIXER_CONFIG:{apiBase:'https://backend.test',dataBase:'https://backend.test',mobile:true,live:false},location:{hash:'#/home'},dispatchEvent(){},addEventListener(){},removeEventListener(){}},document:{visibilityState:'visible',addEventListener(){}},console,URL,URLSearchParams,Headers,DOMException,AbortController,CustomEvent:class{constructor(type,init){this.type=type;this.detail=init?.detail;}},localStorage:{getItem:key=>storage.get(key)||null,setItem:(key,value)=>storage.set(key,value)},setTimeout:(fn,ms,...args)=>setTimeout(fn,ms===750?0:ms,...args),clearTimeout,setInterval,fetch:async input=>{
@@ -23,6 +23,7 @@ async function client({shows=[],storage=new Map(),index,request}={}){
     return {ok:true,status:200,headers:new Headers(),text:async()=>JSON.stringify(body)};
   }});
   for(const name of ['universes.js','tvmaze.js'])vm.runInContext(fs.readFileSync(new URL(`../../client-terrarium/js/${name}`,import.meta.url),'utf8'),context);
+  if(native){context.window.FlixerCarateenSource={enabled:()=>true,supports:id=>String(id).startsWith('sp:carateen:')};context.window.FlixerStardimaSource={enabled:()=>true,supports:id=>String(id).startsWith('sp:stardima:')};}
   vm.runInContext(source,context);
   const api=new context.window.Api.FlixerApi();await api.catalog();
   return {api,storage,requests,ready:async()=>{await api._indexReady;await api._metadataReady;}};
@@ -101,14 +102,14 @@ test('source search keywords survive offline restarts without becoming merge ali
 
 test('home and See all preserve shared chronology and source diversity without repeats or response-arrival priority',async()=>{
   const rows=[];
-  for(const [provider,count] of [['fmovies',40],['wco',4],['carateen',4]])for(let i=0;i<count;i++)rows.push({id:`sp:${provider}:s:series-${String(i).padStart(3,'0')}`,kind:'series',title:`${provider} ${i}`,offerings:[{provider,id:`sp:${provider}:s:series-${String(i).padStart(3,'0')}`}],contentUpdatedAt:'2026-11-03T12:00:00Z'});
-  rows.push({id:'fm:t:newest',kind:'series',title:'Actually newer',contentUpdatedAt:'2026-11-03T12:00:01Z'});
+  for(const [provider,count] of [['fmovies',40],['wco',4],['carateen',4]])for(let i=0;i<count;i++)rows.push({id:`sp:${provider}:s:series-${String(i).padStart(3,'0')}`,kind:'series',title:`${provider} ${i}`,offerings:[{provider,id:`sp:${provider}:s:series-${String(i).padStart(3,'0')}`}],recentUpdate:{kind:'release',source:'feed',at:'2026-11-03T12:00:00Z'}});
+  rows.push({id:'fm:t:newest',kind:'series',title:'Actually newer',recentUpdate:{kind:'release',source:'feed',at:'2026-11-03T12:00:01Z'}});
   const c=await client({shows:rows});await c.ready();
   const expected=rankRecentTitles(rows).map(row=>row.id);
   assert.deepEqual(Array.from(await c.api.trending(),item=>item.id),expected.slice(0,24));
   const filters={sort:'updated'},first=await c.api.discover('all',filters,1);
   assert.deepEqual(Array.from(first.items,item=>item.id),expected.slice(0,24));
-  const old={id:'sp:carateen:s:old-page',kind:'series',title:'Old source page arriving later',contentUpdatedAt:'2025-01-01T00:00:00Z'};
+  const old={id:'sp:carateen:s:old-page',kind:'series',title:'Old source page arriving later',recentUpdate:{kind:'release',source:'feed',at:'2025-01-01T00:00:00Z'}};
   c.api._merge([old]);c.api._reindex();c.api._browseSessions.get(JSON.stringify(['all',filters])).buffer.push(old.id);
   const second=await c.api.discover('all',filters,2),third=await c.api.discover('all',filters,3);
   const seen=[...first.items,...second.items,...third.items].map(item=>item.id);
@@ -121,8 +122,8 @@ test('large recent home selection sorts only bounded provider candidates and mat
   const context=vm.createContext({});
   vm.runInContext("const byUpdated=(a,b)=>(b.updatedAt||'').localeCompare(a.updatedAt||'')||String(a.id).localeCompare(String(b.id));const sizes=[];const originalSort=Array.prototype.sort;Array.prototype.sort=function(...args){sizes.push(this.length);return originalSort.apply(this,args);};"+source.slice(start,end)+';globalThis.select=topRecentItems;globalThis.sortSizes=sizes;',context);
   const providers=['fmovies','carateen','hdtoday','wco'];
-  const rows=Array.from({length:50000},(_,i)=>{const provider=providers[i%11<8?0:1+(i%11-8)],id=`sp:${provider}:s:${String(i).padStart(6,'0')}`;return Object.freeze({id,kind:'series',title:`Show ${i}`,offerings:[{provider,id}],contentUpdatedAt:new Date(Date.UTC(2026,10,3,12,0,i%7)).toISOString()});});
-  const items=Object.freeze(rows.map(row=>Object.freeze({...row,updatedAt:contentFreshness(row).at}))),before=Array.from(items);
+  const rows=Array.from({length:50000},(_,i)=>{const provider=providers[i%11<8?0:1+(i%11-8)],id=`sp:${provider}:s:${String(i).padStart(6,'0')}`;return Object.freeze({id,kind:'series',title:`Show ${i}`,offerings:[{provider,id}],recentUpdate:{kind:'release',source:'feed',at:new Date(Date.UTC(2026,10,3,12,0,i%7)).toISOString()}});});
+  const items=Object.freeze(rows.map(row=>{const freshness=recentFreshness(row);return Object.freeze({...row,updatedAt:freshness.at,updateKind:freshness.kind});})),before=Array.from(items);
   const expected=rankRecentTitles(rows,{limit:24}).map(row=>row.id),actual=context.select(items,24);
   assert.deepEqual(Array.from(actual,item=>item.id),expected);assert.equal(actual.length,24);
   assert.ok(Math.max(...context.sortSizes)<=24*providers.length,'the catalogue itself must never be sorted for the home row');
@@ -143,5 +144,62 @@ test('searching old titles never displaces real episode updates, while Newly add
   const added=await c.api.discover('all',{sort:'added'},1);assert.ok(searched.every(row=>added.items.some(item=>item.id===row.id)));
   const fallback=await client({shows:searched});await fallback.ready();
   assert.deepEqual(Array.from(await fallback.api.trending(),item=>item.id),rankRecentTitles(searched).map(row=>row.id));
-  assert.equal((await fallback.api.trending()).length,3,'a new or offline app without content update evidence still has a usable feed');
+  assert.equal((await fallback.api.trending()).length,0,'an empty confirmed feed must not substitute old catalogue discoveries');
+});
+
+test('legacy import dates and first full guides stay out of recent feeds even in a source-only filter',async()=>{
+  const imported=Array.from({length:30},(_,i)=>show(episode(i+1),{id:`sp:wco:s:old-cartoon-${i}`,title:`Old cartoon ${i}`,tags:['animation'],collections:['classic-cartoons'],recentUpdate:undefined,firstSeenAt:'2026-11-04T08:00:00Z',contentUpdatedAt:'2026-11-04T08:00:00Z',latestAt:'2026-11-04T08:00:00Z'}));
+  const release={id:'fm:m:real',kind:'film',title:'A source dated release',publishedAt:'2026-11-01T12:00:00Z'};
+  const c=await client({shows:[...imported,release]});await c.ready();
+  assert.deepEqual(Array.from(await c.api.trending(),item=>item.id),[release.id]);
+  const filtered=await c.api.discover('tv',{sort:'updated',collection:'classic-cartoons'},1);
+  assert.equal(filtered.items.length,0);assert.equal(filtered.total,0);assert.equal(filtered.totalPages,1);
+  assert.equal((await c.api.discover('tv',{sort:'added',collection:'classic-cartoons'},1)).total,30);
+  assert.equal((await c.api.item(imported[0].id)).updateKind,'unknown');
+});
+
+test('native actual latest feeds establish stable evidence while guide/catalogue visits do not',async()=>{
+  for(const provider of ['carateen','stardima']){
+    const storage=new Map(),ep=episode(5,{provider,parent:provider==='carateen'?'tg-81':'native-title'}),id=`sp:${provider}:s:${provider==='carateen'?'tg-81':'native-title'}`;
+    const base=show(ep,{id,title:`${provider} source title`,recentUpdate:undefined,latestEpisode:undefined,contentUpdatedAt:undefined,offerings:[{provider,id}],episodes:[]});
+    const c=await client({shows:[base],storage,native:true});await c.ready();
+    c.api._mergeNativeCatalogue(provider,[{...base,episodes:[ep],latestEpisode:ep.id,episodesComplete:true}],{latest:false});c.api._reindex();
+    assert.equal((await c.api.trending()).length,0,'the first complete guide is catalogue coverage');
+    const feed={...base,episodes:[ep],latestEpisode:ep.id,episodeUpdateFeed:true};
+    c.api._mergeNativeCatalogue(provider,[feed],{latest:true});c.api._reindex();
+    const first=await c.api.item(id),evidence=c.api._byId.get(id).recentUpdate;
+    assert.equal(first.recentEpisode.number,5);assert.equal(first.updateKind,'episodes');assert.equal(first.updateObserved,true);
+    assert.ok(evidence.observedAt);assert.equal(evidence.at,'');assert.equal(c.api._byId.get(id).episodeUpdateFeed,undefined);
+    c.api._mergeNativeCatalogue(provider,[feed],{latest:true});c.api._reindex();assert.equal((await c.api.item(id)).updatedAt,first.updatedAt);
+    const next=episode(6,{provider,parent:provider==='carateen'?'tg-81':'native-title'});
+    c.api._mergeNativeCatalogue(provider,[{...base,episodes:[ep,next],latestEpisode:next.id,episodesComplete:true}],{latest:false});c.api._reindex();
+    assert.equal((await c.api.item(id)).recentEpisode.number,5,'opening an undated guide cannot relabel the observed update');
+    assert.equal(c.api._byId.get(id).latestEpisode,next.id,'guide playback retains its actual latest pointer');
+    const restarted=await client({shows:[base],storage,native:true});await restarted.ready();
+    assert.equal((await restarted.api.item(id)).recentEpisode.number,5);assert.equal((await restarted.api.item(id)).updatedAt,first.updatedAt);
+    c.api._mergeNativeCatalogue(provider,[{...feed,episodes:[next],latestEpisode:next.id}],{latest:true});c.api._reindex();
+    assert.equal((await c.api.item(id)).recentEpisode.number,6);
+  }
+});
+
+test('a corrected snapshot can revoke recent evidence without removing the title or restoring it from an older cache',async()=>{
+  const ep=episode(8),initial=show(ep),c=await client({shows:[initial]});await c.ready();
+  c.api._merge([{id:initial.id,kind:'series',recentUpdate:null}],{snapshotAt:'2026-11-05T00:00:00Z'});c.api._reindex();
+  assert.equal((await c.api.trending()).length,0);assert.ok(await c.api.item(initial.id));
+  c.api._merge([initial],{snapshotAt:'2026-11-01T00:00:00Z'});c.api._reindex();
+  assert.equal((await c.api.trending()).length,0,'an older snapshot must not reinstate revoked evidence');
+});
+
+test('repeated hosted observations and extra source aliases do not republish the same episode',async()=>{
+  const ep=episode(8,{season:2}),alias=episode(8,{provider:'wco',parent:'same-show',season:2}),canonical={...ep,offerings:[...ep.offerings,...alias.offerings]};
+  const observedAt='2026-11-01T12:00:00.000Z',row=show(canonical,{recentUpdate:{kind:'episodes',source:'feed',at:'',observedAt,episodeId:canonical.id}});
+  const c=await client({shows:[row]});await c.ready();
+  for(const next of [canonical,alias]){
+    c.api._merge([show(next,{recentUpdate:{kind:'episodes',source:'feed',at:'',observedAt:'2026-11-03T12:00:00Z',episodeId:next.id}})]);c.api._reindex();
+    assert.equal((await c.api.item(row.id)).updatedAt,'2026-11-01T12:00:00.000Z');
+    assert.equal(c.api._byId.get(row.id).recentUpdate.observedAt,observedAt);
+  }
+  c.api._merge([show(alias,{recentUpdate:{kind:'episodes',source:'feed',at:'2026-10-31T12:00:00Z',observedAt:'2026-11-03T12:00:00Z',episodeId:alias.id}})]);c.api._reindex();
+  assert.equal((await c.api.item(row.id)).updatedAt,'2026-10-31T12:00:00.000Z','a newly supplied real publication date replaces the observation date');
+  assert.equal(c.api._byId.get(row.id).recentUpdate.observedAt,observedAt,'the first observation stays stable after publication metadata arrives');
 });

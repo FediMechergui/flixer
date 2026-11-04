@@ -11,18 +11,21 @@ import {refreshSeriesEpisodes} from './episode-refresh.js';
 import {STARDIMA_IMPORT_JOBS,stardimaPartitionKey,alignStardimaQueue} from './stardima-import.js';
 import {alignCarateenQueue} from './carateen-import.js';
 import {hasNewEpisodeContent,newEpisodeContent,resolveEpisodeReference} from '../../shared/episode-updates.js';
+import {observeRecentUpdate} from '../../shared/recent-observation.js';
+import {validatedRecentUpdate} from '../../shared/freshness.js';
 
 const running=new Map();
 const filename=product=>`providers-${product}.json`;
 export function mergeProviderObservation(previous,row,at=new Date().toISOString()) {
-  const {episodeUpdateFeed,...merged}=previous?mergeShow(previous,row):row;
-  const changed=hasNewEpisodeContent(previous,row);
-  if(changed&&!row.latestEpisode){
+  const recentUpdate=observeRecentUpdate(previous,row,at);
+  const {episodeUpdateFeed,...merged}=previous?mergeShow(previous,{...row,recentUpdate}):{...row,recentUpdate};
+  const changed=recentUpdate&&JSON.stringify(recentUpdate)!==JSON.stringify(previous&&validatedRecentUpdate(previous))&&recentUpdate.kind==='episodes';
+  if(hasNewEpisodeContent(previous,row)&&!row.latestEpisode){
     const latest=newEpisodeContent(previous,row).sort((a,b)=>(Date.parse(b.publishedAt||'')||0)-(Date.parse(a.publishedAt||'')||0)||(b.season??-1)-(a.season??-1)||(b.number??-1)-(a.number??-1))[0];
     if(latest)merged.latestEpisode=resolveEpisodeReference(merged,latest.id)?.id||latest.id;
   }
   return {...merged,firstSeenAt:previous?.firstSeenAt||row.firstSeenAt||at,
-    contentUpdatedAt:changed?at:merged.contentUpdatedAt,
+    contentUpdatedAt:changed?recentUpdate.at||recentUpdate.observedAt:merged.contentUpdatedAt,
     providerUpdatedAt:changed?row.providerUpdatedAt||at:previous?.providerUpdatedAt||row.providerUpdatedAt||at};
 }
 export function providerCache(product) {

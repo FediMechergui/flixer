@@ -130,7 +130,7 @@ export function parseWcoRecentEpisode(html,url){
  const mode=/English Subbed/i.test(heading)?'sub':/English Dubbed/i.test(heading)?'dub':'';
  const row=base(parent.id,parent.title,mode),epId='sp:wco:e:'+parseWcoId(parent.id).slug+':'+source.pathname.replace(/^\/|\/$/g,''),coords=coordinates(heading,source.pathname);
  row.episodes=[{id:epId,title:heading,...coords,audioModes:row.audioModes,sourceUrl:source.href,offerings:[{provider:'wco',id:epId,audioModes:row.audioModes}]}];
- row.episodeCount=1;row.episodesComplete=false;row.latestEpisode=epId;
+ row.episodeCount=1;row.episodesComplete=false;row.latestEpisode=epId;row.episodeUpdateFeed=true;row.recentUpdate={kind:'episodes',source:'feed',at:'',episodeId:epId};
  return row;
 }
 export async function fetchWcoPage({page=1,search,kind='series',collection='',latest=false}={}){

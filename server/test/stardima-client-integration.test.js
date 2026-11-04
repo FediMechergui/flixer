@@ -89,16 +89,17 @@ test('native all-media Arabic browsing applies local year filters to both source
 
 test('small native latest refresh persists through index merges and restarts without waiting for the hosted snapshot',async()=>{
   const gate=deferred();let newest=1;
-  const storage=new Map(),c=await client({storage,catalogueSource:{enabled:()=>true,get:async()=>gate.promise},source:{page:async options=>({items:options.kind==='film'?[title(filmId)]:[{...title(),episodes:[episode(newest)],latestEpisode:episode(newest).id}],totalPages:999})}});
+  const storage=new Map(),c=await client({storage,catalogueSource:{enabled:()=>true,get:async()=>gate.promise},source:{page:async options=>({items:options.kind==='film'?[title(filmId)]:[{...title(),episodes:[episode(newest)],latestEpisode:episode(newest).id,episodeUpdateFeed:true}],totalPages:999})}});
   const sync=c.api.sync();await bounded(c.api._stardimaRefresh);
   assert.equal(c.calls.pages.length,2);assert.ok(c.calls.pages.every(page=>page.page===1&&page.latest));
   assert.equal(c.api._catalog.shows.length,2);const initial=c.api._byId.get(seriesId);assert.ok(initial.firstSeenAt);assert.equal(initial.contentUpdatedAt,undefined);
-  assert.ok((await c.api.trending()).some(item=>item.id===seriesId&&item.updateKind==='added'));
+  assert.ok((await c.api.trending()).some(item=>item.id===seriesId&&item.updateKind==='episodes'&&item.updateObserved));
+  assert.equal((await c.api.trending()).some(item=>item.id===filmId),false,'an ordinary film catalogue listing has no release evidence');
   await c.api._mergeIndex([{id:'fm:t:other',kind:'series',title:'Other snapshot entry'}],'2026-01-02T00:00:00Z');
   assert.ok(c.api._byId.has(seriesId));
   gate.resolve({product:'flixer',generatedAt:'2026-01-01T00:00:00Z'});await sync;
-  c.api._lastStardimaRefresh=0;newest=2;await c.api._refreshNativeStardima();const updated=c.api._byId.get(seriesId).contentUpdatedAt;assert.ok(updated);
-  c.api._lastStardimaRefresh=0;await c.api._refreshNativeStardima();assert.equal(c.api._byId.get(seriesId).contentUpdatedAt,updated,'rechecking the same episode never bumps its update time');
+  c.api._lastStardimaRefresh=0;newest=2;await c.api._refreshNativeStardima();const updated=c.api._byId.get(seriesId).recentUpdate.observedAt;assert.ok(updated);
+  c.api._lastStardimaRefresh=0;await c.api._refreshNativeStardima();assert.equal(c.api._byId.get(seriesId).recentUpdate.observedAt,updated,'rechecking the same episode never bumps its update time');
   assert.deepEqual(Array.from(c.api._byId.get(seriesId).episodes,ep=>ep.number),[2,1]);
   const restarted=await client({storage});assert.equal(restarted.api._byId.get(seriesId).firstSeenAt,initial.firstSeenAt);assert.equal(restarted.api._byId.get(seriesId).latestEpisode,episode(2).id);
   assert.ok((await restarted.api.trending()).some(item=>item.id===seriesId&&item.updateKind==='episodes'));

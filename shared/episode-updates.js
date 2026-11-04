@@ -75,7 +75,8 @@ export function selectLatestEpisode(existing, incoming, episodes) {
 
 export function compactRecentEpisode(show) {
   if (show.kind !== 'series') return null;
-  const episode = resolveEpisodeReference(show) || (!show.episodes?.length && show.recentEpisode?.id===show.latestEpisode ? show.recentEpisode : null);
+  const reference=show.recentUpdate?.kind==='episodes'?show.recentUpdate.episodeId:show.latestEpisode;
+  const episode = resolveEpisodeReference(show,reference) || (!show.episodes?.length && show.recentEpisode?.id===reference ? show.recentEpisode : null);
   if (!episode) return null;
   const providerFromId = id => /^sp:([^:]+):/.exec(String(id))?.[1] || ({mf:'myflixer',fm:'fmovies',hd:'hdtoday'}[String(id).split(':')[0]]) || (/^[\w-]{11}$/.test(String(id)) ? 'youtube' : null);
   const providers = [...new Set([providerFromId(episode.id), ...(episode.providers || []), ...(episode.offerings || []).map(row => row.provider || providerFromId(row.id))].filter(Boolean))].sort();

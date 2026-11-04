@@ -97,8 +97,8 @@ test('Flixer latest updates browse includes both media types and does not wait f
   const metadata=new Promise(resolve=>{releaseMetadata=resolve;});
   const requests=[];
   const catalog={product:'flixer',shows:[
-    {id:'movie',kind:'film',title:'Old movie, new update',publishedAt:'2020-01-01',latestAt:'2026-09-01',providerUpdatedAt:'2026-12-01',firstSeenAt:'2026-12-01'},
-    {id:'series',kind:'series',title:'Updated series',publishedAt:'2025-01-01',latestAt:'2026-10-01'},
+    {id:'movie',kind:'film',title:'Old movie, new source release',publishedAt:'2020-01-01',latestAt:'2026-09-01',recentUpdate:{kind:'release',source:'feed',at:'2026-09-01'},providerUpdatedAt:'2026-12-01',firstSeenAt:'2026-12-01'},
+    {id:'series',kind:'series',title:'Updated series',publishedAt:'2025-01-01',latestAt:'2026-10-01',recentUpdate:{kind:'episodes',source:'feed',at:'2026-10-01',episodeId:'series:e:2'}},
     {id:'added',kind:'film',title:'Recently added',publishedAt:'2026-08-01'}
   ]};
   const context=vm.createContext({window:{FLIXER_CONFIG:{live:false},dispatchEvent:()=>{}},console,URLSearchParams,CustomEvent:class {},localStorage:{getItem:()=>null,setItem:()=>{}},AbortController,setTimeout,clearTimeout,fetch:async input=>{

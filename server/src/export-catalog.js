@@ -26,10 +26,18 @@ export function leanCatalog(catalog, product) {
     channels: catalog.channels?.length || 0,
   } };
   const pick = (record, keys) => Object.fromEntries(keys.filter(key => record[key] !== undefined).map(key => [key, record[key]]));
+  const recent = show => {
+    const recentEpisode=compactRecentEpisode(show);
+    // Full guides resolve provider aliases through offerings. Compact indexes
+    // do not retain those offerings, so the event must share the summary's ID.
+    const recentUpdate=show.recentUpdate?.kind==='episodes'&&recentEpisode
+      ? {...show.recentUpdate,episodeId:recentEpisode.id} : show.recentUpdate;
+    return {recentUpdate,recentEpisode};
+  };
   return { ...payload, shows: payload.shows.map(show => ({
     ...pick(show, ['id','wpId','slug','kind','title','altTitles','year','lang','contentLang','originalLanguage','countries','audioMode','audioModes','collections','tags','primaryTag','episodeCount','seasons','totalDurationSec','totalViews','latestAt','latestEpisode','firstAt','publishedAt','portrait','synopsisGenerated','tvm','tmdbId','imdbId','documentary','offerings','firstSeenAt','contentUpdatedAt','providerUpdatedAt','providerMetadata','sourceUrl','access','episodesCheckedAt','audioLanguages','subtitleLanguages']),
     ...(typeof show.sourceSearchText==='string'?{sourceSearchText:show.sourceSearchText.slice(0,8000)}:{}),
-    recentEpisode:compactRecentEpisode(show),
+    ...recent(show),
     collections:[...new Set([...(show.collections||[]),...((show.versions||[]).some(v=>(v.collections||[]).includes('youtube-shows'))?['youtube-shows']:[])])],
     versions: (show.versions || []).map(v => ({...pick(v,['id','title','year','sourceUrl','offerings','kind','documentary','providerMetadata','tags','lang','tmdbId','imdbId']),uncertainMatch:true})),
     channelId: show.channelId || show.channel?.id,

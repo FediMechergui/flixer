@@ -102,13 +102,13 @@
     return top;
   }
   const recentProvider=item=>item.offerings?.[0]?.provider||/^sp:([^:]+):/.exec(String(item.id))?.[1]||({mf:'myflixer',fm:'fmovies',hd:'hdtoday'}[String(item.id).split(':')[0]])||item.channelId||'other';
-  const hasRecentContent=item=>!!item.recentEpisode?.id||!!item.updatedAt&&item.updateKind!=='added';
+  const hasRecentContent=item=>item.updateKind==='episodes'||item.updateKind==='release';
   // Keep in step with shared/recent-updates.js. Real update times remain in
   // order; source lanes rotate only inside an identical observed timestamp.
   function rankRecentItems(items,limit=Infinity){
     const unique=new Map();
     for(const item of items||[])if(item?.id&&!unique.has(item.id))unique.set(item.id,item);
-    const candidates=[...unique.values()],ranked=(candidates.some(hasRecentContent)?candidates.filter(hasRecentContent):candidates).sort(byUpdated),result=[];
+    const ranked=[...unique.values()].filter(hasRecentContent).sort(byUpdated),result=[];
     for(let start=0;start<ranked.length&&result.length<limit;){
       let end=start+1;while(end<ranked.length&&(ranked[end].updatedAt||'')===(ranked[start].updatedAt||''))end++;
       const lanes=new Map();
@@ -121,10 +121,10 @@
   }
   function topRecentItems(items,limit=24){
     if(limit<=0)return [];
-    const lanes=new Map(),seen=new Set(),updatesOnly=items.some(hasRecentContent);
+    const lanes=new Map(),seen=new Set();
     for(const item of items){
       if(!item?.id||seen.has(item.id))continue;seen.add(item.id);
-      if(updatesOnly&&!hasRecentContent(item))continue;
+      if(!hasRecentContent(item))continue;
       const provider=recentProvider(item);let top=lanes.get(provider);if(!top)lanes.set(provider,top=[]);
       if(top.length===limit&&byUpdated(item,top[top.length-1])>=0)continue;
       let lo=0,hi=top.length;while(lo<hi){const mid=(lo+hi)>>>1;if(byUpdated(item,top[mid])<0)hi=mid;else lo=mid+1;}
@@ -211,17 +211,47 @@
     const content=[episode,published].filter(Boolean).sort().at(-1)||'';
     return {at:content||added,kind:episode&&episode>=published&&show.kind==='series'?'episodes':published?'release':added?'added':'unknown'};
   }
-  function recentEpisodeOf(show){
-    if(show.kind!=='series'||!show.latestEpisode)return null;
-    const pointer=String(show.latestEpisode),episodes=show.episodes||[];
+  // Keep in step with shared/freshness.js. Legacy import/check timestamps
+  // remain catalogue metadata; only verified evidence belongs in Recent.
+  function validContentDate(value,now=Date.now()){
+    const text=typeof value==='string'?value.trim():'';
+    if(!/^\d{4}-\d{2}-\d{2}(?:T|$)/.test(text))return '';
+    const iso=/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?$/.test(text)?text+'Z':text,time=Date.parse(iso);
+    return Number.isFinite(time)&&time<=now+86400000?new Date(time).toISOString():'';
+  }
+  function validatedRecentUpdate(show,now=Date.now()){
+    const update=show?.recentUpdate;
+    if(!update||!['episodes','release'].includes(update.kind)||!['feed','episode-date','guide-advance'].includes(update.source))return null;
+    if(update.kind==='episodes'&&(show.kind!=='series'||typeof update.episodeId!=='string'||!update.episodeId||update.episodeId.length>1000))return null;
+    if(update.kind==='release'&&update.source!=='feed')return null;
+    const at=validContentDate(update.at,now),observedAt=validContentDate(update.observedAt,now);
+    if(update.at&&!at||update.observedAt&&!observedAt||!at&&!observedAt&&update.source!=='feed')return null;
+    return {kind:update.kind,source:update.source,at,...(observedAt?{observedAt}:{}),...(update.kind==='episodes'?{episodeId:update.episodeId}:{})};
+  }
+  function recentFreshness(show,now=Date.now()){
+    const update=validatedRecentUpdate(show,now),episodeDate=validContentDate(show.recentEpisode?.publishedAt,now),published=validContentDate(show.publishedAt,now);
+    const candidates=[...(published?[{at:published,kind:'release'}]:[]),...(show.kind==='series'&&episodeDate?[{at:episodeDate,kind:'episodes'}]:[]),...(update?[{at:update.at||update.observedAt||'',kind:update.kind}]:[])];
+    return candidates.sort((a,b)=>b.at.localeCompare(a.at))[0]||{at:'',kind:'unknown'};
+  }
+  function episodeReferenceOf(show,reference=show.latestEpisode){
+    if(show.kind!=='series'||!reference)return null;
+    const pointer=String(reference),episodes=show.episodes||[];
     let episode=episodes.find(e=>e.id===pointer||(e.offerings||[]).some(o=>o.id===pointer));
     if(!episode){const match=/^(\d+):(\d+)$/.exec(pointer)||/^sp:frembed:e:\d+:(\d+):(\d+)$/.exec(pointer);if(match){const found=episodes.filter(e=>e.season===+match[1]&&e.number===+match[2]);if(found.length===1)episode=found[0];}}
     if(!episode&&show.recentEpisode?.id===pointer)episode=show.recentEpisode;
-    return episode?{id:episode.id,title:decodeEntities(episode.title||''),season:Number.isInteger(episode.season)?episode.season:null,number:Number.isInteger(episode.number)?episode.number:null,providers:episode.providers||[...new Set((episode.offerings||[]).map(o=>o.provider).filter(Boolean))]}:null;
+    return episode?{id:episode.id,title:decodeEntities(episode.title||''),season:Number.isInteger(episode.season)?episode.season:null,number:Number.isInteger(episode.number)?episode.number:null,...(episode.publishedAt?{publishedAt:episode.publishedAt}:{}),providers:episode.providers||[...new Set((episode.offerings||[]).map(o=>o.provider).filter(Boolean))]}:null;
+  }
+  function recentEpisodeOf(show){
+    const reference=show.recentUpdate?.kind==='episodes'?show.recentUpdate.episodeId||show.latestEpisode:show.latestEpisode;
+    return episodeReferenceOf(show,reference);
+  }
+  function compactRecentUpdate(show){
+    const update=validatedRecentUpdate(show),episode=recentEpisodeOf(show);
+    return update?.kind==='episodes'&&episode?{...update,episodeId:episode.id}:update||(show.recentUpdate===null?null:undefined);
   }
   function newerEpisodePointer(current,incoming){
     if(!incoming.latestEpisode)return false;if(!current.latestEpisode)return true;
-    const before=recentEpisodeOf(current),after=recentEpisodeOf(incoming);
+    const before=episodeReferenceOf(current),after=episodeReferenceOf(incoming);
     if(before&&after&&Number.isInteger(before.number)&&Number.isInteger(after.number)){
       if(before.season!==null&&after.season!==null)return after.season>before.season||after.season===before.season&&after.number>before.number;
       const parent=id=>String(id).slice(0,String(id).lastIndexOf(':'));
@@ -229,9 +259,34 @@
     }
     return contentFreshness(incoming).at>contentFreshness(current).at;
   }
+  function newerRecentUpdate(current,incoming){
+    const before=validatedRecentUpdate(current),after=validatedRecentUpdate(incoming);
+    if(!after)return false;if(!before)return true;
+    const oldDate=before.at||before.observedAt||'',newDate=after.at||after.observedAt||'';
+    if(before.kind==='episodes'&&after.kind==='episodes'){
+      const old=episodeReferenceOf(current,before.episodeId),next=episodeReferenceOf(incoming,after.episodeId);
+      if(sameRecentEpisode(current,incoming))return !!after.at&&after.at!==before.at;
+      if(old&&next&&Number.isInteger(old.number)&&Number.isInteger(next.number)){
+        if(old.season!==null&&next.season!==null)return next.season>old.season||next.season===old.season&&next.number>old.number;
+        const parent=id=>String(id).slice(0,String(id).lastIndexOf(':'));
+        if(old.season===null&&next.season===null&&parent(old.id)===parent(next.id))return next.number>old.number;
+      }
+    }
+    return newDate>oldDate;
+  }
+  function sameRecentEpisode(current,incoming){
+    const before=validatedRecentUpdate(current),after=validatedRecentUpdate(incoming);
+    if(before?.kind!=='episodes'||after?.kind!=='episodes')return false;
+    if(before.episodeId===after.episodeId)return true;
+    const old=episodeReferenceOf(current,before.episodeId),next=episodeReferenceOf(incoming,after.episodeId);
+    if(!old||!next)return false;if(old.id===next.id)return true;
+    const aliases=(show,episode)=>[episode.id,...(show.episodes||[]).find(row=>row.id===episode.id)?.offerings?.map(row=>row.id)||[]];
+    if(aliases(current,old).some(id=>aliases(incoming,next).includes(id)))return true;
+    return old.season!==null&&next.season!==null&&Number.isInteger(old.number)&&old.season===next.season&&old.number===next.number;
+  }
   function normalize(s) {
     const type = s.kind === "series" ? "tv" : "movie";
-    const freshness=contentFreshness(s);
+    const freshness=recentFreshness(s);
     const poster = s.poster || {};
     const episodes = Array.isArray(s.episodes) ? s.episodes : [];
     const tvm = s.tvm || null;
@@ -252,6 +307,8 @@
       date: String(s.publishedAt || s.firstSeenAt || "").slice(0,10),
       updatedAt:freshness.at,
       updateKind:freshness.kind,
+      updateObserved:!!s.recentUpdate&&!s.recentUpdate.at&&!!s.recentUpdate.observedAt,
+      recentUpdate:s.recentUpdate||null,
       recentEpisode:recentEpisodeOf(s),
       year: s.year ? String(s.year) : "",
       poster: artwork(s.portrait) || artwork(poster.custom) || artwork(poster.default) || artwork(tvm?.img) || posterFor(s.wpId),
@@ -748,9 +805,17 @@
           if (r.tags && r.tags.length) cur.tags = [...new Set([...(cur.tags || []),...r.tags])];
           if (r.year && (!cur.year||fresh&&sameTitle)) cur.year = r.year;
           for (const key of ["publishedAt","latestAt","providerUpdatedAt","contentUpdatedAt"]) if(r[key]&&(!cur[key]||r[key]>cur[key]))cur[key]=r[key];
+          // Release evidence has its own revision. A newer catalogue/guide
+          // timestamp cannot revive legacy import dates or replace a real event.
+          if(r.recentUpdate===null&&sameTitle&&fresh)cur.recentUpdate=null;
+          else if(!(cur.recentUpdate===null&&!fresh)&&newerRecentUpdate(cur,r)){
+            const evidence=validatedRecentUpdate(r),previous=validatedRecentUpdate(cur);
+            cur.recentUpdate=sameRecentEpisode(cur,r)?{...evidence,...previous,at:evidence.at||previous.at}:evidence;
+          }
           for (const key of ["slug","firstSeenAt","tmdbId","imdbId","firstEpisodeId","originalLanguage"]) if (r[key]&&(!cur[key]||fresh&&sameTitle)) cur[key] = r[key];
           if(latestChanged)cur.latestEpisode=r.latestEpisode;
-          if(r.recentEpisode?.id===cur.latestEpisode)cur.recentEpisode=r.recentEpisode;
+          const incomingRecent=recentEpisodeOf(r);
+          if(incomingRecent&&(cur.recentUpdate?.episodeId&&r.recentUpdate?.episodeId===cur.recentUpdate.episodeId||incomingRecent.id===cur.latestEpisode))cur.recentEpisode=incomingRecent;
           for(const key of ['countries','audioModes','audioLanguages','subtitleLanguages','collections','altTitles'])if(r[key])cur[key]=[...new Set([...(cur[key]||[]),...r[key]])];
           if(r.title&&r.title!==cur.title)cur.altTitles=[...new Set([...(cur.altTitles||[]),r.title])];
           if (r.episodeCount) cur.episodeCount = Math.max(cur.episodeCount || 0,r.episodeCount);
@@ -763,7 +828,8 @@
           if (r.portrait&&(!cur.portrait||fresh&&sameTitle))cur.portrait=r.portrait;
           if (Array.isArray(r.episodes)&&r.episodes.length) { const previous=cur.episodes||[],ordered=fresh&&sameTitle?[...r.episodes,...previous]:[...previous,...r.episodes];cur.episodes=coalesceEpisodes(ordered,new Set(previous.map(episode=>episode.id)));cur.episodeCount=cur.episodes.length; }
           cur.recentEpisode=recentEpisodeOf(cur);
-          if(cur.recentEpisode)cur.latestEpisode=cur.recentEpisode.id;
+          if(cur.recentUpdate?.kind==='episodes'&&cur.recentEpisode)cur.recentUpdate={...cur.recentUpdate,episodeId:cur.recentEpisode.id};
+          const latest=episodeReferenceOf(cur);if(latest)cur.latestEpisode=latest.id;
           const currentKeys=keys(cur);for(const key of oldKeys)if(!currentKeys.has(key)){this._identities.get(key)?.delete(cur);if(!this._identities.get(key)?.size)this._identities.delete(key);}addIdentity(cur,currentKeys);
         } else {
           this._universeDirty=true;
@@ -777,20 +843,14 @@
     }
     _persistDelta(rows) {
       const delta = store.get("delta", []);
-      const incoming=new Map(rows.map(r=>[r.id, {id:r.id,kind:r.kind,title:r.title,altTitles:r.altTitles,sourceSearchText:r.sourceSearchText,year:r.year,tags:r.tags,slug:r.slug,wpId:r.wpId,publishedAt:r.publishedAt,firstSeenAt:r.firstSeenAt,latestAt:r.latestAt,latestEpisode:recentEpisodeOf(r)?.id||r.latestEpisode,recentEpisode:recentEpisodeOf(r),firstEpisodeId:r.firstEpisodeId,contentUpdatedAt:r.contentUpdatedAt,providerUpdatedAt:r.providerUpdatedAt,tvm:r.tvm,offerings:r.offerings,versions:r.versions,sourceUrl:r.sourceUrl,poster:r.poster,portrait:r.portrait,tmdbId:r.tmdbId,documentary:r.documentary,originalLanguage:r.originalLanguage,countries:r.countries,audioModes:r.audioModes,collections:r.collections,access:r.access,audioLanguages:r.audioLanguages,subtitleLanguages:r.subtitleLanguages,_catalogRevision:this._rowRevisions?.get(r.id)||Date.now()}]));
+      const incoming=new Map(rows.map(r=>[r.id, {id:r.id,kind:r.kind,title:r.title,altTitles:r.altTitles,sourceSearchText:r.sourceSearchText,year:r.year,tags:r.tags,slug:r.slug,wpId:r.wpId,publishedAt:r.publishedAt,firstSeenAt:r.firstSeenAt,latestAt:r.latestAt,latestEpisode:episodeReferenceOf(r)?.id||r.latestEpisode,recentEpisode:recentEpisodeOf(r),recentUpdate:compactRecentUpdate(r),firstEpisodeId:r.firstEpisodeId,contentUpdatedAt:r.contentUpdatedAt,providerUpdatedAt:r.providerUpdatedAt,tvm:r.tvm,offerings:r.offerings,versions:r.versions,sourceUrl:r.sourceUrl,poster:r.poster,portrait:r.portrait,tmdbId:r.tmdbId,documentary:r.documentary,originalLanguage:r.originalLanguage,countries:r.countries,audioModes:r.audioModes,collections:r.collections,access:r.access,audioLanguages:r.audioLanguages,subtitleLanguages:r.subtitleLanguages,_catalogRevision:this._rowRevisions?.get(r.id)||Date.now()}]));
       store.set("delta",[...incoming.values(),...delta.filter(r=>!incoming.has(r.id))].slice(0,DELTA_CAP));
     }
 
     _mergeNativeStardima(rows,{latest=false}={}) {
       const at=new Date().toISOString();
       const accepted=rows.filter(row=>stardimaTitle(null,row?.id)&&row.access==='public').map(row=>{
-        const old=this._byId.get(row.id),next={...row};
-        // Observation time is an Added date, never an invented release date.
-        if(!old&&!row.firstSeenAt)next.firstSeenAt=at;
-        const previous=old?.latestEpisode,episode=row.latestEpisode;
-        const unseen=episode&&!old?.episodes?.some(e=>e.id===episode||e.offerings?.some(o=>o.id===episode));
-        if(latest&&old&&unseen&&(previous||old.episodes?.length)&&episode!==previous&&(!previous||Number(episode.split(':').at(-1))>Number(previous.split(':').at(-1))))next.contentUpdatedAt=at;
-        return next;
+        return this._nativeFeedObservation(row,{latest,at});
       });
       const added=this._merge(accepted);
       return {added,rows:accepted};
@@ -798,18 +858,27 @@
     _mergeNativeCarateen(rows,{latest=false}={}) {
       const at=new Date().toISOString();
       const accepted=rows.filter(row=>carateenTitle(null,row?.id)&&row.access==='public').map(row=>{
-        const old=this._byId.get(row.id),{episodeUpdateFeed,...next}=row;
-        if(old)delete old.episodeUpdateFeed;
-        if(!old&&!row.firstSeenAt)next.firstSeenAt=at;
-        const previous=old?.latestEpisode,episode=row.latestEpisode;
-        const unseen=episode&&!old?.episodes?.some(e=>e.id===episode||e.offerings?.some(o=>o.id===episode));
-        // SP episode slugs are not sequence numbers. A newly observed public
-        // recent-feed episode is evidence; source catalogue timestamps are not.
-        const precise=(row.episodes||[]).some(e=>e.id===episode||e.offerings?.some(o=>o.id===episode));
-        if(latest&&episodeUpdateFeed&&old&&unseen&&precise&&episode!==previous&&newerEpisodePointer(old,{...row,contentUpdatedAt:at}))next.contentUpdatedAt=at;
-        return next;
+        return this._nativeFeedObservation(row,{latest,at});
       });
       return {added:this._merge(accepted),rows:accepted};
+    }
+    _nativeFeedObservation(row,{latest=false,at=new Date().toISOString()}={}){
+      const old=this._byId.get(row.id),{episodeUpdateFeed,...next}=row;
+      if(old)delete old.episodeUpdateFeed;
+      if(!old&&!row.firstSeenAt)next.firstSeenAt=at;
+      // Only an actual source episode feed can create this evidence. Search,
+      // ordinary source paging and opening a complete guide cannot do so.
+      const episode=episodeReferenceOf(row),previous=validatedRecentUpdate(old);
+      if(latest&&episodeUpdateFeed===true&&episode){
+        const same=previous?.kind==='episodes'&&(previous.episodeId===episode.id||(row.episodes||[]).find(ep=>ep.id===episode.id)?.offerings?.some(o=>o.id===previous.episodeId));
+        const advanced=!previous||same||newerEpisodePointer({...old,latestEpisode:previous.episodeId},{...row,contentUpdatedAt:at});
+        if(advanced){
+          const publication=recentFreshness({kind:'series',recentUpdate:{kind:'episodes',source:'episode-date',at:episode.publishedAt,episodeId:episode.id}}).at;
+          next.recentUpdate=same?{...previous}: {kind:'episodes',source:'feed',at:publication||'',observedAt:at,episodeId:episode.id};
+          if(same&&publication&&!next.recentUpdate.at)next.recentUpdate.at=publication;
+        }else delete next.recentUpdate;
+      }
+      return next;
     }
     _mergeNativeCatalogue(provider,rows,options){
       return provider==='carateen'?this._mergeNativeCarateen(rows,options):this._mergeNativeStardima(rows,options);

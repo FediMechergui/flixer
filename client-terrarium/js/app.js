@@ -141,13 +141,19 @@
     }
     return groups.filter(group=>group.active).map(group=>group.item);
   }
+  function recentSection(items) {
+    const updates=recentItems(items).slice(0,12);
+    if(updates.length)return section('Recently updated','Latest episode and release updates',updates,{showType:true,link:'#/recent',recent:true});
+    return `<section class="section" aria-label="Recently updated"><div class="section__head"><div><h2 class="section__title">Recently updated</h2><span class="section__sub">No confirmed release or episode updates yet</span></div></div><p class="section__empty">Newly discovered titles are available in Movies and Series.</p></section>`;
+  }
   function recentUpdateMeta(item, now=Date.now()) {
     const episode=item.recentEpisode;
     const number=Number(episode?.number),season=Number(episode?.season);
     const numbered=episode?.number!=null&&Number.isFinite(number)&&number>0;
     const coordinate=numbered?(episode.season!=null&&Number.isFinite(season)&&season>0?`S${season} · E${number}`:`Episode ${number}`):'';
-    const label=item.updateKind==='episodes'?(coordinate?`${coordinate} added`:'Episodes added'):item.updateKind==='release'?'Published':item.updateKind==='added'?'Added to library':'Source update';
-    const stamp=Date.parse(item.updatedAt||'');
+    const observedFeed=item.updateObserved&&item.recentUpdate?.source==='feed';
+    const label=observedFeed?(coordinate?`${coordinate} · Latest on source`:'Latest on source'):item.updateKind==='episodes'?(coordinate?`${coordinate} added`:'Episodes added'):item.updateKind==='release'?'Published':item.updateKind==='added'?'Added to library':'Source update';
+    const stamp=observedFeed?NaN:Date.parse(item.updatedAt||'');
     let date='';
     if(Number.isFinite(stamp)){
       const today=new Date(now),day=new Date(stamp);
@@ -168,8 +174,8 @@
         ${opts.showType ? `<span class="card__type">${item.type === "tv" ? "TV" : "FILM"}</span>` : ""}
         ${providerBadge(item)}
       </div>
-      <p class="card__title">${esc(item.title)}</p>
-      <div class="card__meta">${esc(item.year || "—")}${opts.genre && item.genreIds[0] ? " · " + esc(genreName(item.type, item.genreIds[0])) : ""}${item.type === "tv" && item.episodeCount > 1 ? ` · ${item.episodeCount} ep` : ""}</div>
+      <p class="card__title" dir="auto">${esc(item.title)}</p>
+      <div class="card__meta">${esc(item.year || "—")}${opts.genre && item.genreIds?.[0] ? " · " + esc(genreName(item.type, item.genreIds[0])) : ""}${item.type === "tv" && item.episodeCount > 1 ? ` · ${item.episodeCount} ep` : ""}</div>
       ${opts.recent?recentUpdateMeta(item):''}
     </a>`;
   }
@@ -181,7 +187,7 @@
         <span class="card__bar"><i style="width:${pct}%"></i></span>
         ${providerBadge(item)}
       </div>
-      <p class="card__title">${esc(item.title)}</p>
+      <p class="card__title" dir="auto">${esc(item.title)}</p>
       <div class="card__meta">${item.type==='tv'&&saved?esc(epLabel(item.type,saved))+' · ':''}${pct}% watched</div>
     </a>`;
   }
@@ -368,7 +374,7 @@
     const resumeRow = continueWatchingRow();
     if (!current()) return;
     $('#home-rows',view).innerHTML='<div id="continue-watching"></div>'+
-      '<div id="home-recent">'+section('Recently updated','Latest episode and release updates',recentItems(trend).slice(0,12),{showType:true,link:'#/recent',recent:true})+'</div>'+
+      '<div id="home-recent">'+recentSection(trend)+'</div>'+
       '<div id="home-main-rows"></div><div id="home-extras"></div>';
     state.homeRevision=catalogRevision;state.homeProgressRevision=resumeRevision;
     if(catalogRevision!==(state.catalogRevision||0))refreshRecentRow();
@@ -435,7 +441,7 @@
     const anchor=scroll>0?cards.find(card=>card.getBoundingClientRect().right>edge+2):null;
     const anchorId=anchor?.dataset.titleId,offset=anchor?anchor.getBoundingClientRect().left-edge:0;
     const focusedId=cards.find(card=>card===document.activeElement||card.contains(document.activeElement))?.dataset.titleId;
-    box.innerHTML=section('Recently updated','Latest episode and release updates',recentItems(items).slice(0,12),{showType:true,link:'#/recent',recent:true});
+    box.innerHTML=recentSection(items);
     $('.section',box)?.classList.remove('fade-in');
     const nextRail=$('.row',box),nextCards=nextRail?$$('[data-title-id]',nextRail):[];
     if(nextRail){
@@ -615,7 +621,7 @@
       const html = items.map(i => card(i, { rating: true, showType:type==="all", recent })).join("");
       if (reset) grid.innerHTML = html; else grid.insertAdjacentHTML("beforeend", html);
       $("#count").innerHTML = r.total ? `<b>${r.total.toLocaleString()}</b> ${type === "all" ? "titles" : type === "tv" ? "series" : "films"}` : "No results";
-      if (!r.items.length && reset) grid.innerHTML = `<div style="grid-column:1/-1">${emptyState("Nothing matches these filters", "Loosen the year range or remove a genre to see more.", `<button class="btn btn--outline" data-reset>Reset filters</button>`)}</div>`;
+      if (!r.items.length && reset) grid.innerHTML = `<div style="grid-column:1/-1">${recent?emptyState("No confirmed updates", "No release or episode updates match this selection. Newly discovered titles remain available in Movies and Series.", `<a class="btn btn--outline" href="#/movies">Browse movies</a>`):emptyState("Nothing matches these filters", "Loosen the year range or remove a genre to see more.", `<button class="btn btn--outline" data-reset>Reset filters</button>`)}</div>`;
       $("[data-reset]", grid)?.addEventListener("click", () => applyFilters(defaultFilters(type)));
     } catch (e) {
       if (seq !== b.seq||state.browse!==b||!grid.isConnected) return;
@@ -760,7 +766,7 @@
         if (!r.items.length) { out.innerHTML = emptyState("No matches for “" + t + "”", "Check the spelling or try a shorter title."); return; }
         out.innerHTML = `<div class="list fade-in">${r.items.map(i => `<a class="list-item" href="#/${i.type}/${esc(i.id)}">
           <div class="list-item__art">${i.poster ? `<img referrerpolicy="no-referrer" src="${esc(i.poster)}" alt="" loading="lazy" data-art="${esc(i.id)}">` : artPlaceholder(i)}</div>
-          <div><p class="list-item__title">${esc(i.title)}</p><div class="meta list-item__meta">${i.type === "tv" ? "Series" : "Film"} · ${esc(i.year || "—")}${i.type === "tv" && i.episodeCount > 1 ? ` · ${i.episodeCount} ep` : ""}</div>${providerBadge(i,true)}</div></a>`).join("")}</div>`;
+          <div><p class="list-item__title" dir="auto">${esc(i.title)}</p><div class="meta list-item__meta">${i.type === "tv" ? "Series" : "Film"} · ${esc(i.year || "—")}${i.type === "tv" && i.episodeCount > 1 ? ` · ${i.episodeCount} ep` : ""}</div>${providerBadge(i,true)}</div></a>`).join("")}</div>`;
       };
       try {
         const r = await api.search(t, {signal:searchRequest.signal,onLocal: local => paint(local)});
@@ -1034,16 +1040,38 @@
   document.addEventListener('click',event=>{const link=event.target.closest?.('[data-open-source]');if(!link)return;event.preventDefault();window.FlixerBrowser.open(link.href).catch(error=>toast(error.message));});
 
   /* ---------- Image fallback: a missing series poster is replaced from TVmaze ---------- */
+  function appendArtwork(parent,src,item) {
+    if(!parent?.isConnected||!src||parent.querySelector('img'))return;
+    const img=document.createElement('img');
+    img.referrerPolicy='no-referrer';img.alt='';img.decoding='async';
+    img.dataset.art=item.id;img.dataset.artTitle=item.title||'';img.style.visibility='hidden';
+    // Keep the placeholder until load; never stack two normal-flow artwork
+    // blocks or paint a late image above the provider/progress overlays.
+    parent.prepend(img);img.src=src;
+  }
+  document.addEventListener('load',event=>{
+    const img=event.target;
+    if(!(img instanceof HTMLImageElement)||!img.dataset.art||!img.naturalWidth)return;
+    img.style.visibility='';
+    img.parentElement?.querySelectorAll('.art-placeholder').forEach(node=>node.remove());
+  },true);
   document.addEventListener("error", e => {
     const img = e.target;
     if (!(img instanceof HTMLImageElement) || !img.dataset.art) return;
-    const removeBroken=()=>{const parent=img.parentElement,id=img.dataset.art;img.remove();if(parent&&!parent.querySelector('img,.art-placeholder'))api.item(id).then(item=>{if(item&&parent.isConnected)parent.insertAdjacentHTML('afterbegin',artPlaceholder(item).replace('data-missing-art','data-unavailable-art'));}).catch(()=>{});};
+    const parent=img.parentElement;if(!parent?.isConnected)return;
+    img.style.visibility='hidden';
+    if(!parent.querySelector('.art-placeholder')){
+      const title=img.dataset.artTitle||img.closest('.card')?.getAttribute('aria-label')||parent.parentElement?.querySelector('.list-item__title,.detail__title,.orow__title')?.textContent||'Artwork unavailable';
+      parent.insertAdjacentHTML('afterbegin',artPlaceholder({id:img.dataset.art,title}).replace('data-missing-art','data-unavailable-art'));
+    }
+    const removeBroken=()=>img.remove();
     const failed=JSON.parse(img.dataset.failedArt||'[]');if(failed.includes(img.src)){removeBroken();return;}failed.push(img.src);img.dataset.failedArt=JSON.stringify(failed);
     if(failed.length>=5){removeBroken();return;}
-    api.posterFallback(img.dataset.art,failed).then(src=>{if(src&&!failed.includes(src))img.src=src;else removeBroken();}).catch(removeBroken);
+    const failedSrc=img.src;
+    api.posterFallback(img.dataset.art,failed).then(src=>{if(!img.isConnected||img.src!==failedSrc)return;if(src&&!failed.includes(src))img.src=src;else removeBroken();}).catch(removeBroken);
   }, true);
 
-  const missingArt=new IntersectionObserver(entries=>{for(const entry of entries)if(entry.isIntersecting){const node=entry.target;missingArt.unobserve(node);api.posterFallback(node.dataset.missingArt).then(src=>{if(!src||!node.isConnected)return;const img=document.createElement('img');img.referrerPolicy='no-referrer';img.src=src;img.alt='';img.dataset.art=node.dataset.missingArt;img.addEventListener('load',()=>node.replaceWith(img),{once:true});node.parentElement?.appendChild(img);}).catch(()=>{});}},{rootMargin:'200px'});
+  const missingArt=new IntersectionObserver(entries=>{for(const entry of entries)if(entry.isIntersecting){const node=entry.target;missingArt.unobserve(node);api.posterFallback(node.dataset.missingArt).then(src=>{if(src&&node.isConnected)appendArtwork(node.parentElement,src,{id:node.dataset.missingArt,title:node.getAttribute('aria-label')});}).catch(()=>{});}},{rootMargin:'200px'});
   const observeMissing=node=>{if(node.nodeType!==1)return;for(const art of [...(node.matches?.('[data-missing-art]')?[node]:[]),...node.querySelectorAll('[data-missing-art]')])if(!art.dataset.artRequested){art.dataset.artRequested='1';missingArt.observe(art);}};
   new MutationObserver(records=>records.forEach(record=>record.addedNodes.forEach(observeMissing))).observe(document.body,{childList:true,subtree:true});
 
@@ -1063,7 +1091,7 @@
     if(detail?.dataset.titleId===item.id){
       const overview=$('#ov',detail);if(overview&&item.overview){overview.textContent=item.overview;overview.classList.remove('is-clamped');$('[data-more]',detail)?.remove();}
       if(detail.refreshEpisodes){const raw=await api.show(item.id),fresh=await api._build(raw,{guide:false});if(detail.isConnected&&detail.dataset.titleId===fresh.id)detail.refreshEpisodes(fresh);}
-      const poster=$('.detail__poster',detail);if(poster&&item.poster&&!$('img',poster)){const img=document.createElement('img');img.referrerPolicy='no-referrer';img.src=item.poster;img.alt='';img.dataset.art=item.id;poster.appendChild(img);}
+      const poster=$('.detail__poster',detail);if(poster&&item.poster)appendArtwork(poster,item.poster,item);
     }
   });
 

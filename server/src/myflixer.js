@@ -128,7 +128,8 @@ function formatItem(row, yearsMap, kind = 'movie') {
     portrait: poster,
     publishedAt: row.date || row.date_gmt || null,
     firstAt: row.date || null,
-    latestAt: row.modified || row.date || null,
+    latestAt: null,
+    providerUpdatedAt: row.modified || row.date || null,
     totalDurationSec: null,
     totalViews: null,
     channelId: 'myflixer',
@@ -344,6 +345,7 @@ export async function getTitleDetails(rawId) {
         thumbs: { default: item.poster.default, custom: item.poster.default },
       }));
       item.episodeCount = episodes.length;
+      item.episodesComplete = true;
       const seasonsSet = [...new Set(episodes.map((e) => e.season))].sort((a, b) => a - b);
       item.seasons = seasonsSet.length ? seasonsSet : [1];
     }

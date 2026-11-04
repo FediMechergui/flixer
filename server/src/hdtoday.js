@@ -23,7 +23,7 @@ function record({slug,title,year,poster,tags=[],tmdbId,synopsis='',lang=null}) {
   if (kind === 'film') { item.episodes=[{id,title:item.title,season:1,number:1,sourceUrl,offerings:item.offerings,thumbs:item.poster}]; item.episodeCount=1; }
   return item;
 }
-export function parseHdtodayList(html, {kind,documentary=false,page=1} = {}) {
+export function parseHdtodayList(html, {kind,documentary=false,page=1,latest=false} = {}) {
   if (/<title>\s*Quick check/i.test(html) || /<title>[^<]*(?:Just a moment|Access denied)/i.test(html)) throw new Error('HDToday requires browser verification; cached data retained');
   const items = new Map();
   for (const m of html.matchAll(/<a\b([^>]*class="bf-card"[^>]*)>([\s\S]*?)<\/a>/g)) {
@@ -43,6 +43,7 @@ export function parseHdtodayList(html, {kind,documentary=false,page=1} = {}) {
       const season=Number(slot[1]),number=Number(slot[2]),id=`${item.id}:${season}:${number}`;
       item.episodes=[{id,title:`Episode ${number}`,season,number,sourceUrl:`${item.sourceUrl}?s=${season}&e=${number}`,offerings:[{...item.offerings[0],id,season,number}]}];
       item.episodeCount=1;item.seasons=[season];item.latestEpisode=`${season}:${number}`;
+      if(latest){item.episodeUpdateFeed=true;item.recentUpdate={kind:'episodes',source:'feed',at:'',episodeId:item.episodes[0].id};}
     }
     const age=/\b(\d+)\s*(h|days?|minutes?)\s+ago\b/.exec(text(m[2]));
     if(age)item.providerUpdatedAt=new Date(Date.now()-Number(age[1])*({h:3600000,day:86400000,days:86400000,minute:60000,minutes:60000}[age[2]])).toISOString();
@@ -180,7 +181,7 @@ export async function fetchHdtodayPage({kind='film',documentary=false,page=1,lat
   if(genre && !/^[a-z-]+$/.test(genre))throw new Error('Invalid HDToday genre');
   const slug=genre==='sci-fi'?(kind==='film'?'science-fiction':'sci-fi-fantasy'):genre;
   const route=latest&&kind==='series'?'/new-episodes':documentary?'/genre/documentary':slug?`/genre/${slug}`:kind==='film'?'/movie':'/tv';
-  return parseHdtodayList(await request(`${route}?page=${page}`),{kind:documentary?undefined:kind,documentary,page});
+  return parseHdtodayList(await request(`${route}?page=${page}`),{kind:documentary?undefined:kind,documentary,page,latest:route==='/new-episodes'});
 }
 export function parseHdtodayDetails(html, sourceUrl) {
   const url=new URL(sourceUrl,HDTODAY_BASE),slug=/^\/watch\/([^/]+)$/.exec(url.pathname)?.[1];

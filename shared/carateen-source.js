@@ -77,7 +77,7 @@ export function parseCarateenRecent(records,titles){
   for(const row of records){
     const showId=positive(row?.tv_series_id),titleId=`sp:carateen:s:sp-${showId}`,title=byId.get(titleId);if(!title){if(!byId.has(`sp:carateen:m:sp-${showId}`))malformed=true;continue;}
     const parsed=parseCarateenGuide(titleId,[row]);if(!parsed.episodes.length){malformed=true;continue;}
-    const episode=parsed.episodes[0],item=groups.get(titleId)||{...title,episodes:[],episodesComplete:false,episodeUpdateFeed:true,latestEpisode:episode.id,recentEpisode:{id:episode.id,title:episode.title,season:episode.season,number:episode.number}};
+    const episode=parsed.episodes[0],item=groups.get(titleId)||{...title,episodes:[],episodesComplete:false,episodeUpdateFeed:true,latestEpisode:episode.id,recentUpdate:{kind:'episodes',source:'feed',at:'',episodeId:episode.id},recentEpisode:{id:episode.id,title:episode.title,season:episode.season,number:episode.number}};
     item.episodes.push(episode);groups.set(titleId,item);
   }
   return {items:[...groups.values()],...(malformed?{partial:true,providerErrors:[{provider:'carateen',error:'Unmatched recent episode records; cached updates retained'}]}:{})};

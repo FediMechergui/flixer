@@ -79,7 +79,7 @@ test('latest native feed validates actual guest episodes without manufacturing d
   if(options.url.endsWith('/newrelases'))return reply(options,fixture('latest.html'));
   const id=Number(new URL(options.url).pathname.split('/').pop()),data=json('episode.json');data.episode.id=id;data.series.slug=slugs.get(id);if(id!==104758)data.episode.can_watch=false;return reply(options,data);
  });
- const page=await h.api.page({latest:true});assert.equal(page.items.length,1);assert.equal(page.items[0].latestEpisode,'sp:stardima:e:6accfbe7a236f:104758');assert.equal(page.items[0].providerUpdatedAt,undefined);assert.equal(page.items[0].episodesComplete,false);assert.deepEqual([...page.items[0].tags],[]);assert.equal(page.partial,undefined);
+ const page=await h.api.page({latest:true});assert.equal(page.items.length,1);assert.equal(page.items[0].latestEpisode,'sp:stardima:e:6accfbe7a236f:104758');assert.equal(page.items[0].providerUpdatedAt,undefined);assert.equal(page.items[0].episodesComplete,false);assert.equal(page.items[0].episodeUpdateFeed,true);assert.deepEqual([...page.items[0].tags],[]);assert.equal(page.partial,undefined);
 });
 
 test('a partial season refresh keeps saved episodes while adding newly published episodes from other seasons',async()=>{

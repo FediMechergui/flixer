@@ -53,10 +53,10 @@ test('native recent Carateen updates use real episode numbers rather than nonmon
   const row=()=>{const ep=episode(number,{section:'sp',slug});return title('sp:carateen:s:sp-61692478',{episodes:[ep],latestEpisode:ep.id,episodeUpdateFeed:true});};
   const c=await client({storage,catalogueSource:{enabled:()=>true,get:()=>gate.promise},source:{page:async options=>({items:options.kind==='series'?[row()]:[],totalPages:1})}});
   const sync=c.api.sync();await bounded(c.api._carateenRefresh);
-  const initial=c.api._byId.get(row().id);assert.ok(initial.firstSeenAt);assert.equal(initial.contentUpdatedAt,undefined);
+  const initial=c.api._byId.get(row().id);assert.ok(initial.firstSeenAt);assert.equal(initial.contentUpdatedAt,undefined);assert.equal(initial.recentUpdate.kind,'episodes');assert.equal(initial.recentUpdate.at,'');assert.ok(initial.recentUpdate.observedAt);
   c.api._lastCarateenRefresh=0;number=2;slug=100;await c.api._refreshNativeCarateen();
-  const updated=c.api._byId.get(row().id).contentUpdatedAt;assert.ok(updated);assert.equal((await c.api.item(row().id)).recentEpisode.number,2);
-  c.api._lastCarateenRefresh=0;await c.api._refreshNativeCarateen();assert.equal(c.api._byId.get(row().id).contentUpdatedAt,updated);
+  const updated=c.api._byId.get(row().id).recentUpdate.observedAt;assert.ok(updated);assert.equal((await c.api.item(row().id)).recentEpisode.number,2);
+  c.api._lastCarateenRefresh=0;await c.api._refreshNativeCarateen();assert.equal(c.api._byId.get(row().id).recentUpdate.observedAt,updated);
   gate.resolve({product:'flixer',generatedAt:'2026-01-01T00:00:00Z'});await sync;
   const restarted=await client({storage});const item=await restarted.api.item(row().id);assert.equal(item.recentEpisode.number,2);assert.equal(item.updateKind,'episodes');
 });
@@ -65,11 +65,12 @@ test('a first precise recent-feed observation updates a known catalogue title an
   const c=await client({shows:[title()]});
   const ep=episode(3);
   c.api._mergeNativeCarateen([title(seriesId,{episodes:[ep],latestEpisode:ep.id,episodeUpdateFeed:true})],{latest:true});c.api._reindex();
-  const current=c.api._byId.get(seriesId),at=current.contentUpdatedAt;
+  const current=c.api._byId.get(seriesId),at=current.recentUpdate.observedAt;
   assert.ok(at);assert.equal(current.episodeUpdateFeed,undefined);assert.equal((await c.api.item(seriesId)).recentEpisode.number,3);
   const saved=JSON.parse(c.storage.get('flixer:delta')).find(row=>row.id===seriesId);assert.equal(saved.episodeUpdateFeed,undefined);
   c.api._mergeNativeCarateen([title(seriesId,{episodes:[episode(4)],latestEpisode:episode(4).id})],{latest:true});
-  assert.equal(current.contentUpdatedAt,at,'an ordinary full guide never inherits the recent-feed marker');
+  assert.equal(current.recentUpdate.observedAt,at,'an ordinary full guide never inherits the recent-feed marker');
+  assert.equal(current.recentUpdate.episodeId,ep.id,'guide metadata cannot relabel a previously observed source update');
   const noEvidence=title('sp:carateen:s:tg-999',{title:'A different catalogue title'});c.api._merge([noEvidence]);
   c.api._mergeNativeCarateen([{...noEvidence,episodeUpdateFeed:true,latestEpisode:'sp:carateen:e:tg-999:5000'}],{latest:true});
   assert.equal(c.api._byId.get(noEvidence.id).contentUpdatedAt,undefined,'an unsupported pointer is not a precise episode observation');

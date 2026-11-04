@@ -66,7 +66,7 @@ test('an explicit app backend never falls back to Myflixer after a health-check 
 });
 
 test('recent provider responses cannot pin older films ahead of newer releases',async()=>{
-  const {api}=fixture([{id:'old',kind:'film',title:'Old film',latestAt:'2026-01-01'},{id:'new',kind:'series',title:'New release',latestAt:'2026-10-16'}]);
+  const {api}=fixture([{id:'old',kind:'film',title:'Old film',publishedAt:'2026-01-01'},{id:'new',kind:'series',title:'New release',publishedAt:'2026-10-16'}]);
   await api.catalog();api._recentIds=new Set(['old']);assert.equal((await api.trending())[0].id,'new');await api._indexReady;await api._metadataReady;
 });
 
@@ -122,7 +122,7 @@ test('delayed bundled index cannot revert live titles, slugs, artwork or recent 
   let finish;const index=new Promise(resolve=>{finish=resolve;});
   const {api}=fixture([old],{},{}, {generatedAt:'2026-01-01',index});
   await api.catalog();
-  api._merge([{...old,title:'Correct title',slug:'correct',sourceUrl:'https://source.test/correct',poster:{custom:'https://source.test/new.jpg'},latestAt:'2026-10-15'}]);api._reindex();
+  api._merge([{...old,title:'Correct title',slug:'correct',sourceUrl:'https://source.test/correct',poster:{custom:'https://source.test/new.jpg'},latestAt:'2026-10-15',recentUpdate:{kind:'release',source:'feed',at:'2026-10-15'}}]);api._reindex();
   finish({product:'flixer',generatedAt:'2026-01-01',shows:[{...old}]});await api._indexReady;await api._metadataReady;
   const item=await api.item(old.id),raw=await api.show(old.id);
   assert.equal(item.title,'Correct title');assert.equal(item.poster,'https://source.test/new.jpg');assert.equal(raw.slug,'correct');assert.equal(item.sourceUrl,'https://source.test/correct');assert.equal(Date.parse(item.updatedAt),Date.parse('2026-10-15'));

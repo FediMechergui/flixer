@@ -9,7 +9,7 @@ const refresh=source.slice(source.indexOf('  async function refreshRecentRow('),
 const escape=value=>String(value??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 function helperContext(){
   const context=vm.createContext({esc:escape});
-  vm.runInContext(helpers+';globalThis.ui={recentItems,recentUpdateMeta};',context);
+  vm.runInContext(helpers+';globalThis.ui={recentItems,recentUpdateMeta,recentSection};',context);
   return context.ui;
 }
 
@@ -38,6 +38,13 @@ test('update labels show proven episode coordinates, unknown seasons and escaped
   assert.match(intro,/Episodes added/);assert.doesNotMatch(intro,/E0|Episode 1/);
   assert.match(recentUpdateMeta({updateKind:'added',updatedAt:'invalid'},now),/Added to library/);
   assert.doesNotMatch(recentUpdateMeta({updateKind:'added',updatedAt:'invalid'},now),/<time/);
+  const observed=recentUpdateMeta({updateKind:'episodes',updatedAt,updateObserved:true,recentUpdate:{source:'feed',at:'',observedAt:updatedAt},recentEpisode:{id:'actual',season:2,number:6}},now);
+  assert.match(observed,/S2 · E6 · Latest on source/);assert.doesNotMatch(observed,/Today|added|<time/,'observing an undated feed today is not its publication date');
+});
+
+test('an empty recent feed explains that catalogue additions are separate instead of inventing update cards',()=>{
+  const html=helperContext().recentSection([]);
+  assert.match(html,/Recently updated/);assert.match(html,/No confirmed release or episode updates/);assert.doesNotMatch(html,/card__art|Added to library/);
 });
 
 function refreshContext(resolveItems){
@@ -52,7 +59,7 @@ function refreshContext(resolveItems){
   rail=makeRail([{id:'a'},{id:'b'},{id:'c'}],130);
   const document={activeElement:rail.cards[1]};
   Object.defineProperty(box,'innerHTML',{get:()=>box.html,set:value=>{box.html=value;rail=makeRail(JSON.parse(value));}});
-  const context=vm.createContext({state,document,api:{trending:resolveItems},$:selector=>selector==='#home-recent'?box:selector==='.row'?rail:selector==='.section'?{classList:{remove(){}}}:null,$$:(_selector,row)=>row.cards,recentItems:items=>items,section:(_title,_sub,items)=>JSON.stringify(items)});
+  const context=vm.createContext({state,document,api:{trending:resolveItems},$:selector=>selector==='#home-recent'?box:selector==='.row'?rail:selector==='.section'?{classList:{remove(){}}}:null,$$:(_selector,row)=>row.cards,recentItems:items=>items,recentSection:items=>JSON.stringify(items),section:(_title,_sub,items)=>JSON.stringify(items)});
   vm.runInContext(refresh+';globalThis.refresh=refreshRecentRow;',context);
   return {state,box,context,get rail(){return rail;}};
 }

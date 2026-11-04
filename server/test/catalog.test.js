@@ -34,7 +34,8 @@ test('Flixer walks every page and keeps films and series with identical slugs', 
   assert.equal(result.shows.length, 6);
   assert.equal(result.product, 'flixer');
   assert.equal(requested.length, 6);
-  assert.equal(result.shows[0].latestAt, '2026-01-01');
+  assert.equal(result.shows[0].publishedAt, '2026-01-01');
+  assert.equal(result.shows[0].latestAt, null,'post modification is not an episode release');
 });
 
 test('Dahsha requests documentary category and rejects unrelated upstream results', async t => {
