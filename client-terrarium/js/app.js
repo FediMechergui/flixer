@@ -368,7 +368,7 @@
     const resumeRow = continueWatchingRow();
     if (!current()) return;
     $('#home-rows',view).innerHTML='<div id="continue-watching"></div>'+
-      '<div id="home-recent">'+section('Recently updated','Episode updates and additions across sources',recentItems(trend).slice(0,12),{showType:true,link:'#/recent',recent:true})+'</div>'+
+      '<div id="home-recent">'+section('Recently updated','Latest episode and release updates',recentItems(trend).slice(0,12),{showType:true,link:'#/recent',recent:true})+'</div>'+
       '<div id="home-main-rows"></div><div id="home-extras"></div>';
     state.homeRevision=catalogRevision;state.homeProgressRevision=resumeRevision;
     if(catalogRevision!==(state.catalogRevision||0))refreshRecentRow();
@@ -435,7 +435,7 @@
     const anchor=scroll>0?cards.find(card=>card.getBoundingClientRect().right>edge+2):null;
     const anchorId=anchor?.dataset.titleId,offset=anchor?anchor.getBoundingClientRect().left-edge:0;
     const focusedId=cards.find(card=>card===document.activeElement||card.contains(document.activeElement))?.dataset.titleId;
-    box.innerHTML=section('Recently updated','Episode updates and additions across sources',recentItems(items).slice(0,12),{showType:true,link:'#/recent',recent:true});
+    box.innerHTML=section('Recently updated','Latest episode and release updates',recentItems(items).slice(0,12),{showType:true,link:'#/recent',recent:true});
     $('.section',box)?.classList.remove('fade-in');
     const nextRail=$('.row',box),nextCards=nextRail?$$('[data-title-id]',nextRail):[];
     if(nextRail){
@@ -537,7 +537,7 @@
   async function renderBrowse(view, type) {
     view.innerHTML = `
       <div class="browse-head">
-        ${type === "all" ? `<h1 class="section__title">Recently updated</h1><p class="meta">Movies and shows from all providers</p>` : ""}
+        ${type === "all" ? `<h1 class="section__title">Recently updated</h1><p class="meta">Latest episode and release updates</p>` : ""}
         ${type === "all" ? `<nav class="rail" aria-label="Media type"><span class="chip" aria-current="page">All media</span><a class="chip" href="#/movies?sort=updated">Movies</a><a class="chip" href="#/shows?sort=updated">Shows</a></nav>` : `
         <div class="seg" data-active="${type}" role="tablist">
           <div class="seg__thumb"></div>

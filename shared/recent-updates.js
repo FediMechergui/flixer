@@ -1,4 +1,5 @@
 import {contentFreshness} from './freshness.js';
+import {compactRecentEpisode} from './episode-updates.js';
 
 const provider = row => row.offerings?.[0]?.provider || /^sp:([^:]+):/.exec(String(row.id))?.[1] || ({mf:'myflixer',fm:'fmovies',hd:'hdtoday'}[String(row.id).split(':')[0]]) || row.channelId || 'other';
 
@@ -7,7 +8,10 @@ const provider = row => row.offerings?.[0]?.provider || /^sp:([^:]+):/.exec(Stri
 export function rankRecentTitles(rows, {limit = Infinity, now = Date.now()} = {}) {
   const unique = new Map();
   for (const row of rows || []) if (row?.id && !unique.has(row.id)) unique.set(row.id, row);
-  const ranked = [...unique.values()].map(row => ({row,at:contentFreshness(row,now).at})).sort((a,b) => b.at.localeCompare(a.at) || String(a.row.id).localeCompare(String(b.row.id)));
+  const candidates = [...unique.values()].map(row => {const freshness=contentFreshness(row,now);return {row,at:freshness.at,content:!!compactRecentEpisode(row)||!!freshness.at&&freshness.kind!=='added'};});
+  // Finding an old title through search or opening its first guide does not
+  // make it a new release. Use additions only for an otherwise empty feed.
+  const ranked = (candidates.some(entry=>entry.content)?candidates.filter(entry=>entry.content):candidates).sort((a,b) => b.at.localeCompare(a.at) || String(a.row.id).localeCompare(String(b.row.id)));
   const result = [];
   for (let start=0; start<ranked.length && result.length<limit;) {
     let end=start+1;while(end<ranked.length && ranked[end].at===ranked[start].at)end++;

@@ -66,6 +66,9 @@ Refreshing a poster, checking a server or importing an older guide does not
 make a show a new release. Distinct content times retain chronological order;
 titles with an identical update timestamp rotate between provider lanes so
 one bulk source response does not occupy the whole row.
+Legacy ISO timestamps without an offset are interpreted as UTC, matching the
+published runner data. Explicit offsets retain their meaning. This prevents
+the phone's local timezone from reshuffling the same published update feed.
 
 Episode updates require actual source episode IDs or explicit coordinates.
 Equivalent IDs already present in an episode's offerings, old season backfills,

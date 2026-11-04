@@ -100,6 +100,18 @@ test('live cached home and latest discovery agree on actual updates instead of p
   assert.equal((await discoverLibrary({kind:'series',latest:true,cachedOnly:true,catalog})).items[0].id,fresh.id);
 });
 
+test('metadata-only discoveries do not fill recent pages or inflate totals, but ordinary catalogue paging retains them',async()=>{
+  const additions=Array.from({length:100},(_,i)=>series(`sp:carateen:s:sp-${i+100}`,[],{firstSeenAt:'2026-11-04T14:00:00Z'}));
+  const ep=episode('sp:carateen:e:sp-1:24',null,24),feed=series('sp:carateen:s:sp-1',[ep],{latestEpisode:ep.id,firstSeenAt:'2026-11-03T12:00:00Z'}),dated=series('fm:s:updated',[],{contentUpdatedAt:'2026-11-03T13:00:00Z'});
+  const catalog={product:'flixer',shows:[...additions,feed,dated],tags:[],channels:[]};
+  const recent=await discoverLibrary({kind:'series',latest:true,cachedOnly:true,catalog});
+  assert.deepEqual(recent.items.map(row=>row.id),[dated.id,feed.id]);assert.equal(recent.total,2);assert.equal(recent.totalPages,1);
+  const tail=await discoverLibrary({kind:'series',latest:true,cachedOnly:true,catalog,page:2});assert.equal(tail.items.length,0);assert.equal(tail.totalPages,1);
+  const ordinary=await discoverLibrary({kind:'series',cachedOnly:true,catalog});assert.equal(ordinary.total,102);assert.equal(ordinary.totalPages,5);assert.equal(ordinary.items.length,24);
+  assert.deepEqual(libraryHome(catalog).trendingSeries.map(row=>row.id),[dated.id,feed.id]);
+  assert.equal(rankRecentTitles(additions).length,100,'initial catalogues still fall back to additions when they have no content evidence');
+});
+
 test('static and published bootstraps expose the same chronological source mix with compact episode evidence',async t=>{
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'flixer-recent-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
   const shows=[series('fm:s:older',[episode('fm:e:7:1:2',1,2)],{latestEpisode:'fm:e:7:1:2',latestAt:'2020-01-01',providerUpdatedAt:'2026-11-03'}),series('sp:carateen:s:sp-10',[episode('sp:carateen:e:sp-10:22',null,22)],{latestEpisode:'sp:carateen:e:sp-10:22',contentUpdatedAt:'2026-11-03',sourceSearchText:'A Latin Title'})];

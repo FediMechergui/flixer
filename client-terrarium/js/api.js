@@ -102,12 +102,13 @@
     return top;
   }
   const recentProvider=item=>item.offerings?.[0]?.provider||/^sp:([^:]+):/.exec(String(item.id))?.[1]||({mf:'myflixer',fm:'fmovies',hd:'hdtoday'}[String(item.id).split(':')[0]])||item.channelId||'other';
+  const hasRecentContent=item=>!!item.recentEpisode?.id||!!item.updatedAt&&item.updateKind!=='added';
   // Keep in step with shared/recent-updates.js. Real update times remain in
   // order; source lanes rotate only inside an identical observed timestamp.
   function rankRecentItems(items,limit=Infinity){
     const unique=new Map();
     for(const item of items||[])if(item?.id&&!unique.has(item.id))unique.set(item.id,item);
-    const ranked=[...unique.values()].sort(byUpdated),result=[];
+    const candidates=[...unique.values()],ranked=(candidates.some(hasRecentContent)?candidates.filter(hasRecentContent):candidates).sort(byUpdated),result=[];
     for(let start=0;start<ranked.length&&result.length<limit;){
       let end=start+1;while(end<ranked.length&&(ranked[end].updatedAt||'')===(ranked[start].updatedAt||''))end++;
       const lanes=new Map();
@@ -120,9 +121,10 @@
   }
   function topRecentItems(items,limit=24){
     if(limit<=0)return [];
-    const lanes=new Map(),seen=new Set();
+    const lanes=new Map(),seen=new Set(),updatesOnly=items.some(hasRecentContent);
     for(const item of items){
       if(!item?.id||seen.has(item.id))continue;seen.add(item.id);
+      if(updatesOnly&&!hasRecentContent(item))continue;
       const provider=recentProvider(item);let top=lanes.get(provider);if(!top)lanes.set(provider,top=[]);
       if(top.length===limit&&byUpdated(item,top[top.length-1])>=0)continue;
       let lo=0,hi=top.length;while(lo<hi){const mid=(lo+hi)>>>1;if(byUpdated(item,top[mid])<0)hi=mid;else lo=mid+1;}
@@ -1037,7 +1039,7 @@
       const items=[];
       for(const item of available) { if(session.seen.has(item.id)) continue; session.seen.add(item.id); items.push(item); if(items.length===PER_PAGE) break; }
       session.buffer=session.buffer.filter(id=>!session.seen.has(id));
-      const more=list.some(i=>!session.seen.has(i.id)) || session.remotePage < session.totalPages || (session.nativeLanes||[]).some(lane=>lane.pending||lane.page<lane.totalPages);
+      const more=list.some(i=>!session.seen.has(i.id)) || this.liveEnabled&&(session.remotePage < session.totalPages || (session.nativeLanes||[]).some(lane=>lane.pending||lane.page<lane.totalPages));
       return {items,page,totalPages:more?page+1:page,total:list.length};
     }
     async genres(type) { const c = await this.catalog(); return type==='all'?[...new Map([...c.genres.movie,...c.genres.tv].map(genre=>[genre.id,genre])).values()]:c.genres[type] || []; }

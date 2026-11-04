@@ -129,3 +129,19 @@ test('large recent home selection sorts only bounded provider candidates and mat
   assert.deepEqual(Array.from(items),before);assert.deepEqual(Array.from(context.select(items,0)),[]);
   assert.deepEqual(Array.from(context.select([...items,items[0]],24),item=>item.id),expected,'duplicate canonical IDs do not consume another candidate slot');
 });
+
+test('searching old titles never displaces real episode updates, while Newly added retains every discovery',async()=>{
+  const ep=episode(24,{section:'sp'}),feed=show(ep,{id:'sp:carateen:s:sp-61692478',firstSeenAt:'2026-11-03T12:00:00Z',contentUpdatedAt:undefined});
+  const actual=show(episode(9),{id:'sp:carateen:s:tg-999',title:'Another actual update',contentUpdatedAt:'2026-11-03T13:00:00Z'});
+  const c=await client({shows:[feed,actual]});await c.ready();
+  const searched=Array.from({length:3},(_,i)=>({id:`sp:carateen:s:sp-${100+i}`,kind:'series',title:`Old Bakugan catalogue ${i}`,year:2010,firstSeenAt:'2026-11-04T14:00:00Z',sourceSearchText:'Bakugan',episodes:i===0?[episode(1)]:[]}));
+  c.api._merge(searched);c.api._reindex();
+  const expected=rankRecentTitles([feed,actual,...searched]).map(row=>row.id);
+  assert.deepEqual(Array.from(await c.api.trending(),item=>item.id),expected);
+  assert.equal(expected.length,2);assert.ok(expected.includes(feed.id),'a first source-feed episode remains eligible even before a release date is known');
+  const recent=await c.api.discover('all',{sort:'updated'},1);assert.deepEqual(Array.from(recent.items,item=>item.id),expected);assert.equal(recent.total,2);assert.equal(recent.totalPages,1);
+  const added=await c.api.discover('all',{sort:'added'},1);assert.ok(searched.every(row=>added.items.some(item=>item.id===row.id)));
+  const fallback=await client({shows:searched});await fallback.ready();
+  assert.deepEqual(Array.from(await fallback.api.trending(),item=>item.id),rankRecentTitles(searched).map(row=>row.id));
+  assert.equal((await fallback.api.trending()).length,3,'a new or offline app without content update evidence still has a usable feed');
+});
