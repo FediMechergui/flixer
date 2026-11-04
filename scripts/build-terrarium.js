@@ -52,6 +52,8 @@ const hgBundle=await rolldown({input:path.join(root,'scripts/browser-hg-entry.js
 await hgBundle.write({format:'iife',minify:true,file:path.join(out,'js/vendor/hg-source.min.js')});await hgBundle.close();
 const luluBundle=await rolldown({input:path.join(root,'scripts/browser-lulu-entry.js')});
 await luluBundle.write({format:'iife',minify:true,file:path.join(out,'js/vendor/lulu-source.min.js')});await luluBundle.close();
+const carateenBundle=await rolldown({input:path.join(root,'scripts/browser-carateen-entry.js')});
+await carateenBundle.write({format:'iife',minify:true,file:path.join(out,'js/vendor/carateen-source.min.js')});await carateenBundle.close();
 fs.copyFileSync(path.join(root,'server/node_modules/json5/LICENSE.md'),path.join(out,'js/vendor/json5.LICENSE.md'));
 if (!dataBase) {
   // The index always ships. Per-series episode files: all of them on the web, the newest N in the

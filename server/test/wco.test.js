@@ -126,7 +126,7 @@ test('the device observer leaves requests and the publisher countdown unchanged'
 
 function playbackApi(getJson){
  const source=fs.readFileSync(new URL('../../client-terrarium/js/api.js',import.meta.url),'utf8'),start=source.indexOf('    async stream('),end=source.indexOf('\n  }',start);
- const context=vm.createContext({window:{Capacitor:{Plugins:{WcoSource:{}}},FlixerBrowser:{hasNativeVideo:()=>true}},URL,URLSearchParams,DOMException,console,getJson,API_BASE:'https://backend.example',embedSandbox:()=>null});
+ const context=vm.createContext({window:{Capacitor:{Plugins:{WcoSource:{}}},FlixerBrowser:{hasNativeVideo:()=>true}},URL,URLSearchParams,DOMException,console,getJson,API_BASE:'https://backend.example',nativeCatalogues:()=>[],embedSandbox:()=>null});
  vm.runInContext('globalThis.api={'+source.slice(start,end)+'};',context);return context.api;
 }
 test('native WCO starts without waiting for hosted metadata and preserves merged provider choices',async()=>{
@@ -147,7 +147,7 @@ test('solo WCO playback avoids backend work and aborted requests cannot append o
 test('live provider search starts before a cold full index and retains late saved matches',async()=>{
  const source=fs.readFileSync(new URL('../../client-terrarium/js/api.js',import.meta.url),'utf8'),start=source.indexOf('    async search(q,'),end=source.indexOf('    /* ----- Playback sources',start);
  let release,requests=0;const index=new Promise(resolve=>release=resolve),rows=[],events=[];
- const context=vm.createContext({window:{Capacitor:{Plugins:{WcoSource:{}}},FlixerWcoSource:{search:async()=>{requests++;return [{id:'new',title:'Example new',altTitles:[]}]}}},nativeStardima:()=>null,API_BASE:'https://backend.example',normalize:x=>x,byWeight:()=>0,URLSearchParams,Set,Map,Promise});
+ const context=vm.createContext({window:{Capacitor:{Plugins:{WcoSource:{}}},FlixerWcoSource:{search:async()=>{requests++;return [{id:'new',title:'Example new',altTitles:[]}]}}},nativeStardima:()=>null,nativeCatalogues:()=>[],API_BASE:'https://backend.example',normalize:x=>x,byWeight:()=>0,URLSearchParams,Set,Map,Promise});
  vm.runInContext('globalThis.api={'+source.slice(start,end)+'};',context);
  const api=context.api;Object.assign(api,{liveEnabled:true,_indexReady:index,_searchProviders:Promise.resolve(['wco']),_byId:new Map(),catalog:async()=>{},all:async()=>rows,_groupSearchItems:ids=>[...ids].map(id=>api._byId.get(id)).filter(Boolean),_reindex:()=>{},_merge:incoming=>incoming.forEach(r=>api._byId.set(r.id,r))});
  const pending=api.search('example',{onLocal:r=>events.push(r)});await new Promise(resolve=>setImmediate(resolve));
@@ -170,7 +170,7 @@ test('native details skip hosted snapshots and bound retries after empty guides 
  const source=fs.readFileSync(new URL('../../client-terrarium/js/api.js',import.meta.url),'utf8'),start=source.indexOf('    async details(_type,'),end=source.indexOf('    async _build(',start);
  for(const denied of [false,true]){
   let native=0,hosted=0;const row={id,kind:'series',title:'Example',episodes:[]},map=new Map([[id,row]]);
-  const context=vm.createContext({window:{Capacitor:{Plugins:{WcoSource:{}}},dispatchEvent:()=>{}},stardimaTitle:()=>null,store:{get:()=>null,set:()=>{}},normalize:()=>({poster:'https://images.wcostream.com/catimg/example.jpg'}),live:{details:async()=>{native++;if(denied)throw Error('WCO denied');return row;}},getJson:async()=>{hosted++;throw Error('Unused hosted snapshot');},console:{warn:()=>{}},CustomEvent:class{},setTimeout,Date,Map,Promise});
+  const context=vm.createContext({window:{Capacitor:{Plugins:{WcoSource:{}}},dispatchEvent:()=>{}},stardimaTitle:()=>null,nativeCatalogueTitle:()=>null,store:{get:()=>null,set:()=>{}},normalize:()=>({poster:'https://images.wcostream.com/catimg/example.jpg'}),live:{details:async()=>{native++;if(denied)throw Error('WCO denied');return row;}},getJson:async()=>{hosted++;throw Error('Unused hosted snapshot');},console:{warn:()=>{}},CustomEvent:class{},setTimeout,Date,Map,Promise});
   vm.runInContext('globalThis.api={'+source.slice(start,end)+'};',context);const api=context.api;
   Object.assign(api,{_byId:map,_details:new Map(),_catalog:{},liveEnabled:true,show:async()=>row,_merge:()=>{},_reindex:()=>{},_build:r=>r});
   await api.details('tv',id);await api.details('tv',id);assert.equal(native,1);assert.equal(hosted,0);

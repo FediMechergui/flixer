@@ -32,7 +32,7 @@ test('a slow ranking cannot hold ready home rows, and old requests cannot replac
 
 test('browse displays saved matches before the full index, then waits for unseen indexed titles without repeats',async()=>{
  const start=apiSource.indexOf('    async discover('),end=apiSource.indexOf('    async genres(',start),compare=(a,b)=>a.rank-b.rank;
- const context=vm.createContext({PER_PAGE:24,nativeStardima:()=>null,...Object.fromEntries(['byUpdated','byAdded','byYearDesc','byYearAsc','byEpisodes','byTitle','byWeight','byRating'].map(key=>[key,compare]))});
+ const context=vm.createContext({PER_PAGE:24,nativeStardima:()=>null,nativeCatalogues:()=>[],...Object.fromEntries(['byUpdated','byAdded','byYearDesc','byYearAsc','byEpisodes','byTitle','byWeight','byRating'].map(key=>[key,compare]))});
  vm.runInContext('globalThis.api=new(class{'+apiSource.slice(start,end)+'})();',context);
  const api=context.api,rows=[{id:'saved',rank:0}];let finishIndex;
  api.catalog=async()=>{};api.all=async()=>rows;api._indexReady=new Promise(resolve=>finishIndex=resolve);api.liveEnabled=false;

@@ -25,7 +25,18 @@
   const UNI = window.FlixerUniverses;
   const nativeStardima = () => window.FlixerStardimaSource?.enabled?.() ? window.FlixerStardimaSource : null;
   const stardimaTitle = (show, preferred) => [preferred,show?.id,...(show?.offerings||[]).map(o=>o.id)].find(id=>/^sp:stardima:[ms]:/.test(id||'')&&nativeStardima()?.supports(id));
+  const nativeCarateen = () => window.FlixerCarateenSource?.enabled?.() ? window.FlixerCarateenSource : null;
+  const carateenTitle = (show, preferred) => [preferred,show?.id,...(show?.offerings||[]).map(o=>o.id)].find(id=>/^sp:carateen:[ms]:/.test(id||'')&&nativeCarateen()?.supports(id));
   const STARDIMA_COLLECTIONS = new Set(['','arabic','cartoons','classic-cartoons','anime','anime-sub','anime-dub']);
+  const nativeCatalogues=()=>[{provider:'stardima',source:nativeStardima()},{provider:'carateen',source:nativeCarateen()}].filter(entry=>entry.source);
+  const nativeCatalogueTitle=(show,preferred)=>{
+    const sources=nativeCatalogues();
+    for(const id of [preferred,show?.id,...(show?.offerings||[]).map(o=>o.id)]){
+      const entry=sources.find(({provider,source})=>String(id||'').startsWith(`sp:${provider}:`)&&/^sp:[^:]+:[ms]:/.test(id||'')&&source.supports(id));
+      if(entry)return {...entry,id};
+    }
+    return null;
+  };
   const unrestrictedPlayers=new Set(['vidsrc.mov','vidsrc.fyi','embed.vidsrc.si','vidfast.pro','vidup.to','vidrock.net','vidnest.fun','vidlink.pro','111movies.net','multiembed.mov','mappletv.uk','moviesapi.to','embos.top','vidcore.net','vidcore.io','vidapi.xyz','embedmaster.link','player.vidlove.cc']);
   const embedSandbox=server=>{try{const u=new URL(server.embedUrl||server.rawEmbedUrl);if(u.protocol==='https:'&&!u.username&&!u.password&&(unrestrictedPlayers.has(u.hostname)||/^(?:balance|[1-9])\.medmedia03\.wiki$/.test(u.hostname)))return null;}catch{}return server.sandbox;};
   const GENRES = [
@@ -281,14 +292,16 @@
     const thumbs = e.thumbs || {};
     const slug = e.slug || String(e.id || "").replace(/^mf:[mse]:/, "");
     const sourceProvider=(e.offerings||[]).find(o=>o.id.startsWith('sp:'))?.provider || '';
-    const sourceGroups=['animegg','megacartoons','myasiantv','yoturkish','wco','carateen'];
+    const sourceGroup=sourceProvider==='carateen'?`carateen-${/^sp:carateen:e:(sp|tg)-/.exec(e.id)?.[1]||/^sp:carateen:e:(sp|tg)-/.exec((e.offerings||[]).find(o=>o.provider==='carateen')?.id||'')?.[1]||'tg'}`:sourceProvider;
+    const sourceGroups=['animegg','megacartoons','myasiantv','yoturkish','wco','carateen-tg','carateen-sp'];
     return {
       id: e.id,
       offerings: e.offerings || [],
       showId: show.id,
       n: e.absoluteNumber || e.number || e.episode || (e.season===null?null:i + 1),
-      season: e.season === null ? -(sourceGroups.indexOf(sourceProvider)+1) : e.season || 1,
+      season: e.season === null ? -(sourceGroups.indexOf(sourceGroup)+1) : e.season || 1,
       sourceProvider,
+      sourceGroup,
       title: decodeEntities(episodeTitle(e.title, show, isMovie)),
       overview: decodeEntities(e.synopsis || e.blurb),
       still: thumbs.custom || thumbs.default || e.poster?.custom || e.poster?.default || show.portrait || show.poster?.custom || show.poster?.default || posterFor(show.wpId) || null,
@@ -370,7 +383,7 @@
     },
     async details(id, sources = [],{fresh=false}={}) {
       if(/^sp:wco:s:[a-z0-9][a-z0-9-]{0,159}$/.test(id)&&window.Capacitor?.Plugins?.WcoSource)return window.FlixerWcoSource.details(id);
-      if(stardimaTitle(null,id))return nativeStardima().details(id,{fresh});
+      const deviceTitle=nativeCatalogueTitle(null,id);if(deviceTitle)return deviceTitle.source.details(id,{fresh});
       const isSeries = id.startsWith("mf:s:");
       const slug = id.replace(/^mf:[mse]:/, "");
       if (await this.serverOk()) {
@@ -779,6 +792,25 @@
       const added=this._merge(accepted);
       return {added,rows:accepted};
     }
+    _mergeNativeCarateen(rows,{latest=false}={}) {
+      const at=new Date().toISOString();
+      const accepted=rows.filter(row=>carateenTitle(null,row?.id)&&row.access==='public').map(row=>{
+        const old=this._byId.get(row.id),{episodeUpdateFeed,...next}=row;
+        if(old)delete old.episodeUpdateFeed;
+        if(!old&&!row.firstSeenAt)next.firstSeenAt=at;
+        const previous=old?.latestEpisode,episode=row.latestEpisode;
+        const unseen=episode&&!old?.episodes?.some(e=>e.id===episode||e.offerings?.some(o=>o.id===episode));
+        // SP episode slugs are not sequence numbers. A newly observed public
+        // recent-feed episode is evidence; source catalogue timestamps are not.
+        const precise=(row.episodes||[]).some(e=>e.id===episode||e.offerings?.some(o=>o.id===episode));
+        if(latest&&episodeUpdateFeed&&old&&unseen&&precise&&episode!==previous&&newerEpisodePointer(old,{...row,contentUpdatedAt:at}))next.contentUpdatedAt=at;
+        return next;
+      });
+      return {added:this._merge(accepted),rows:accepted};
+    }
+    _mergeNativeCatalogue(provider,rows,options){
+      return provider==='carateen'?this._mergeNativeCarateen(rows,options):this._mergeNativeStardima(rows,options);
+    }
     _refreshNativeStardima() {
       const source=nativeStardima();
       if(!source||!this.liveEnabled||!this._catalog||this._stardimaRefresh||Date.now()-(this._lastStardimaRefresh||0)<SYNC_EVERY||document.visibilityState==='hidden'||/^#\/watch\//.test(window.location?.hash||''))return this._stardimaRefresh;
@@ -791,6 +823,17 @@
         if(rows.length){this._reindex();window.dispatchEvent(new CustomEvent('flixer:catalog',{detail:{updated:true,added}}));}
       })).finally(()=>{this._stardimaRefresh=null;});
       return this._stardimaRefresh;
+    }
+    _refreshNativeCarateen() {
+      const source=nativeCarateen();
+      if(!source||!this.liveEnabled||!this._catalog||this._carateenRefresh||Date.now()-(this._lastCarateenRefresh||0)<SYNC_EVERY||document.visibilityState==='hidden'||/^#\/watch\//.test(window.location?.hash||''))return this._carateenRefresh;
+      this._lastCarateenRefresh=Date.now();
+      this._carateenRefresh=Promise.allSettled(['film','series'].map(async kind=>{
+        const page=await source.page({kind,page:1,latest:true});
+        const {added,rows}=this._mergeNativeCarateen((page.items||[]).slice(0,24),{latest:true});
+        if(rows.length){this._reindex();window.dispatchEvent(new CustomEvent('flixer:catalog',{detail:{updated:true,added}}));}
+      })).finally(()=>{this._carateenRefresh=null;});
+      return this._carateenRefresh;
     }
 
     /* ----- background sync: newest titles on the source, every few minutes ----- */
@@ -805,6 +848,7 @@
     async sync() {
       if (this._syncing || !this._catalog || /^#\/watch\//.test(window.location?.hash||'')) return 0;
       this._refreshNativeStardima();
+      this._refreshNativeCarateen();
       this._syncing = true;
       let added = 0;
       try {
@@ -918,22 +962,25 @@
       const key=JSON.stringify([type,f]);
       if(page===1 || !this._browseSessions.has(key)) this._browseSessions.set(key,{seen:new Set(),remotePage:0,totalPages:1,buffer:[]});
       const session=this._browseSessions.get(key);
-      const native=nativeStardima();
-      if(this.liveEnabled&&native&&STARDIMA_COLLECTIONS.has(f.collection||'')){
+      const natives=nativeCatalogues().filter(({provider})=>provider!=='carateen'||f.collection!=='classic-cartoons');
+      const nativeAttempts=new Map(),startNativeLane=lane=>{
+        if(lane.pending||lane.page>=lane.totalPages||(nativeAttempts.get(lane)||0)>=2)return null;
+        nativeAttempts.set(lane,(nativeAttempts.get(lane)||0)+1);lane.canAdvance=false;
+        lane.pending=lane.source.page({kind:lane.kind,collection:lane.collection,page:lane.page+1,latest:f.sort==='updated'}).then(body=>{
+          // Partial pages keep their cursor so a later visit can recover
+          // unavailable rows without dropping the successful ones.
+          if(!body.partial){lane.page++;lane.canAdvance=true;}lane.totalPages=body.totalPages||Math.max(1,lane.page);
+          const {rows}=this._mergeNativeCatalogue(lane.provider,body.items||[],{latest:f.sort==='updated'});this._reindex();
+          session.buffer.push(...rows.map(row=>this._byId.get(row.id)?.id||row.id));
+          if(rows.length)window.dispatchEvent(new CustomEvent('flixer:catalog',{detail:{updated:true}}));
+        }).catch(()=>{}).finally(()=>{lane.pending=null;});
+        return lane.pending;
+      };
+      if(this.liveEnabled&&natives.length&&STARDIMA_COLLECTIONS.has(f.collection||'')){
         const kinds=type==='all'?['film','series']:[type==='tv'?'series':'film'];
         const collections=f.collection?[f.collection]:(f.genres||[]).includes('animation')?['cartoons','anime']:[''];
-        session.nativeLanes ||= kinds.flatMap(kind=>collections.map(collection=>({kind,collection,page:0,totalPages:1})));
-        for(const lane of session.nativeLanes){
-          if(lane.pending||lane.page>=lane.totalPages)continue;
-          lane.pending=native.page({kind:lane.kind,collection:lane.collection,page:lane.page+1,latest:f.sort==='updated'}).then(body=>{
-            // Partial pages keep their cursor so a later visit can recover
-            // unavailable rows without dropping the successful ones.
-            if(!body.partial)lane.page++;lane.totalPages=body.totalPages||Math.max(1,lane.page);
-            const {rows}=this._mergeNativeStardima(body.items||[],{latest:f.sort==='updated'});this._reindex();
-            session.buffer.push(...rows.map(row=>this._byId.get(row.id)?.id||row.id));
-            if(rows.length)window.dispatchEvent(new CustomEvent('flixer:catalog',{detail:{updated:true}}));
-          }).catch(()=>{}).finally(()=>{lane.pending=null;});
-        }
+        session.nativeLanes ||= natives.flatMap(({provider,source})=>kinds.flatMap(kind=>collections.map(collection=>({provider,source,kind,collection,page:0,totalPages:1}))));
+        for(const lane of session.nativeLanes)startNativeLane(lane);
       }
       // Every scroll advances all upstream lists, even while cached titles remain.
       if(this.liveEnabled && session.remotePage < session.totalPages) {
@@ -973,7 +1020,14 @@
       // Saved cards paint immediately. With an empty selection, the first
       // productive source wins; a blocked hosted request cannot delay Android.
       const waiting=new Map([this._indexReady,session.pending,...(session.nativeLanes||[]).map(lane=>lane.pending)].filter(Boolean).map((promise,index)=>[index,Promise.resolve(promise).then(()=>index,()=>index)]));
-      while(!list.some(i=>!session.seen.has(i.id))&&waiting.size){const done=await Promise.race(waiting.values());waiting.delete(done);list=filterList(await this.all(type));}
+      let waitId=waiting.size;
+      while(!list.some(i=>!session.seen.has(i.id))&&waiting.size){
+        const done=await Promise.race(waiting.values());waiting.delete(done);list=filterList(await this.all(type));
+        if(!list.some(i=>!session.seen.has(i.id)))for(const lane of session.nativeLanes||[]){
+          if(!lane.canAdvance)continue;const next=startNativeLane(lane);
+          if(next){const id=waitId++;waiting.set(id,Promise.resolve(next).then(()=>id,()=>id));}
+        }
+      }
       const ranked=new Map(list.map(i=>[i.id,i]));
       const priority=session.buffer.map(id=>ranked.get(id)).filter(Boolean);
       // A provider response can contain old additions. Its arrival cannot put
@@ -1043,8 +1097,9 @@
       if (this._byId.has(id)) return this._byId.get(id);
       const cached=localTitle(id);
       if(cached){const stamp=new Date(cached.t).getTime();this._merge([cached.show],{snapshotAt:Number.isFinite(stamp)?new Date(stamp).toISOString():'1970-01-01'});this._reindex();return this._byId.get(id)||this._byId.get(cached.show.id);}
-      if(stardimaTitle(null,id)){
-        const row=await nativeStardima().details(id);this._mergeNativeStardima([row]);this._reindex();
+      const deviceTitle=nativeCatalogueTitle(null,id);
+      if(deviceTitle){
+        const row=await deviceTitle.source.details(id);this._mergeNativeCatalogue(deviceTitle.provider,[row]);this._reindex();
         const completed=this._byId.get(id)||row;
         store.set('title:'+completed.id,{t:Date.now(),show:completed});
         if(row.synopsis&&normalize(row).poster&&(row.kind!=='series'||row.episodes?.length))this._details.set(completed.id,Date.now());
@@ -1068,7 +1123,7 @@
     async details(_type, id) {
       const raw = await this.show(id);
       const canonical=raw.id,cached=store.get('title:'+canonical,null),nativeWco=/^sp:wco:s:[a-z0-9][a-z0-9-]{0,159}$/.test(raw.id)&&window.Capacitor?.Plugins?.WcoSource;
-      const nativeStarId=stardimaTitle(raw,id),nativeTitle=nativeWco||nativeStarId;
+      const nativeEntry=nativeCatalogueTitle(raw,id),nativeTitle=nativeWco||nativeEntry;
       if(raw.kind==='series'&&Date.now()-(Number(this._details.get(canonical))||0)>120000)this._details.delete(canonical);
       if(!this._details.has(canonical)&&cached&&Date.now()-cached.t<(raw.kind==='series'?120000:6*3600e3)){this._merge([cached.show],{snapshotAt:new Date(cached.t).toISOString()});this._reindex();if((cached.show.synopsis||cached.show.blurb)&&normalize(cached.show).poster&&(cached.show.kind!=='series'||cached.show.episodes?.length))this._details.set(canonical,cached.t);}
       if(!this._details.has(canonical)){
@@ -1078,7 +1133,7 @@
             if(!nativeTitle)try{const {body}=await savedTitle(canonical,6000);if(body.id!==canonical)throw new Error('Title identity mismatch');this._merge([body],{snapshotAt:this._catalog.generatedAt||this._bundleAt||'1970-01-01'});this._reindex();window.dispatchEvent(new CustomEvent('flixer:title',{detail:{id:canonical}}));}catch{}
             const current=this._byId.get(canonical)||raw;
             if(this.liveEnabled&&(current.kind==='series'||!(current.synopsis||current.blurb)||!normalize(current).poster||Date.now()-Date.parse(this._catalog.generatedAt||0)>6*3600e3)){
-              const fresh=await live.details(nativeStarId||canonical,[current.sourceUrl,...(current.offerings||[]).map(o=>o.sourceUrl)],{fresh:current.kind==='series'});
+              const fresh=await live.details(nativeEntry?.id||canonical,[current.sourceUrl,...(current.offerings||[]).map(o=>o.sourceUrl)],{fresh:current.kind==='series'});
               if(fresh)this._merge([fresh]);
             }
             this._reindex();const completed=this._byId.get(canonical)||raw;
@@ -1114,8 +1169,8 @@
         if (guide) episodes.forEach(e => { const g = e.season>0 && guide.get(e.season + ":" + e.n); if (g) { if (g.still) e.still = g.still; if (g.date) e.date = g.date; if (g.runtime) e.runtime = g.runtime; if (g.overview) e.overview = g.overview; if (g.title && /^episode \d+$/i.test(e.title)) e.title = g.title; } });
       }
       const seasonNums = [...new Set(episodes.map(e => e.season))].sort((a, b) => (a <= 0) - (b <= 0) || a - b); // numbered seasons first, source lists last
-      const sourceNames={animegg:'AnimeGG',megacartoons:'MegaCartoons',myasiantv:'MyAsianTV',yoturkish:'YoTurkish',wco:'Watch Cartoon Online',carateen:'Carateen'};
-      const seasons = seasonNums.map(n => ({ season_number: n, name: n<=0?`Source episodes - ${sourceNames[episodes.find(e=>e.season===n)?.sourceProvider]||'Original numbering'}`:"Season " + n, episode_count: episodes.filter(e => e.season === n).length }));
+      const sourceNames={animegg:'AnimeGG',megacartoons:'MegaCartoons',myasiantv:'MyAsianTV',yoturkish:'YoTurkish',wco:'Watch Cartoon Online','carateen-tg':'Carateen','carateen-sp':'Carateen · Spacetoon'};
+      const seasons = seasonNums.map(n => ({ season_number: n, name: n<=0?`Source episodes - ${sourceNames[episodes.find(e=>e.season===n)?.sourceGroup]||'Original numbering'}`:"Season " + n, episode_count: episodes.filter(e => e.season === n).length }));
       return Object.assign(item, {
         tagline: "",
         genres: item.genreIds.map(g => ({ id: g, name: labels.get(g) || SLUG_LABEL.get(g) || titleCase(g) })),
@@ -1225,7 +1280,7 @@
       if (!this.liveEnabled) return { items: localItems, totalPages: 1 };
       if(API_BASE){
         if(signal?.aborted)return {items:localItems,totalPages:1};
-        const native=nativeStardima(),ids=new Set(local.map(i=>i.id)),sourceResultIds=new Set();let pending=2+(native?1:0);
+        const natives=nativeCatalogues(),ids=new Set(local.map(i=>i.id)),sourceResultIds=new Set();let pending=2+natives.length;
         const exact=local.find(item=>[item.title,...(item.altTitles||[])].some(value=>norm(value)===norm(q)));
         const aliases=[...new Set(exact?[exact.title,...(exact.altTitles||[])]:[])].filter(value=>value&&norm(value)!==norm(q)&&value.length<=120).slice(0,2);
         const matches=item=>hit(item.title)||(item.alt&&hit(item.alt))||(item.altTitles||[]).some(hit)||(item.sourceSearchText&&hit(item.sourceSearchText))||(item.versions||[]).some(version=>hit(version.title)||(version.altTitles||[]).some(hit));
@@ -1237,16 +1292,16 @@
         };
         // Android searches the public source immediately, while the hosted
         // provider registry and other providers load independently.
-        const device=native?native.search(q,{aliases,signal}).then(rows=>{
-          if(signal?.aborted)return;const accepted=this._mergeNativeStardima(rows).rows;
+        const devices=natives.map(({provider,source})=>source.search(q,{aliases,signal}).then(rows=>{
+          if(signal?.aborted)return;const accepted=this._mergeNativeCatalogue(provider,rows).rows;
           for(const row of accepted){sourceResultIds.add(row.id);ids.add(row.id);ids.add((this._byId.get(row.id)||row).id);}
-        }).catch(()=>{}).finally(()=>{pending--;if(!signal?.aborted&&onLocal)onLocal(result());}):null;
+        }).catch(()=>{}).finally(()=>{pending--;if(!signal?.aborted&&onLocal)onLocal(result());}));
         const saved=Promise.resolve(this._indexReady).then(async()=>{
           if(signal?.aborted)return;const rows=await this.all();if(signal?.aborted)return;
           rows.filter(i=>hit(i.title)||(i.alt&&hit(i.alt))||i.altTitles.some(hit)||(i.sourceSearchText&&hit(i.sourceSearchText))).sort(byWeight).slice(0,60).forEach(i=>ids.add(i.id));
         }).finally(()=>{pending--;if(!signal?.aborted&&onLocal)onLocal(result());});
         this._searchProviders ||= getJson(`${API_BASE}/api/search?providers=1`,3000).then(({body})=>body.providers).catch(()=>null);
-        const names=[...new Set([...(await this._searchProviders||['carateen','stardima','aloula','youtubeoriginals','myflixer','fmovies','hdtoday','streamtunisie','kirmalk','ahwaktv','egydead','tuniflix','cinetimes','cimatn','animegg','megacartoons','toontales','myasiantv','multimovies','yoturkish','frenchstream','dessinanime']),...(window.Capacitor?.Plugins?.WcoSource?['wco']:[])])].filter(provider=>!native||provider!=='stardima');
+        const names=[...new Set([...(await this._searchProviders||['carateen','stardima','aloula','youtubeoriginals','myflixer','fmovies','hdtoday','streamtunisie','kirmalk','ahwaktv','egydead','tuniflix','cinetimes','cimatn','animegg','megacartoons','toontales','myasiantv','multimovies','yoturkish','frenchstream','dessinanime']),...(window.Capacitor?.Plugins?.WcoSource?['wco']:[])])].filter(provider=>!natives.some(entry=>entry.provider===provider));
         pending+=names.length-1;
         if(signal?.aborted)return {items:localItems,totalPages:1};
         await Promise.allSettled([...names.map(async provider=>{try{
@@ -1257,7 +1312,7 @@
             if(provider==='carateen'&&(/^sp:carateen:[ms]:/.test(row.id)||(row.offerings||[]).some(o=>o.provider==='carateen'&&/^sp:carateen:[ms]:/.test(o.id))))sourceResultIds.add(row.id);
             ids.add((this._byId.get(row.id)||row).id);
           }
-        }finally{pending--;if(!signal?.aborted&&onLocal)onLocal(result());}}),saved,device]);
+        }finally{pending--;if(!signal?.aborted&&onLocal)onLocal(result());}}),saved,...devices]);
         this._reindex();return result();
       }
       const liveHits = await Promise.race([
@@ -1293,13 +1348,18 @@
       };
       const episode=show.episodes?.find(e=>e.id===id||e.offerings?.some(o=>o.id===id));
       const movie=show.kind==='film'||show.type==='movie',offeringIds=[...new Set([id,...(episode?.offerings||[]).map(o=>o.id),...(movie?show.offerings||[]:[]).map(o=>o.id)])];
-      const ownIds=offeringIds.filter(id=>window.FlixerArabicSource?.supports(id)),starIds=offeringIds.filter(id=>/^sp:stardima:[me]:/.test(id||'')&&nativeStardima()?.supports(id));
-      const deviceRequests=[...ownIds.slice(0,5).map(id=>window.FlixerArabicSource.resolve(id,{fresh,signal})),...starIds.slice(0,3).map(id=>nativeStardima().servers(id,{fresh,signal}))];
-      const device=deviceRequests.length?Promise.allSettled(deviceRequests).then(results=>publish(normalizeServers({servers:results.flatMap(row=>row.status==='fulfilled'?row.value:[])}))):null;
-      const starPrimary=starIds.includes(id),alternateId=starPrimary?offeringIds.find(value=>value!==id&&!/^sp:stardima:/.test(value)):null;
-      // Hosted StarDima is blocked on its current network. A public device
+      const ownIds=offeringIds.filter(id=>window.FlixerArabicSource?.supports(id)),nativeRoutes=nativeCatalogues().flatMap(({provider,source})=>offeringIds.filter(id=>String(id||'').startsWith(`sp:${provider}:`)&&/^sp:[^:]+:[me]:/.test(id||'')&&source.supports(id)).slice(0,3).map(id=>({provider,source,id})));
+      const deviceRequests=[...ownIds.slice(0,5).map(id=>window.FlixerArabicSource.resolve(id,{fresh,signal})),...nativeRoutes.map(route=>route.source.servers(route.id,{fresh,signal,showId:show.id,sourceUrl}))];
+      let firstDevice;
+      const firstDeviceResult=new Promise(resolve=>{firstDevice=resolve;});
+      const deviceWork=deviceRequests.map(request=>Promise.resolve(request).then(servers=>{
+        const choices=normalizeServers({servers}),combined=publish(choices);if(choices.length)firstDevice(combined);return choices;
+      }));
+      const device=deviceRequests.length?Promise.race([firstDeviceResult,Promise.allSettled(deviceWork).then(()=>[...found.values()])]):null;
+      const nativePrimary=nativeRoutes.some(route=>route.id===id),nativeProviders=new Set(nativeRoutes.map(route=>route.provider)),hostedId=value=>!nativeProviders.has(/^sp:([^:]+):/.exec(value||'')?.[1]),alternateId=nativePrimary?offeringIds.find(value=>value!==id&&hostedId(value)):null;
+      // These sources block hosted metadata on its current network. A device
       // route should not wait twenty seconds for the same denied request.
-      if(starPrimary&&!alternateId){const servers=await device;if(signal?.aborted)throw new DOMException('Aborted','AbortError');return {servers,via:'device'};}
+      if(nativePrimary&&!alternateId){const servers=await device;if(signal?.aborted)throw new DOMException('Aborted','AbortError');return {servers,via:'device'};}
       const wco=/^sp:wco:e:[a-z0-9][a-z0-9-]{0,159}:([a-z0-9][a-z0-9-]{0,159})$/.exec(id);
       if(wco&&window.Capacitor?.Plugins?.WcoSource){
         if(signal?.aborted)throw new DOMException('Aborted','AbortError');
@@ -1317,9 +1377,10 @@
         const params = new URLSearchParams({id:alternateId||id});
         if(window.FlixerBrowser?.hasNativeVideo?.())params.set('transport','direct');
         if(fresh)params.set('fresh','1');
-        const remoteShowId=starPrimary&&/^sp:stardima:/.test(show.id||'')?(show.offerings||[]).find(o=>!/^sp:stardima:/.test(o.id||''))?.id:show.id;
+        const remoteShowId=nativePrimary&&!hostedId(show.id)?(show.offerings||[]).find(o=>hostedId(o.id))?.id:show.id;
         if (remoteShowId) params.set('showId',remoteShowId);
-        [show.sourceUrl, ...(show.offerings || []).map(o => o.sourceUrl)].filter(source=>source&&(!starPrimary||!/^https:\/\/www\.stardima\.com\//.test(source))).forEach(source => params.append('source',source));
+        const nativeSourceUrl=value=>/^https:\/\/(?:www\.)?stardima\.com\//.test(value)&&nativeProviders.has('stardima')||/^https:\/\/carateen\.tv\//.test(value)&&nativeProviders.has('carateen');
+        [show.sourceUrl, ...(show.offerings || []).map(o => o.sourceUrl)].filter(source=>source&&(!nativePrimary||!nativeSourceUrl(source))).forEach(source => params.append('source',source));
         const remote=getJson(`${API_BASE}/api/stream?${params}`,20000,signal).then(({body})=>publish(normalizeServers(body)));
         const full=device?Promise.race([remote.then(choices=>choices.length?choices:device).catch(()=>device),device.then(choices=>choices.length?choices:remote)]):remote;
         let servers;

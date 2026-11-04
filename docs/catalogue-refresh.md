@@ -56,6 +56,39 @@ older bundled index files remain readable.
 gh workflow run refresh.yml --ref main -f latest_only=true
 ```
 
+## Recently updated episodes
+
+The home bootstrap, hosted latest catalogue and APK use content dates rather
+than provider crawl/check times. `contentUpdatedAt` records newly observed
+episode content; `latestAt` and `publishedAt` retain dates supplied by sources.
+`firstSeenAt` labels a catalogue addition when no content date is available.
+Refreshing a poster, checking a server or importing an older guide does not
+make a show a new release. Distinct content times retain chronological order;
+titles with an identical update timestamp rotate between provider lanes so
+one bulk source response does not occupy the whole row.
+
+Episode updates require actual source episode IDs or explicit coordinates.
+Equivalent IDs already present in an episode's offerings, old season backfills,
+and lower episode numbers do not advance its update date. Unknown-season
+numbering is compared only within the same source title. Merging a delayed
+provider preserves the current latest episode and its canonical ID. A failed
+refresh retains the previous guide and update evidence.
+
+An initial full guide is catalogue discovery. A validated source latest feed
+can explicitly mark `episodeUpdateFeed: true` on a row containing its actual
+`latestEpisode`; for an existing title without a guide or previous pointer,
+that first observed feed episode may advance `contentUpdatedAt`. The marker is
+consumed before persistence, so later detail or historical imports cannot
+inherit it. Repeated feed observations do not advance the date. Carateen uses
+this marker only for its public recent-episode feed, not catalogue or detail
+responses; its server-generated `updated_at` values are not release dates.
+
+Published compact indices retain `recentEpisode` only from an exact source ID,
+an offering alias or an unambiguous explicit season/episode reference. The
+summary carries the actual episode title, known season/number and contributing
+providers without bundling its full guide. Missing coordinates remain unknown
+rather than being filled with a guessed season or episode.
+
 ## Earlier memory repair
 
 The workflow runs a current-release refresh every 15 minutes and resumes the

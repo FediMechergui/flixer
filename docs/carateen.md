@@ -41,9 +41,15 @@ tokens or private application credentials are used. Player requests follow the
 published anonymous branch. Actual sign-in or access denials remain failures.
 
 Returned HLS URLs are validated against the observed media host and paths.
-Media3 streams directly from that source inside the app; Netlify resolves
-metadata and does not relay the video. Source links are resolved when playback
-is requested instead of committing permanent guesses to the catalogue.
+Media3 streams directly from that source inside the app. Netlify and GitHub's
+hosted runner returned 403 during production verification on 4 November 2026;
+the runner retained its existing catalogue and reported the failed import.
+Android therefore uses the same public source contracts directly through its
+native HTTP transport. Metadata stays cached on the device and video does not
+pass through Netlify. Source links are resolved when playback is requested
+instead of committing permanent guesses to the catalogue. A device receiving
+an actual source access denial still reports it; it does not change identity or
+solve an access challenge.
 
 ## Verification
 
