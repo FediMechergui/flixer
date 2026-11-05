@@ -17,14 +17,17 @@ function replaceGenerated(source,destination){
   }
 }
 
-export function leanCatalog(catalog, product) {
-  const payload = { ...catalog, product, stats: catalog.stats || {
+export function catalogueHeader(catalog, product) {
+  return { ...catalog, product, stats: catalog.stats || {
     shows: catalog.shows.length,
     films: catalog.shows.filter(s => s.kind === 'film').length,
     series: catalog.shows.filter(s => s.kind === 'series').length,
     episodes: catalog.shows.reduce((sum, s) => sum + (s.episodeCount || 0), 0),
     channels: catalog.channels?.length || 0,
   } };
+}
+
+export function leanShow(show,{episodes=true}={}) {
   const pick = (record, keys) => Object.fromEntries(keys.filter(key => record[key] !== undefined).map(key => [key, record[key]]));
   const recent = show => {
     const recentEpisode=compactRecentEpisode(show);
@@ -34,7 +37,7 @@ export function leanCatalog(catalog, product) {
       ? {...show.recentUpdate,episodeId:recentEpisode.id} : show.recentUpdate;
     return {recentUpdate,recentEpisode};
   };
-  return { ...payload, shows: payload.shows.map(show => ({
+  return {
     ...pick(show, ['id','wpId','slug','kind','title','altTitles','year','lang','contentLang','originalLanguage','countries','audioMode','audioModes','collections','tags','primaryTag','episodeCount','seasons','totalDurationSec','totalViews','latestAt','latestEpisode','firstAt','publishedAt','portrait','synopsisGenerated','tvm','tmdbId','imdbId','documentary','offerings','firstSeenAt','contentUpdatedAt','providerUpdatedAt','providerMetadata','sourceUrl','access','episodesCheckedAt','audioLanguages','subtitleLanguages']),
     ...(typeof show.sourceSearchText==='string'?{sourceSearchText:show.sourceSearchText.slice(0,8000)}:{}),
     ...recent(show),
@@ -44,11 +47,15 @@ export function leanCatalog(catalog, product) {
     posterId: show.posterVideoId || show.posterId,
     poster: show.poster?.custom ? { custom: show.poster.custom } : undefined,
     blurb: show.synopsis?.slice(0, 280) || show.blurb || '',
-    episodes: (show.episodes || []).map(episode => ({
+    episodes: episodes ? (show.episodes || []).map(episode => ({
       ...pick(episode, ['id','title','season','number','absoluteNumber','audioModes','durationSec','views','publishedAt','offerings','sourceUrl','audioLanguages','subtitleLanguages']),
       thumbs: /^(mf|fm|hd|sp):/.test(episode.id) && episode.thumbs?.custom ? { custom: episode.thumbs.custom } : undefined,
-    })),
-  })) };
+    })) : undefined,
+  };
+}
+
+export function leanCatalog(catalog, product) {
+  return {...catalogueHeader(catalog,product),shows:catalog.shows.map(show=>leanShow(show))};
 }
 
 // Prepare a complete export beside its destination, then swap it in with rollback.
@@ -58,7 +65,7 @@ export function writeCatalog(outDir, catalog, product, {titleFiles=true}={}) {
   const stage = `${outDir}.stage-${randomUUID()}`;
   const backup = `${outDir}.backup-${randomUUID()}`;
   const payload = { ...catalog, product };
-  const lean = leanCatalog(catalog, product);
+  const lean = catalogueHeader(catalog, product);
   let moved = false, committed=false;
   try {
     fs.mkdirSync(path.join(stage, 'shows'), { recursive: true });
@@ -78,14 +85,15 @@ export function writeCatalog(outDir, catalog, product, {titleFiles=true}={}) {
       if(fs.existsSync(source))fs.copyFileSync(source,path.join(stage,name));
     }
     for (const lang of ['', '.ar', '.en']) {
-      const section = product === 'dahsha' && lang ? { ...lean, lang: lang.slice(1), shows: lean.shows.filter(s => s.lang === lang.slice(1)) } : lean;
-      writeJsonFile(path.join(stage, `catalog${lang}.json`), section);
+      const section = product === 'dahsha' && lang ? { ...lean, lang: lang.slice(1) } : lean;
+      function* rows(){for(const show of catalog.shows)if(product!=='dahsha'||!lang||show.lang===lang.slice(1))yield leanShow(show);}
+      writeJsonFile(path.join(stage, `catalog${lang}.json`), section,{arrays:{shows:rows()}});
     }
     if(product==='flixer') {
-      const index={...lean,lite:true,shows:lean.shows.map(({episodes,seasons,versions,offerings,blurb,...show})=>({...show,aliasIds:(offerings||[]).map(o=>o.id).filter(id=>id!==show.id),firstEpisodeId:episodes?.[0]?.id}))};
+      const index={...lean,lite:true,shows:catalog.shows.map(full=>{const {episodes,seasons,versions,offerings,blurb,...show}=leanShow(full,{episodes:false});return {...show,aliasIds:(offerings||[]).map(o=>o.id).filter(id=>id!==show.id),firstEpisodeId:full.episodes?.[0]?.id};})};
       writeJsonFile(path.join(stage,'index.json'),index);
       const recent=rankRecentTitles(index.shows,{limit:600});
-      const summaries=new Map(lean.shows.map(s=>[s.id,s.blurb]));
+      const summaries=new Map(catalog.shows.map(s=>[s.id,s.synopsis?.slice(0,280)||s.blurb||'']));
       writeJsonFile(path.join(stage,'bootstrap.json'),{...index,shows:recent.slice(0,600).map(s=>({...s,blurb:summaries.get(s.id)||''}))});
     }
     for (const show of titleFiles?payload.shows:[]) {

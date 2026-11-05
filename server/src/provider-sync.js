@@ -1,5 +1,7 @@
 import {nextProviderRetry,providerCoolingDown} from './provider-retry.js';
-import { readJson, writeJson } from './store.js';
+import { readJson, writeJson, DATA_DIR } from './store.js';
+import path from 'node:path';
+import {iterateJsonItems} from './json-files.js';
 import { fetchFmoviesPage, FMOVIES_GENRES } from './fmovies.js';
 import { fetchHdtodayPage } from './hdtoday.js';
 import { mergeLibrary, mergeShow } from './merge-library.js';
@@ -31,12 +33,16 @@ export function mergeProviderObservation(previous,row,at=new Date().toISOString(
 export function providerCache(product) {
   return readJson(filename(product),{version:1,items:[],queue:[],completed:false,lastRefreshAt:null,errors:{}});
 }
-export function mergeCachedProviders(base, product, {cache=providerCache(product)}={}) {
+export function mergeCachedProviders(base, product, {cache,stream=false,consume=false}={}) {
   const aliases=readJson(`provider-aliases-${product}.json`,{});
   const identities=readJson(`provider-identities-${product}.json`,{});
-  const enriched={...base,shows:(base.shows || []).map(s=>({...s,...identities[s.id]?.metadata}))};
-  const result=mergeLibrary(enriched,cache.items,{product,aliases});
-  result.catalog.providerSync={lastRefreshAt:cache.lastRefreshAt,completed:cache.completed,remainingPartitions:cache.queue.length,errors:cache.errors,sourceRecords:cache.items.length,externalFeeds:cache.externalFeeds||{}};
+  const enriched=consume?base:{...base,shows:(base.shows || []).map(s=>({...s,...identities[s.id]?.metadata}))};
+  if(consume)for(const show of enriched.shows||[])Object.assign(show,identities[show.id]?.metadata);
+  let sourceRecords=0;
+  const rows=stream?iterateJsonItems(path.join(DATA_DIR,filename(product)),{onMetadata:metadata=>{cache=metadata;}}):(cache??=providerCache(product)).items;
+  function* sources(){for(const row of rows){sourceRecords++;yield identities[row.id]?.metadata?{...row,...identities[row.id].metadata}:row;}}
+  const result=mergeLibrary(enriched,sources(),{product,aliases,consume});
+  result.catalog.providerSync={lastRefreshAt:cache.lastRefreshAt,completed:cache.completed,remainingPartitions:cache.queue.length,errors:cache.errors,sourceRecords,externalFeeds:cache.externalFeeds||{}};
   if(cache.lastRefreshAt && (!result.catalog.generatedAt || cache.lastRefreshAt>result.catalog.generatedAt))result.catalog.generatedAt=cache.lastRefreshAt;
   return result;
 }

@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import os from 'node:os';import path from 'node:path';
-import {readJsonFile,readJsonItems,writeJsonFile} from '../src/json-files.js';
+import {readJsonFile,readJsonItems,iterateJsonItems,writeJsonFile} from '../src/json-files.js';
 test('streamed JSON preserves UTF-8, escapes and nested episodes across byte boundaries and rejects truncation',()=>{
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'flixer-json-'));try{
   const file=path.join(dir,'data.json');for(const value of [{items:[{title:'\u0628\u0627\u0628 \u0627\u0644\u062d\u0627\u0631\u0629 \ud83c\udfac',quote:'"\\\n',episodes:[{number:1}]}],retry:{next:123},omitted:undefined},[],[null,3.2e30,false],null,42,'title']){
@@ -11,4 +11,25 @@ test('streamed JSON preserves UTF-8, escapes and nested episodes across byte bou
 
 test('provider extraction streams only selected rows and rejects truncated source caches',()=>{
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'flixer-items-'));try{const file=path.join(dir,'providers.json'),selected={id:'sp:dessinanime:s:sample',title:'Épisode عربي',episodes:[{cachedPlayers:[{id:12}]}]};writeJsonFile(file,{items:[...Array.from({length:1000},(_,n)=>({id:'other:'+n,unused:'x'.repeat(2000)})),selected],cursor:{next:7}});assert.deepEqual(readJsonItems(file,row=>row.id.startsWith('sp:')), [selected]);fs.writeFileSync(file,'{"items":[{"id":"sp:one"},');assert.throws(()=>readJsonItems(file));}finally{fs.rmSync(dir,{recursive:true,force:true})}
+});
+
+test('provider iteration preserves complete records and trailing metadata without retaining items',()=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'flixer-iterate-'));try{
+  const file=path.join(dir,'providers.json'),items=[{id:'one',title:'باب الحارة 🎬',episodes:[{id:'episode',cachedPlayers:[{url:'https://example.test/video'}]}]},{id:'two',extra:{nested:true}}];
+  const metadata={version:2,queue:[{provider:'fmovies',page:3}],completed:false,errors:{hdtoday:'HTTP 429'},lastRefreshAt:'2026-11-05T00:00:00Z'};
+  writeJsonFile(file,{version:2,items,...metadata});let observed=null;
+  const iterator=iterateJsonItems(file,{chunkSize:1,onMetadata:value=>{observed=value;}});
+  assert.deepEqual(iterator.next().value,items[0]);assert.equal(observed,null);
+  assert.deepEqual([...iterator],[items[1]]);assert.deepEqual(observed,metadata);
+  fs.writeFileSync(file,'{"items":[{"id":"partial"}],"queue":');observed=null;
+  assert.throws(()=>[...iterateJsonItems(file,{onMetadata:value=>{observed=value;}})]);assert.equal(observed,null);
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
+});
+
+test('streamed output arrays preserve metadata and consume single-use iterators once',()=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'flixer-output-'));try{
+  const file=path.join(dir,'data.json');let visits=0;function* shows(){for(const id of ['one','two']){visits++;yield {id,title:'Français عربي'};}}
+  writeJsonFile(file,{product:'flixer',shows:[{id:'unexported'}],stats:{shows:2}},{arrays:{shows:shows()}});
+  assert.equal(visits,2);assert.deepEqual(readJsonFile(file),{product:'flixer',shows:[{id:'one',title:'Français عربي'},{id:'two',title:'Français عربي'}],stats:{shows:2}});
+ }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });

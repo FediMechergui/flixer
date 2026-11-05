@@ -85,8 +85,11 @@ export function mergeShow(existing, incoming) {
   };
 }
 
-export function mergeLibrary(base, incoming, { product = 'flixer', aliases = {} } = {}) {
-  const shows = (base.shows || []).map(s => ({...s,offerings:showOfferings(s),episodes:episodesOf(s).map(e => ({...e,offerings:episodeOfferings(e)}))}));
+export function mergeLibrary(base, incoming, { product = 'flixer', aliases = {}, consume = false } = {}) {
+  // CLI refresh owns its parsed catalogue. Reuse that graph instead of cloning
+  // every historical episode before applying a handful of source updates.
+  const shows = consume ? base.shows || [] : (base.shows || []).map(s => ({...s,offerings:showOfferings(s),episodes:episodesOf(s).map(e => ({...e,offerings:episodeOfferings(e)}))}));
+  if(consume)for(const show of shows){show.offerings=showOfferings(show);show.episodes=episodesOf(show);for(const episode of show.episodes)episode.offerings=episodeOfferings(episode);}
   const byId = new Map(shows.map(s => [s.id,s]));
   const index = new Map(), external = new Map(), offerings = new Map(),versionOwners=new Map();
   for(const show of shows)for(const version of show.versions||[]){if(!versionOwners.has(version.id))versionOwners.set(version.id,new Set());versionOwners.get(version.id).add(show);}

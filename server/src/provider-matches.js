@@ -1,17 +1,26 @@
-import { readJson, writeJson } from './store.js';
+import { readJson, writeJson, DATA_DIR } from './store.js';
+import path from 'node:path';
+import {iterateJsonItems} from './json-files.js';
 import { mergeLibrary, titleKey } from './merge-library.js';
 import { getTitleDetails } from './myflixer.js';
 import { searchHdtoday } from './hdtoday.js';
 import { safeRemoteFetch } from './stream-security.js';
 
-export async function resolveProviderMatches(base,product,{limit=150,log=console.log,cache}={}) {
+// Identity matching needs title/year/provider identifiers, never episode guides.
+export function identityRecord(show){
+  const keys=['id','kind','title','altTitles','year','tmdbId','imdbId','poster','portrait','offerings','documentary','lang','tags','sourceUrl'];
+  return {...Object.fromEntries(keys.filter(key=>show[key]!==undefined).map(key=>[key,show[key]])),versions:(show.versions||[]).map(identityRecord)};
+}
+
+export async function resolveProviderMatches(base,product,{limit=150,log=console.log,cache,stream=false}={}) {
   // Latest-only refreshes disable identity work. Do not load and merge the
   // entire archive merely to construct a queue that will never run.
   if(limit<=0)return {};
-  cache??=readJson(`providers-${product}.json`,{items:[]});
+  if(stream)cache={items:Array.from(iterateJsonItems(path.join(DATA_DIR,`providers-${product}.json`)),identityRecord)};
+  else cache??=readJson(`providers-${product}.json`,{items:[]});
   const identities=readJson(`provider-identities-${product}.json`,{});
-  const enriched={...base,shows:base.shows.map(s=>({...s,...identities[s.id]?.metadata}))};
-  const {report}=mergeLibrary(enriched,cache.items,{product,aliases:readJson(`provider-aliases-${product}.json`,{})});
+  const enriched={...base,shows:base.shows.map(s=>identityRecord({...s,...identities[s.id]?.metadata}))};
+  const {report}=mergeLibrary(enriched,cache.items.map(identityRecord),{product,aliases:readJson(`provider-aliases-${product}.json`,{}),consume:true});
   const existing=new Map(base.shows.map(s=>[s.id,s]));
   const incoming=new Map(cache.items.map(s=>[s.id,s]));
   const jobs=[],seen=new Set();
@@ -35,7 +44,7 @@ export async function resolveProviderMatches(base,product,{limit=150,log=console
         if(job.source){
           const hits=await searchHdtoday(job.source.title);
           const hit=hits.find(r=>r.id===job.source.id&&r.year);
-          if(hit){Object.assign(job.source,{year:hit.year,title:hit.title});confirmed++;}
+          if(hit){Object.assign(job.source,{year:hit.year,title:hit.title});if(stream)identities[job.source.id]={at:Date.now(),metadata:{year:hit.year,title:hit.title}};confirmed++;}
           continue;
         }
         let mf=job.mf;
@@ -55,7 +64,7 @@ export async function resolveProviderMatches(base,product,{limit=150,log=console
       }catch{ /* uncertainty is retained in the match queue, never resolved by guessing */ }
     }
   }));
-  writeJson(`provider-identities-${product}.json`,identities);writeJson(`providers-${product}.json`,cache);
+  writeJson(`provider-identities-${product}.json`,identities);if(!stream)writeJson(`providers-${product}.json`,cache);
   log(`[matches:${product}] ${confirmed} identities clarified; ${Math.min(jobs.length,limit)} candidates checked`);
   return identities;
 }
