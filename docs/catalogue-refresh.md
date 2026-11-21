@@ -6,10 +6,10 @@ Scheduled refreshes publish catalogue data to the `catalogue-runtime` GitHub
 release. They never call hosting deployment hooks. The Netlify API is deployed explicitly
 with `npm run publish` when backend code changes; data updates do not rebuild it.
 
-The deployed backend checks the small runtime manifest at most once per two
-minutes per active instance. It downloads the runtime index only when the
+The deployed backend checks the small runtime manifest at most once per
+minute per active instance. It downloads the runtime index only when the
 manifest advances. Functions do not run an endless timer after returning a
-response. The independent collector continues every 15 minutes while the app
+response. The independent collector is scheduled every 10 minutes while the app
 is closed, with historical traversal every two hours.
 
 Each publication uses immutable, SHA-256-addressed gzip files. All changed files
@@ -42,8 +42,11 @@ Compressed files are hash checked before bounded decompression. Search and
 playback resolution still use the backend and device adapters as appropriate.
 The bundled index opens browsing immediately; the complete live index merges
 in the background and cannot replace newer cached home rows with older ones.
-Mobile background sync checks the publication rather than launching provider
-crawls on every phone. The scheduled collector supplies those updates.
+Mobile background sync checks the publication every minute while browsing;
+checks pause during playback and while hidden. The scheduled collector supplies
+those updates. A cached home feed opens without a startup network request. If
+an APK has no bundled bootstrap, it reads the hosted bootstrap. Direct catalogue
+downloads have a bounded head start before falling back to the backend.
 
 Hosted Android builds also split their bundled offline index into local parts
 of approximately 1 MB, loading at most four at once. The complete generation is
@@ -108,7 +111,7 @@ and previous manifests remain protected throughout publication.
 
 ## Earlier memory repair
 
-The workflow runs a current-release refresh every 15 minutes and resumes the
+The workflow schedules a current-release refresh every 10 minutes and resumes the
 historical traversal every two hours. Provider access errors preserve cached
 records; a partial upstream response does not mean the refresh process crashed.
 

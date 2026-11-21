@@ -80,7 +80,7 @@ test('WCO failures try another source, keep the reason when exhausted and ignore
   const servers=[{provider:'wco',type:'wco',id:'wco',name:'WCO',embedUrl:origin+'/episode'},...(mode==='alternative'?[{provider:'other',id:'other',name:'Other',type:'mp4',streamUrl:'https://media.example/video.mp4'}]:[])];
   const st={generation:0,destroyed:false,attempted:new Set(),sourceErrors:new Map(),idx:0},notice={hidden:true};
   const context=vm.createContext({setState:()=>{},st,servers,notice,root:{},$:()=>({}),renderBar:()=>{},teardownMedia:()=>st.generation++,showNotice:()=>notice.hidden=false,showError:()=>failed++,openDirectPlayer:s=>played.push(s.id),clearTimeout:()=>{},setTimeout:fn=>{fn();return 1},window:{FlixerBrowser:{hasNativeVideo:()=>true,hasNativePlayer:()=>true},FlixerWcoSource:{supports:()=>true,resolve:()=>pending,failureMessage:()=> 'WCO is at capacity'}}});
-  vm.runInContext(loadCode+failoverCode+';globalThis.start=load;',context);context.start(0);
+  vm.runInContext('const sourceOutcome=()=>{},sourceCoolingDown=()=>false;'+loadCode+failoverCode+';globalThis.start=load;',context);context.start(0);
   if(mode==='cancelled')st.generation++;if(mode==='destroyed')st.destroyed=true;
   reject(Object.assign(Error('capacity'),{code:'WCO_CAPACITY'}));await new Promise(r=>setImmediate(r));
   assert.deepEqual(played,mode==='alternative'?['other']:[]);assert.equal(failed,mode==='exhausted'?1:0);

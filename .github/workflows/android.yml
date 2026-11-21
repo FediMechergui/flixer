@@ -1,7 +1,7 @@
 # Builds the Android APK (Capacitor) and attaches it to a GitHub Release.
 # Trigger: push a tag like v1.2.0, or run manually. Signing uses the keystore stored in secrets
 # (ANDROID_KEYSTORE_B64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD);
-# without them an unsigned release APK is produced.
+# A published APK must use the existing release signing key.
 name: Android release
 
 on:
@@ -17,7 +17,10 @@ permissions:
   contents: write
 
 jobs:
+  verify:
+    uses: ./.github/workflows/verify.yml
   apk:
+    needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -28,10 +31,18 @@ jobs:
       VITE_PRODUCT: ${{ matrix.product }}
       DATA_BASE: ${{ vars.DATA_BASE || 'https://flixer-api-fedimechergui.netlify.app' }}
       KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
-      APP_VERSION_NAME: ${{ inputs.tag || github.ref_name }}
-      APP_VERSION_CODE: ${{ github.run_number }}
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+      KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
+      - name: Require release signing credentials
+        run: |
+          if [ -z "$KEYSTORE_B64" ] || [ -z "$KEYSTORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
+            echo "::error::Configure the existing Android release signing key before publishing an APK."
+            exit 1
+          fi
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -44,23 +55,22 @@ jobs:
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null 2>&1 || true
       - name: Install
         run: npm ci --prefix server && npm ci --prefix client && npm ci --prefix mobile
-      - name: Set increasing Android version code
-        run: echo "APP_VERSION_CODE=$((1000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+      - name: Set release version and increasing Android version code
+        run: node scripts/android-version.js "$RELEASE_TAG" >> "$GITHUB_ENV"
       - name: Build web (static, pointing at the hosted data)
         run: node scripts/product.js "$APP_PRODUCT" mobile-web --data-base "$DATA_BASE"
       - name: Sync Capacitor
         working-directory: mobile
         run: npx cap sync android
       - name: Decode keystore
-        if: env.KEYSTORE_B64 != ''
         working-directory: mobile
         run: |
           echo "$KEYSTORE_B64" | base64 -d > release.keystore
           cat > keystore.properties <<EOF
           storeFile=../../release.keystore
-          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
-          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
           EOF
       - name: Build release APK
         working-directory: mobile/android
@@ -68,12 +78,16 @@ jobs:
       - name: Collect APK
         run: |
           mkdir -p out
-          f=$(ls mobile/android/app/build/outputs/apk/release/*.apk | head -1)
-          cp "$f" "out/${{ matrix.product }}-${{ inputs.tag || github.ref_name }}.apk"
+          f=mobile/android/app/build/outputs/apk/release/app-release.apk
+          test -f "$f"
+          cp "$f" "out/Flixer-${APP_VERSION_NAME}.apk"
+          (cd out && sha256sum "Flixer-${APP_VERSION_NAME}.apk" > SHA256SUMS.txt)
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.tag || github.ref_name }}
-          name: Flixer ${{ inputs.tag || github.ref_name }}
-          files: out/*.apk
+          name: Flixer ${{ env.APP_VERSION_NAME }}
+          files: |
+            out/*.apk
+            out/SHA256SUMS.txt
           generate_release_notes: true

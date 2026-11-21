@@ -23,7 +23,8 @@ await pool(titles,2,async title=>{
    if(server.type==='dessinanime'){row.method='device-source-api';save();return;}
    try{
     const host=new URL(url).hostname;row.host=host;
-    row.method=server.streamUrl?'native-media':hosts.has(host)||/^(?:balance|[1-9])\.medmedia03\.wiki$/.test(host)?'isolated-in-app-webview':'unsupported-embed-host';
+    row.method=server.streamUrl?'media-url':'embed-url';
+    row.nativeHostListed=hosts.has(host)||/^(?:balance|[1-9])\.medmedia03\.wiki$/.test(host);row.routePolicyChecked=false;
     const r=await safeRemoteFetch(url,{timeoutMs:7000,headers:{...server.headers,...(server.streamUrl?{Range:'bytes=0-1023'}:{})}});
     row.status=r.status;row.contentType=r.headers.get('content-type');await r.body?.cancel();
    }catch(e){row.error=e.message;}save();

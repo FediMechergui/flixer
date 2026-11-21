@@ -70,14 +70,17 @@ public class DirectVideoPlugin extends Plugin {
             view.setControllerVisibilityListener((PlayerView.ControllerVisibilityListener)visibility->surface.setControlsVisible(visibility==View.VISIBLE));
             Runnable timeout=()->{if(!played[0]&&dialog==surface){reason[0]="failed";error[0]="STARTUP_TIMEOUT";surface.dismiss();}};
             Runnable progress=new Runnable(){public void run(){if(dialog!=surface)return;JSObject state=new JSObject();state.put("session",session);state.put("position",media.getCurrentPosition()/1000.0);state.put("duration",Math.max(0,media.getDuration())/1000.0);state.put("playing",media.isPlaying());notifyListeners("progress",state);handler.postDelayed(this,2000);}};
+            Runnable stalled=()->{if(surface.isShowing()&&played[0]&&media.getPlayWhenReady()&&media.getPlaybackState()==Player.STATE_BUFFERING){reason[0]="failed";error[0]="BUFFER_TIMEOUT";surface.dismiss();}};
+            Runnable updateStall=()->{handler.removeCallbacks(stalled);if(played[0]&&media.getPlayWhenReady()&&media.getPlaybackState()==Player.STATE_BUFFERING)handler.postDelayed(stalled,12000);};
             media.addListener(new Player.Listener(){
                 @Override public void onIsPlayingChanged(boolean on){if(on){played[0]=true;handler.removeCallbacks(timeout);}}
                 @Override public void onPlayerError(PlaybackException e){reason[0]="failed";error[0]=e.getErrorCodeName();android.util.Log.w("FlixerDirect",error[0]);surface.dismiss();}
-                @Override public void onPlaybackStateChanged(int state){if(state==Player.STATE_ENDED){reason[0]="ended";surface.dismiss();}}
+                @Override public void onPlaybackStateChanged(int state){updateStall.run();if(state==Player.STATE_ENDED){reason[0]="ended";surface.dismiss();}}
+                @Override public void onPlayWhenReadyChanged(boolean ready,int changeReason){updateStall.run();}
             });
             surface.setContentView(layout);
             surface.setOnDismissListener(d->{
-                handler.removeCallbacks(timeout);handler.removeCallbacks(progress);
+                handler.removeCallbacks(timeout);handler.removeCallbacks(progress);handler.removeCallbacks(stalled);
                 JSObject result=new JSObject();result.put("reason",reason[0]);result.put("played",played[0]);result.put("error",error[0]);result.put("position",media.getCurrentPosition()/1000.0);result.put("duration",Math.max(0,media.getDuration())/1000.0);
                 view.setPlayer(null);media.release();if(dialog==surface){dialog=null;player=null;}call.resolve(result);
             });
@@ -102,7 +105,7 @@ public class DirectVideoPlugin extends Plugin {
                 media.setMediaSource(source);
             }else media.setMediaItem(item.build());
             double position=call.getDouble("startAt",0.0);if(Double.isFinite(position)&&position>0)media.seekTo((long)(position*1000));media.prepare();media.play();
-            handler.postDelayed(timeout,45000);handler.post(progress);
+            handler.postDelayed(timeout,25000);handler.post(progress);
         });
     }
     @PluginMethod public void close(PluginCall call){getActivity().runOnUiThread(()->{if(dialog!=null)dialog.dismiss();call.resolve();});}

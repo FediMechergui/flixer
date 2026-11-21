@@ -31,7 +31,7 @@ export default async function handler(req, res) {
   try {
     await ensureTitleRuntime();
     const saved=PRODUCT==='flixer'&&req.query.showId?await runtimeSavedTitle(req.query.showId):null;
-    const data = await unifiedStream(id, {catalog:saved?{product:PRODUCT,shows:[saved]}:undefined,showId:req.query.showId,source:req.query.source,prefix:streamPrefix,quick:PRODUCT==='flixer'&&req.query.mode==='quick',fresh:req.query.fresh==='1',transport:PRODUCT==='flixer'&&req.query.transport==='direct'?'direct':'proxy'});
+    const data = await unifiedStream(id, {catalog:saved?{product:PRODUCT,shows:[saved]}:undefined,showId:req.query.showId,source:req.query.source,provider:typeof req.query.provider==='string'?req.query.provider:undefined,prefix:streamPrefix,quick:PRODUCT==='flixer'&&req.query.mode==='quick',fresh:req.query.fresh==='1',transport:PRODUCT==='flixer'&&req.query.transport==='direct'?'direct':'proxy'});
     if (!data) return res.status(404).json({error:'Episode not found in this catalogue'});
     res.setHeader('Cache-Control','no-store');
     return res.status(200).json(data);

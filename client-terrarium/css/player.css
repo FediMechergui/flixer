@@ -158,6 +158,12 @@
 .player__error-actions .btn { min-height: 40px; }
 .player__loading { padding: 20px; text-align: center; font-family: var(--body); }
 .player__loading strong { color: var(--text); font-size: 16px; }
+.player__loading [data-loading-detail] { color: var(--muted); font-size: 13px; max-width: 32ch; line-height: 1.5; }
+.player__servers { overscroll-behavior-inline: contain; scroll-snap-type: x proximity; }
+.player__srv { scroll-snap-align: start; }
+.player.is-fullscreen:focus-within .player__bar { opacity: 1; pointer-events: auto; }
+.player.is-fullscreen:focus-within .player__bar > * { pointer-events: auto; }
+.sheet__body .hint, .sheet__body .attrib, .sheet__body .opt__hint { font-family: var(--body); font-size: 13px; line-height: 1.55; }
 .player.is-fullscreen .player__stage { flex: 1 1 auto; min-height: 0; aspect-ratio: auto; }
 .player.is-fullscreen .player__bar { position: absolute; top: auto; bottom: 0; left: 0; right: 0; opacity: 0; pointer-events: none; transition: opacity .2s; background: rgba(12,18,16,.94); }
 .player.is-fullscreen .player__bar > * { pointer-events: none; }

@@ -4,8 +4,8 @@
  const providers={tuniflix:{origin:'https://tuniflix.site',name:'Tuniflix'},egydead:{origin:'https://tv10.egydead.live',name:'EgyDead'},ahwaktv:{origin:'https://yam.ahwaktv.net',name:'AhwakTV'},kirmalk:{origin:'https://kirmalk.com',name:'Kirmalk'},streamtunisie:{origin:'https://streamtunisie.net',name:'StreamTunisie'}};
  const hosts=new Set(['uqload.vc','uqload.net','hgcloud.to','mixdrop.top','mixdrop.ps','watch.easyvidplayer.com','watch.strp2p.site','audinifer.com','morencius.com','playmogo.com','s1.hdup400.com','movearnpre.com','dingtezuni.com','q7v3k8m2p1.top','vkvideo.ru','ok.ru','www.ok.ru','geo.dailymotion.com','www.dailymotion.com','player.vimeo.com','player.mediadelivery.net','app.videas.fr','www.vidspeed.org','doodstream.com','cybervynx.com','1vid.xyz','vidmoly.org','vidspeed.org','www.mp4upload.com','bysesukior.com','bysetayico.com','voe.sx']);
  const cache=new Map();
- const originMoves={'https://tv10.egydead.live':'https://a1.egydead.media','https://kirmalk.com':'https://kirmalk.art'};
- function fixed(value,origin){try{const u=new URL(value,origin);if(originMoves[origin]===u.origin)u.host=new URL(origin).host;return u.origin===origin&&!u.username&&!u.password?u:null;}catch{return null;}}
+ const originMoves={'https://tv10.egydead.live':'https://a1.egydead.media','https://kirmalk.blog':'https://kirmalk.com','https://kirmalk.art':'https://kirmalk.com'};
+ function fixed(value,origin){try{const u=new URL(value,origin);if((originMoves[origin]||origin)===(originMoves[u.origin]||u.origin))u.host=new URL(origin).host;return u.origin===origin&&!u.username&&!u.password?u:null;}catch{return null;}}
  function source(id){
   const aloula=/^sp:aloula:e:([1-9]\d{0,8})$/.exec(id||'');if(aloula)return {provider:'aloula',token:aloula[1]};
   const cimafu=/^sp:cimafu:([me]):([A-Za-z0-9_-]{1,320})$/.exec(id||'');if(cimafu)try{const path=new TextDecoder().decode(Uint8Array.from(atob(cimafu[2].replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0)));if(!/^\/[^/?#\\]+\/$/.test(path)||/\.\.|%2f|%5c|%2e|\0/i.test(path))return null;return {provider:'cimafu',type:cimafu[1],url:'https://cimafu.live'+path+'watch/',cfg:{origin:'https://cimafu.live',name:'Cima4u'}};}catch{return null;}
@@ -50,7 +50,8 @@
     return [{id:'streamtunisie:device:hls:'+u.pathname,provider:s.provider,name:s.cfg.name+' - HLS',type:'hls',streamUrl:u.href}];
    }
    const youtube=['youtube.com','www.youtube.com','www.youtube-nocookie.com'].includes(u.hostname)&&/^\/embed\/([\w-]{11})(?:[/?]|$)/.exec(u.pathname);
-   if(!youtube&&!hosts.has(u.hostname))return [];
+   const kirmalkPlayer=s.provider==='kirmalk'&&['ss.hd-vk.com','hd1.hdup20.com'].includes(u.hostname)&&/^\/embed-[a-z0-9]+\.html$/.test(u.pathname)&&!u.search&&!u.hash;
+   if(!youtube&&!hosts.has(u.hostname)&&!kirmalkPlayer)return [];
    const referer=new URL(s.url);if(originMoves[referer.origin])referer.host=new URL(originMoves[referer.origin]).host;
    return [{id:s.provider+':device:'+u.hostname+':'+u.pathname,provider:s.provider,name:s.cfg.name+' - '+(youtube?'YouTube':u.hostname),type:youtube?'youtube':'embed',...(youtube?{videoId:youtube[1]}:{embedUrl:u.href,sandbox:null,headers:{Referer:referer.href}})}];
   }catch{return [];}});

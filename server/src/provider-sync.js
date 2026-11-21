@@ -77,10 +77,19 @@ function scopes(product) {
     ]:[]),
   ];
 }
-async function fetchPage(job) {
+export async function hydrateProviderPage(result,{limit=Infinity,resolveDetails=getSpecialistDetails}={}){
+  const count=Math.min(result.items.length,Math.max(0,limit));let cursor=0;
+  await Promise.all(Array.from({length:Math.min(4,count)},async()=>{while(cursor<count){
+    const index=cursor++;
+    try{const detail=await resolveDetails(result.items[index].id);if(detail?.id!==result.items[index].id)continue;result.items[index]={...mergeShow(result.items[index],detail),title:detail.title};}
+    catch{ /* Preserve listings when optional details are unavailable. */ }
+  }}));
+  return result;
+}
+async function fetchPage(job,{hydrateLimit=Infinity}={}) {
   if(job.provider==='myflixer')return (job.kind==='film'?fetchMovies:fetchSeries)({...job,perPage:100});
   const result=await (job.provider==='fmovies'?fetchFmoviesPage(job):job.provider==='hdtoday'?fetchHdtodayPage(job):fetchSpecialistPage(job));
-  if(['frenchstream','dessinanime','myasiantv'].includes(job.provider)){let cursor=0;await Promise.all(Array.from({length:Math.min(4,result.items.length)},async()=>{while(cursor<result.items.length){const index=cursor++;try{const detail=await getSpecialistDetails(result.items[index].id);result.items[index]={...mergeShow(result.items[index],detail),title:detail.title};}catch{ /* retain discovered catalogue entries when detail access fails */ }}}));}
+  if(['frenchstream','dessinanime','myasiantv'].includes(job.provider))await hydrateProviderPage(result,{limit:hydrateLimit});
   return result;
 }
 export async function refreshProviders({product='dahsha',full=false,latestOnly=false,pageBudget=Number(process.env.PROVIDER_SCAN_PAGES||12),log=console.log}={}) {
@@ -110,7 +119,7 @@ async function scan({product,full,latestOnly,pageBudget,log}) {
   cache.queue=cache.queue.filter(job=>!(job.provider==='egydead'&&job.collection==='plays'));
   const errors={...cache.errors},attempted=new Set(),failed=new Set();let requests=0;
   const deferred=new Set();
-  const unavailable=provider=>failed.has(provider)&&/HTTP (?:401|403|429)|verification required|origin changed/i.test(errors[provider]||'');
+  const unavailable=provider=>failed.has(provider)&&/HTTP (?:401|403|429|5\d\d)|verification required|origin changed/i.test(errors[provider]||'');
   // Cached HDToday data is the default until ordinary hosted access returns.
   // Independent feeds require explicit configuration, never just a file's presence.
   const feed=process.env.HDTODAY_EXTERNAL_FEED==='1'?validateHdtodayFeed(readJson('hdtoday-feed.json',null)):null;
@@ -129,7 +138,7 @@ async function scan({product,full,latestOnly,pageBudget,log}) {
     const results=await Promise.allSettled(chunk.map(seed=>{
       attempted.add(seed.provider);
       const sort=seed.kind==='series'?'popularity.desc':'primary_release_date.desc';
-      return fetchPage(seed.provider==='fmovies'?{...seed,...(seed.kind==='film'?{year:currentYear}:{}),sort}:{...seed,latest:true});
+      return fetchPage(seed.provider==='fmovies'?{...seed,...(seed.kind==='film'?{year:currentYear}:{}),sort}:{...seed,latest:true},{hydrateLimit:latestOnly?3:Infinity});
     }));
     results.forEach((result,index)=>{const provider=chunk[index].provider;if(result.status==='fulfilled'){put(result.value.items);requests++;if(result.value.partial){errors[provider]='Partial source response; cached records retained';failed.add(provider);}else if(!failed.has(provider))delete errors[provider];}else{errors[provider]=result.reason.message;failed.add(provider);}});
   }
@@ -183,7 +192,8 @@ async function scan({product,full,latestOnly,pageBudget,log}) {
   }
   cache.items=[...items.values()];cache.errors=errors;cache.completed=cache.queue.length===0;
   if(product==='flixer'){
-    const refreshed=await refreshSeriesEpisodes(cache.items,{skipProviders:paused,limit:Number(process.env.PROVIDER_EPISODE_REFRESH_LIMIT||(latestOnly?24:120))});
+    const skipProviders=new Set([...paused,...[...failed].filter(unavailable)]);
+    const refreshed=await refreshSeriesEpisodes(cache.items,{skipProviders,limit:Number(process.env.PROVIDER_EPISODE_REFRESH_LIMIT||(latestOnly?24:120))});
     cache.items=refreshed.items;cache.episodeRefresh={...refreshed.report,at:new Date().toISOString()};
     log(`[episodes:${product}] ${refreshed.report.checked} series checked; ${refreshed.report.addedEpisodes} episodes added; ${refreshed.report.errors.length} unavailable`);
   }

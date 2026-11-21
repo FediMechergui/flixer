@@ -210,16 +210,32 @@
 
   /* ---------- Sheets ---------- */
   const root = () => $("#sheet-root");
+  let activeDialog=null;
+  const dialogReturns=new WeakMap();
   function syncRoot() {
     const r = root();
     r.hidden = r.children.length === 0;
     document.body.style.overflow = r.hidden ? "" : "hidden";
+    const dialog=Array.from(r.children).filter(node=>node.getAttribute('role')==='dialog').at(-1)||null;
+    for(const node of Array.from($('#app').children))if(node!==r&&node.id!=='toast')node.inert=!!dialog;
+    for(const node of Array.from(r.children))node.inert=node.getAttribute('role')==='dialog'&&node!==dialog;
+    if(dialog!==activeDialog){
+      const previous=activeDialog,back=previous&&dialogReturns.get(previous);
+      activeDialog=dialog;
+      if(previous&&!previous.isConnected&&back?.isConnected&&(!dialog||dialog.contains(back)))back.focus({preventScroll:true});
+      if(dialog){
+        if(!dialogReturns.has(dialog))dialogReturns.set(dialog,document.activeElement);
+        if(!dialog.hasAttribute('aria-label'))dialog.setAttribute('aria-label',dialog.classList.contains('watch')?'Episode player':dialog.querySelector('h1,h2')?.textContent||'Title details');
+        dialog.tabIndex=-1;
+        if(!dialog.contains(document.activeElement))(dialog.querySelector('button,a[href],input')||dialog).focus({preventScroll:true});
+      }
+    }
   }
   function openSheet({ title, body, foot = "", onOpen }) {
     closeSheet();
     const r = root();
     const scrim = document.createElement("div"); scrim.className = "scrim";
-    const sheet = document.createElement("div"); sheet.className = "sheet"; sheet.setAttribute("role", "dialog"); sheet.setAttribute("aria-modal", "true");
+    const sheet = document.createElement("div"); sheet.className = "sheet"; sheet.setAttribute("role", "dialog"); sheet.setAttribute("aria-modal", "true");sheet.setAttribute('aria-label',title);
     sheet.innerHTML = `<div class="sheet__grab"></div>
       <div class="sheet__head"><h2 class="sheet__title">${esc(title)}</h2><button class="iconbtn" data-close aria-label="Close">${ICON.close}</button></div>
       <div class="sheet__body">${body}</div>${foot ? `<div class="sheet__foot">${foot}</div>` : ""}`;
@@ -241,7 +257,12 @@
     syncRoot();
   }
   document.addEventListener("keydown", e => {
-    if (e.key === "Escape") { if ($("#sheet-root > .sheet")) closeSheet(); else if ($("#sheet-root > .detail")) goBack(); }
+    if (e.key === "Escape"&&activeDialog) {e.preventDefault(); if ($("#sheet-root > .sheet")) closeSheet(); else if ($("#sheet-root > .detail")) goBack(); }
+    if(e.key==='Tab'&&activeDialog){
+      const controls=Array.from(activeDialog.querySelectorAll('button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex]:not([tabindex="-1"])')).filter(node=>!node.inert&&node.getClientRects().length);
+      const first=controls[0]||activeDialog,last=controls.at(-1)||activeDialog;
+      if(!activeDialog.contains(document.activeElement)||document.activeElement===activeDialog||e.shiftKey&&document.activeElement===first||!e.shiftKey&&document.activeElement===last){e.preventDefault();(e.shiftKey?last:first).focus();}
+    }
   });
 
   /* ---------- Router ---------- */
@@ -249,6 +270,7 @@
 
   function route() {
     const h = location.hash || "#/home";
+    try{decodeURIComponent(h);}catch{toast('This link is incomplete. Returning to your library.');location.hash='#/home';return;}
     const w = h.match(/^#\/watch\/([^/]+)\/(.+)$/);
     if (w) {
       if (!state.renderedTab) renderTab("home");
@@ -946,14 +968,14 @@
     const request = new AbortController(); state.streamRequest = request;
     const el = document.createElement("div"); el.className = "detail watch"; el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true");
     el.innerHTML = `<button class="detail__back" data-back aria-label="Back">${ICON.back}</button>
-      <div class="watch__player"><div class="player"><div class="player__stage"><div class="player__loading"><span class="spinner"></span>Finding sources…</div></div></div></div>
+      <div class="watch__player"><div class="player"><div class="player__stage"><div class="player__loading" role="status" aria-live="polite"><span class="spinner" aria-hidden="true"></span><strong data-loading-title>Opening episode</strong><span data-loading-detail>Loading saved episode details</span></div></div></div></div>
       <div class="detail__body" id="watch-info"><div class="skel skel-line" style="width:60%;height:24px"></div><div class="skel skel-line" style="width:35%"></div></div>`;
     r.appendChild(el); syncRoot();
     $("[data-back]", el).addEventListener("click", goBack);
 
     let ctx;
     try { ctx = await api.episode(showId, epId); }
-    catch (e) { $("#watch-info", el).innerHTML = emptyState("Could not open this episode", e.message, `<a class="btn btn--primary" href="#/home">Home</a>`); return; }
+    catch (e) {if(el.isConnected){$('.watch__player',el).innerHTML=emptyState("Could not open this episode",e.message,`<button class="btn btn--primary" data-retry-episode>Try again</button>`);$('[data-retry-episode]',el).addEventListener('click',()=>route());$('#watch-info',el).innerHTML='';}return; }
     if (!el.isConnected) return;
     const { show, episode, prev, next, index, total } = ctx;
     const type = show.type;
@@ -978,6 +1000,8 @@
       $("[data-autoplay]", info)?.addEventListener("click", e => { state.settings.autoplay = !state.settings.autoplay; saveSettings(); e.currentTarget.classList.toggle("is-on", state.settings.autoplay); });
     };
     paintInfo();
+    $('[data-loading-title]',el).textContent='Finding sources';
+    $('[data-loading-detail]',el).textContent='The first available player will open automatically';
 
     let sources,lateServers,mountedPlayer;
     try { sources = await api.stream(episode.id, episode.sourceUrl, show, {signal:request.signal,onSources:servers=>{lateServers=servers;if(el.isConnected)mountedPlayer?.updateServers(servers);}}); }
@@ -1029,8 +1053,17 @@
         <div class="field" style="margin-top:16px"><button class="btn btn--outline btn--block" data-wipe style="color:var(--rose)">Clear my list, searches and watch history</button>
           <p class="hint">${state.watchlist.length} saved · ${watched} watched · ${Object.keys(state.progress).length - watched} in progress</p></div>
         ${st ? `<div class="facts" style="margin-top:0"><div class="fact"><div class="fact__k">Titles</div><div class="fact__v amber">${st.total.toLocaleString()}</div></div><div class="fact"><div class="fact__k">Films</div><div class="fact__v">${st.films.toLocaleString()}</div></div><div class="fact"><div class="fact__k">Series</div><div class="fact__v">${st.series.toLocaleString()} <span class="meta">· ${st.rated.toLocaleString()} rated</span></div></div></div>` : ""}
-        <p class="attrib">Flixer · index ${generated ? "built " + esc(generated.slice(0, 10)) : "bundled with the app"}${st && st.lastSync ? " · live sync " + new Date(st.lastSync).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}. New titles are picked up every 3 minutes while the app is open; synopsis and episodes load when a title is opened. Series ratings, popularity, networks, cast and episode guides come from TVmaze. Playback comes from third-party players; Flixer hosts no video.</p>`,
+        <div class="field"><button class="btn btn--outline btn--block" data-refresh-library>Check for catalogue updates</button><p class="hint" data-refresh-status role="status" aria-live="polite">${generated?'Catalogue updated '+esc(new Date(generated).toLocaleString()):'Using the saved catalogue'}</p></div>
+        <p class="attrib">Published catalogue updates are checked every minute while browsing. Source listings are checked every 3 minutes; synopsis and episodes load when a title is opened. Series ratings and episode guides come from TVmaze. Playback comes from third-party players; Flixer hosts no video.</p>`,
       onOpen: sh => {
+        $('[data-refresh-library]',sh).addEventListener('click',async event=>{
+          const button=event.currentTarget,status=$('[data-refresh-status]',sh);
+          if(location.hash.startsWith('#/watch/')){status.textContent='Catalogue checks resume when you leave the player.';return;}
+          button.disabled=true;button.setAttribute('aria-busy','true');status.textContent='Checking for catalogue updates…';
+          try{api._lastSnapshotCheck=0;await api._refreshSnapshot();const at=await api.generatedAt();status.textContent=at?'Checked · catalogue dated '+new Date(at).toLocaleString():'Your saved catalogue is ready';}
+          catch{status.textContent='Could not reach the catalogue. Your saved library is still available.';}
+          finally{button.disabled=false;button.removeAttribute('aria-busy');}
+        });
         $("[data-autoplay]", sh).addEventListener("click", e => { s.autoplay = !s.autoplay; saveSettings(); e.currentTarget.classList.toggle("is-on", s.autoplay); });
         $("[data-wipe]", sh).addEventListener("click", () => { if (confirm("Clear your saved list, recent searches and watch history on this device?")) { state.watchlist = []; state.recent = []; state.progress = {}; saveWatchlist(); store.set("recent", []); saveProgress(); closeSheet(); state.renderedTab = null; route(); toast("Cleared"); } });
       }

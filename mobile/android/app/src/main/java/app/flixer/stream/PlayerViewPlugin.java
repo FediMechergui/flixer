@@ -158,7 +158,7 @@ public class PlayerViewPlugin extends Plugin {
             });
             stage.addView(web,new FrameLayout.LayoutParams(-1,-1)); dialog.setContentView(layout);
             dialog.setOnDismissListener(d -> { watchdog.removeCallbacksAndMessages(null);playerDialog=null;playerWebView=null;web.stopLoading();web.loadUrl("about:blank");stage.removeAllViews();web.destroy();JSObject result=new JSObject();result.put("reason",reason[0]);result.put("played",played[0]);result.put("media",media);result.put("position",latest[0]);result.put("duration",latest[1]);if(!diagnostics.sourceError().isEmpty())result.put("sourceError",diagnostics.sourceError());if(diagnostics.httpStatus()>0)result.put("httpStatus",diagnostics.httpStatus());if(diagnostics.networkErrorCode()<0)result.put("networkErrorCode",diagnostics.networkErrorCode());call.resolve(result); });
-            dialog.show();watchdog.postDelayed(startupTimeout,observableFile?30000:60000);
+            dialog.show();watchdog.postDelayed(startupTimeout,observableFile?25000:30000);
             String framed=SourcePlayerFrame.html(url);
             if(framed!=null)web.loadDataWithBaseURL(SourcePlayerFrame.ORIGIN,framed,"text/html","UTF-8",null);
             else web.loadUrl(url,headers);

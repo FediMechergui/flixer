@@ -21,6 +21,7 @@
   const SOURCE = "https://myflixerz.day";
   const WP = SOURCE + "/wp-json/wp/v2";
   const SYNC_EVERY = 3 * 60 * 1000;
+  const SNAPSHOT_EVERY = 60 * 1000;
   const DELTA_CAP = 2500;
   const UNI = window.FlixerUniverses;
   const nativeStardima = () => window.FlixerStardimaSource?.enabled?.() ? window.FlixerStardimaSource : null;
@@ -56,10 +57,6 @@
   };
 
   async function getJson(url, ms = 12000, signal) {
-    if(window.FlixerCatalogueSource?.enabled()&&url.startsWith(`${API_BASE}/api/catalogue?`)){
-      const query=new URL(url).searchParams;
-      return {body:await window.FlixerCatalogueSource.get(query.get('part')||'manifest',query.get('hash')||undefined),headers:new Headers()};
-    }
     const ctrl = typeof AbortController === "function" ? new AbortController() : null;
     let rejectCancelled;
     const cancelled = new Promise((_, reject) => { rejectCancelled=reject; });
@@ -70,6 +67,22 @@
       // Capacitor's native HTTP transport can ignore fetch's AbortSignal.
       // Bound the caller independently, while still cancelling browsers' fetch.
       return await Promise.race([cancelled,(async()=>{
+        if(signal?.aborted)throw new DOMException('Aborted','AbortError');
+        if(window.FlixerCatalogueSource?.enabled()&&url.startsWith(`${API_BASE}/api/catalogue?`)){
+          const query=new URL(url,'https://localhost').searchParams;
+          let directTimer;
+          try{
+            // Leave time for the backend when the independent data host is slow.
+            // Its shared download may finish in the background for the next read.
+            const body=await Promise.race([
+              window.FlixerCatalogueSource.get(query.get('part')||'manifest',query.get('hash')||undefined),
+              new Promise((_,reject)=>{directTimer=setTimeout(()=>reject(Error('Direct catalogue timeout')),Math.min(2500,ms/3));})
+            ]);
+            return {body,headers:new Headers()};
+          }catch(error){if(ctrl?.signal.aborted||signal?.aborted)throw error;}
+          finally{clearTimeout(directTimer);}
+        }
+        if(ctrl?.signal.aborted||signal?.aborted)throw new DOMException('Aborted','AbortError');
         const res=await fetch(url,{...(ctrl?{signal:ctrl.signal}:{}),cache:'no-cache'});
         const text=await res.text();let body=null;
         try{body=JSON.parse(text);}catch{}
@@ -550,14 +563,23 @@
       if (this._catalog) return Promise.resolve(this._catalog);
       if (!this._loading) {
         this._loading = (async () => {
-          let { body: c } = await getJson(`${CFG.mobile ? "" : DATA_BASE}/data/bootstrap.json`).catch(() => getJson(`${DATA_BASE}/data/catalog.json`, 60000));
-          const bundledAt=c.generatedAt||null,cachedHome=store.get('homeSnapshot',null);
-          if(cachedHome?.product==='flixer'&&Array.isArray(cachedHome.shows)&&Date.parse(cachedHome.generatedAt)>Date.parse(c.generatedAt||0))c=cachedHome;
-          if (c.product !== 'flixer') throw new Error('Flixer requires its own exported catalogue');
+          const valid=c=>c?.product==='flixer'&&Array.isArray(c.shows);
+          const read=async(url,ms)=>{const {body}=await getJson(url,ms);if(!valid(body))throw Error('Flixer requires its own exported catalogue');return body;};
+          const cachedHome=store.get('homeSnapshot',null);
+          let c=valid(cachedHome)?cachedHome:null,bundledAt=null;
+          if(!c){
+            if(CFG.mobile){
+              try{c=await read('/data/bootstrap.json',1500);bundledAt=c.generatedAt||null;}catch{
+                c=await read(`${API_BASE}/api/catalogue?part=bootstrap`,10000)
+                  .catch(()=>read(`${DATA_BASE}/data/bootstrap.json`,10000));
+              }
+            }else c=await read(`${DATA_BASE}/data/bootstrap.json`,10000).catch(()=>read(`${DATA_BASE}/data/catalog.json`,20000));
+            store.set('homeSnapshot',c);
+          }
           const shows = Array.isArray(c.shows) ? c.shows : [];
           this._catalog = { shows, items: [], genres: { movie: [], tv: [] }, years: [1900, new Date().getFullYear()], generatedAt: c.generatedAt || null, tvmazeAt: c.tvmazeAt || null, lite: !!c.lite, tagLabels: new Map((c.tags || []).map(t => [t.id, t.labelEn || t.label || titleCase(t.id)])) };
           this._byId = new Map();
-          this._bundleAt=bundledAt;this._fullIndexAt=bundledAt;
+          this._bundleAt=bundledAt;this._fullIndexAt=null;
           this._rowRevisions=new Map();
           shows.forEach(s => {this._byId.set(s.id, s);for(const id of s.aliasIds||[])this._byId.set(id,s);this._rowRevisions.set(s.id,Date.parse(c.generatedAt)||0);});
           const delta = store.get("delta", []);
@@ -785,7 +807,9 @@
         if (!r || !r.id) return;
         const candidates=[...new Set([...keys(r)].map(uniqueIdentity).filter(Boolean))];
         const candidate=uniqueIdentity(identity(r))||(candidates.length===1?candidates[0]:null);
-        const cur = this._byId.get(r.id) || (candidate && !(candidate.tmdbId && r.tmdbId && +candidate.tmdbId!==+r.tmdbId) && candidate);
+        const compatible=other=>other&&other.kind===r.kind&&!['tmdbId','imdbId'].some(key=>other[key]&&r[key]&&String(other[key])!==String(r[key]));
+        const saved=this._byId.get(r.id);
+        const cur = (saved&&(saved.id===r.id||compatible(saved))&&saved) || (compatible(candidate)&&candidate);
         if(cur) this._byId.set(r.id,cur);
         this._dirtyItems ||= new Set(); this._dirtyItems.add(cur ? cur.id : r.id);
         if (cur) {
@@ -911,10 +935,14 @@
     /* ----- background sync: newest titles on the source, every few minutes ----- */
     _startSync() {
       if (!this.liveEnabled || this._timer) return;
-      const tick = () => {if(window.location && /^#\/watch\//.test(window.location.hash))return;this.sync().catch(() => {});};
+      const tick = () => {
+        if(document.visibilityState==='hidden'||/^#\/watch\//.test(window.location?.hash||''))return;
+        if(Date.now()-this._lastSync>=SYNC_EVERY)this.sync().catch(()=>{});
+        else this._refreshSnapshot().catch(()=>{});
+      };
       setTimeout(tick, 1500);
-      this._timer = setInterval(tick, SYNC_EVERY);
-      document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && (this._snapshotDeferred || Date.now() - this._lastSync > SYNC_EVERY / 2)) {this._snapshotDeferred=false;tick();} });
+      this._timer = setInterval(tick, SNAPSHOT_EVERY);
+      document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") {this._snapshotDeferred=false;tick();} });
       window.addEventListener('hashchange',()=>{if(this._snapshotDeferred&&!/^#\/watch\//.test(window.location?.hash||'')){this._snapshotDeferred=false;tick();}});
     }
     async sync() {
@@ -953,11 +981,13 @@
       return added;
     }
     async _refreshSnapshot(){
-      if(!DATA_BASE||this._snapshotRequest||Date.now()-(this._lastSnapshotCheck||0)<SYNC_EVERY)return;
+      if(this._snapshotRequest)return this._snapshotRequest;
+      if(!this._catalog||document.visibilityState==='hidden'||/^#\/watch\//.test(window.location?.hash||'')){this._snapshotDeferred=true;return;}
+      if(Date.now()-(this._lastSnapshotCheck||0)<SNAPSHOT_EVERY)return;
       this._lastSnapshotCheck=Date.now();
       this._snapshotRequest=(async()=>{
         const {body:status}=await getJson(`${API_BASE}/api/catalogue?part=manifest`,12000);
-        if(status.product!=='flixer'||!status.generatedAt)return;
+        if(status.product!=='flixer'||!Number.isFinite(Date.parse(status.generatedAt)))throw Error('Invalid catalogue update response');
         if(Date.parse(status.generatedAt)>Date.parse(this._catalog.generatedAt||0)){
           const {body:home}=await getJson(`${API_BASE}/api/catalogue?${new URLSearchParams({part:"bootstrap",hash:status.bootstrap})}`,12000);
           if(home.product!=='flixer'||!Array.isArray(home.shows))throw new Error('Wrong product home feed');
@@ -1453,7 +1483,15 @@
         if (remoteShowId) params.set('showId',remoteShowId);
         const nativeSourceUrl=value=>/^https:\/\/(?:www\.)?stardima\.com\//.test(value)&&nativeProviders.has('stardima')||/^https:\/\/carateen\.tv\//.test(value)&&nativeProviders.has('carateen');
         [show.sourceUrl, ...(show.offerings || []).map(o => o.sourceUrl)].filter(source=>source&&(!nativePrimary||!nativeSourceUrl(source))).forEach(source => params.append('source',source));
-        const remote=getJson(`${API_BASE}/api/stream?${params}`,20000,signal).then(({body})=>publish(normalizeServers(body)));
+        const providerOf=id=>/^sp:([^:]+):/.exec(id||'')?.[1]||({mf:'myflixer',fm:'fmovies',hd:'hdtoday'}[String(id).split(':')[0]])||(/^[\w-]{11}$/.test(id||'')?'youtube':null);
+        const remoteProviders=[...new Set(offeringIds.filter(hostedId).map(providerOf).filter(Boolean))];
+        const readSources=query=>getJson(`${API_BASE}/api/stream?${query}`,20000,signal).then(({body})=>publish(normalizeServers(body)));
+        let remote;
+        if(onSources&&remoteProviders.length>1){
+          let first;const ready=new Promise(resolve=>{first=resolve;});
+          const requests=remoteProviders.map(provider=>{const query=new URLSearchParams(params);query.set('provider',provider);return readSources(query).then(choices=>{if(choices.length)first(choices);return choices;});});
+          remote=Promise.race([ready,Promise.allSettled(requests).then(()=>[...found.values()])]);
+        }else remote=readSources(params);
         const full=device?Promise.race([remote.then(choices=>choices.length?choices:device).catch(()=>device),device.then(choices=>choices.length?choices:remote)]):remote;
         let servers;
         if(onSources&&!/^sp:frenchstream:/.test(show.id||'')&&(show.tmdbId||show.offerings?.some(o=>o.provider==='fmovies')||/^fm:/.test(id))){

@@ -3,7 +3,9 @@ import {artworkUrl} from '../../shared/artwork.js';
 import {frenchSourceRequest} from './french-source-request.js';
 import {safeRemoteFetch} from './stream-security.js';
 
-export const FREMBED_ORIGIN='https://frembed.uno';
+export const FREMBED_ORIGIN='https://frembed.shop';
+// The previous publisher domain announces this move. Keep saved title links usable.
+export function currentFrembedUrl(value){try{const u=new URL(value);if(u.username||u.password||!['https://frembed.uno',FREMBED_ORIGIN].includes(u.origin))return null;u.host=new URL(FREMBED_ORIGIN).host;return u.href;}catch{return null;}}
 export const FREMBED_PROVIDERS={frembed:{name:'Frembed',origin:FREMBED_ORIGIN,kind:null,collections:['french','french-cartoons']}};
 const request=frenchSourceRequest(FREMBED_ORIGIN);
 const clean=value=>String(value||'').replace(/\s+/g,' ').trim();
@@ -12,7 +14,7 @@ export function parseFrembedId(id){
   return m&&((m[1]==='e')===!!m[3])?{provider:'frembed',type:m[1],slug:m[2],...(m[3]?{season:Number(m[3]),number:Number(m[4])}:{})}:null;
 }
 export function frembedUrl(id){const p=parseFrembedId(id);return p?`${FREMBED_ORIGIN}/embed/${p.type==='m'?'movie':'serie'}/${p.slug}${p.type==='e'?`?sa=${p.season}&epi=${p.number}`:''}`:null;}
-export function frembedIdFromUrl(value){try{const u=new URL(value);if(u.origin!==FREMBED_ORIGIN||u.username||u.password)return null;const m=/^\/(movies|tv-show)\/[^/]+\/([1-9]\d{0,9})$/.exec(u.pathname);return m?`sp:frembed:${m[1]==='movies'?'m':'s'}:${m[2]}`:null;}catch{return null;}}
+export function frembedIdFromUrl(value){try{const canonical=currentFrembedUrl(value);if(!canonical)return null;const u=new URL(canonical);const m=/^\/(movies|tv-show)\/[^/]+\/([1-9]\d{0,9})$/.exec(u.pathname);return m?`sp:frembed:${m[1]==='movies'?'m':'s'}:${m[2]}`:null;}catch{return null;}}
 function row(id,title){const p=parseFrembedId(id);return {id,title,kind:p.type==='m'?'film':'series',tmdbId:Number(p.slug),year:null,altTitles:[],tags:[],collections:['french'],documentary:false,providerMetadata:true,channelId:'frembed',sourceUrl:frembedUrl(id),offerings:[{provider:'frembed',id,sourceUrl:frembedUrl(id)}],episodes:[],episodeCount:0};}
 function languages(version){const v=String(version).toUpperCase();return {...(/^(?:VF(?:_VOSTFR)?|VFF|VFQ|FRENCH)$/.test(v)?{audioLanguages:['fr']}:{ }),...(v.includes('VOSTFR')?{subtitleLanguages:['fr']}:{})};}
 export function parseFrembedList(html,{kind='series',page=1,search=false}={}){
@@ -47,9 +49,9 @@ export function parseFrembedDetails(id,data){
     if(!Number.isInteger(season)||season<0||season>999||!Number.isInteger(number)||number<1||number>99999)throw Error('Invalid Frembed episode coordinates');
     const eid=p.type==='m'?id:`sp:frembed:e:${p.slug}:${season}:${number}`;
     // A successful API response alone is insufficient: bind its player to this exact work/episode.
-    if(source.link!==frembedUrl(eid))throw Error('Frembed player identity mismatch');
+    if(currentFrembedUrl(source.link)!==frembedUrl(eid))throw Error('Frembed player identity mismatch');
     const lang=languages(source.version);
-    if(!seen.has(eid)){seen.add(eid);item.episodes.push({id:eid,title:p.type==='m'?item.title:`Episode ${number}`,season,number,sourceUrl:source.link,...lang,offerings:[{provider:'frembed',id:eid,season,number,...lang}]});}
+    if(!seen.has(eid)){seen.add(eid);item.episodes.push({id:eid,title:p.type==='m'?item.title:`Episode ${number}`,season,number,sourceUrl:frembedUrl(eid),...lang,offerings:[{provider:'frembed',id:eid,season,number,...lang}]});}
     // TV API years can describe a newly added season, not the series premiere.
     if(p.type==='m')item.year ||= Number(source.year)||null;
     item.imdbId ||= /^tt\d+$/.test(source.imdb||'')?source.imdb:undefined;

@@ -279,7 +279,7 @@ export async function discoverLibrary({kind='film',page=1,genre,year,collection=
   const providers=results.map((r,i)=>({provider:names[i],page,totalPages:pages[i].totalPages,ok:r.status==='fulfilled',cached:!!pages[i].cached}));
   return {items:latest?rankRecentTitles(items):items,page,totalPages:Math.max(page,...pages.map(result=>Number(result.totalPages)||page)),providers,providerErrors:results.map((r,i)=>r.status==='rejected'?{provider:providers[i].provider,error:r.reason.message}:null).filter(Boolean)};
 }
-export async function unifiedStream(id,{showId,source,prefix='/api/stream',catalog,product=PRODUCT,quick=false,fresh=false,transport='proxy',resolveTitle=unifiedTitle,resolveMyflixer=resolveMyflixerStream,resolveHdtoday=resolveHdtodayServers,resolveSpecialist=resolveSpecialistServers}={}) {
+export async function unifiedStream(id,{showId,source,prefix='/api/stream',catalog,product=PRODUCT,provider,quick=false,fresh=false,transport='proxy',resolveTitle=unifiedTitle,resolveMyflixer=resolveMyflixerStream,resolveHdtoday=resolveHdtodayServers,resolveSpecialist=resolveSpecialistServers}={}) {
   if(!catalog){const saved=product==='flixer'&&showId?await readPackedTitle(showId):null;catalog=saved?{product,shows:[saved]}:product==='flixer'&&specialistUrl(showId||id)?{product,shows:[]}:readLibrary();}
   if(catalog.product && catalog.product!==product)return null;
   let base=showId?await locate(catalog,showId):catalog.packedTitles?await readPackedEpisodeTitle(id):catalog.shows?.find(s=>s.episodes?.some(e=>e.id===id||e.offerings?.some(o=>o.id===id)));
@@ -300,10 +300,13 @@ export async function unifiedStream(id,{showId,source,prefix='/api/stream',catal
   // Never authorize arbitrary episode slots from caller-supplied offering descriptors.
   if(!episode)return null;
   if(product==='dahsha'&&(!base || title.providerMetadata || /^(fm|hd):/.test(title.id))&&title.documentary!==true)return null;
-  const offers=episodeOfferings(episode);
+  let offers=episodeOfferings(episode);
   if(product==='flixer'&&!quick&&!offers.some(o=>o.provider==='frembed')){
     const alternative=frembedOfferingFor(title,episode);if(alternative)offers.push(alternative);
   }
+  // Filtering only narrows offerings authorized by this saved episode. Clients
+  // can receive a ready provider without waiting for unrelated resolvers.
+  if(provider)offers=offers.filter(o=>o.provider===provider);
   const results=await Promise.allSettled(offers.map(async o=>{
     if(quick&&o.provider!=='dessinanime'&&(o.provider==='myflixer'||specialistUrl(o.id)))return [];
     if(quick&&o.provider==='hdtoday'&&!title.tmdbId&&!title.offerings?.some(o=>o.provider==='fmovies'&&o.tmdbId))return [];
@@ -327,7 +330,7 @@ export async function unifiedStream(id,{showId,source,prefix='/api/stream',catal
   for(const provider of new Set(servers.filter(server=>server.cached).map(server=>server.provider)))providerErrors.push({provider,error:'Source revalidation failed; cached player links retained',cached:true});
   const tmdbId=title.tmdbId || title.offerings?.find(o=>o.provider==='fmovies')?.tmdbId;
   const alternatives=title.kind==='series'?documentedTvServers({tmdbId,season:episode.season,number:episode.number}):product==='flixer'&&title.kind==='film'?documentedMovieServers({tmdbId}):[];
-  for(const server of alternatives){
+  for(const server of provider&&!quick?[]:alternatives){
     if(!seen.has(server.embedUrl)){seen.add(server.embedUrl);servers.push(server);}
   }
   return {id,showId:title.id,servers,streamUrl:servers.find(s=>s.type==='hls')?.streamUrl||null,providerErrors};

@@ -13,6 +13,8 @@
 
   // Keep a confirmed preference; otherwise prefer direct media or official YouTube.
   function initialIndex(servers) {
+    const ready=servers.filter(server=>!sourceCoolingDown(server));
+    if(ready.length&&ready.length<servers.length)return servers.indexOf(ready[initialIndex(ready)]);
     try{
       const preference=JSON.parse(localStorage.getItem('flixer:player-preference')||'null');
       if(preference?.confirmed){
@@ -33,6 +35,27 @@
     }
     const lazy=servers.findIndex(s=>s.type==='dessinanime');
     return lazy>=0?lazy:0;
+  }
+
+  const sourceKey=server=>server&&(server.rawStreamUrl||server.streamUrl||server.embedUrl||server.videoId||server.id);
+  function sourceCoolingDown(server){try{const at=JSON.parse(localStorage.getItem('flixer:source-failures')||'{}')[sourceKey(server)];return Number.isFinite(at)&&Date.now()-at<5*60*1000;}catch{return false;}}
+  function sourceOutcome(server,playing){
+    try{const failures=JSON.parse(localStorage.getItem('flixer:source-failures')||'{}'),key=sourceKey(server);if(!key)return;
+      if(playing){if(!Object.hasOwn(failures,key))return;delete failures[key];}else failures[key]=Date.now();
+      localStorage.setItem('flixer:source-failures',JSON.stringify(Object.fromEntries(Object.entries(failures).filter(([,at])=>Number.isFinite(at)&&Date.now()-at<5*60*1000).sort((a,b)=>b[1]-a[1]).slice(0,48))));
+    }catch{}
+  }
+
+  // Repeated buffering events must not extend a stall indefinitely. Pausing,
+  // advancing or tearing down the player cancels recovery.
+  function watchMediaStall(video,{onStall,onBuffer,isCurrent,timeout=12000,setTimer=setTimeout,clearTimer=clearTimeout}){
+    let timer=null,position=video.currentTime;
+    const clear=()=>{if(timer!==null)clearTimer(timer);timer=null;};
+    const waiting=()=>{if(!isCurrent()||video.paused||video.ended)return;onBuffer();if(timer===null)timer=setTimer(()=>{timer=null;if(isCurrent()&&!video.paused&&!video.ended)onStall();},timeout);};
+    const progress=()=>{if(video.currentTime>position){position=video.currentTime;clear();}};
+    const events={waiting,stalled:waiting,playing:clear,pause:clear,ended:clear,seeking:clear,timeupdate:progress};
+    for(const [event,listener]of Object.entries(events))video.addEventListener(event,listener);
+    return ()=>{clear();for(const [event,listener]of Object.entries(events))video.removeEventListener(event,listener);};
   }
 
   let hlsReady;
@@ -160,6 +183,7 @@
       flushProgress();
       clearTimeout(st.switchTimer);
       clearTimeout(st.startupTimer);
+      st.stopStall?.();st.stopStall=null;
       st.generation++;
       window.FlixerWcoSource?.cancel?.();
       window.FlixerBrowser?.closePlayers?.();
@@ -178,7 +202,7 @@
       let confirmed=false;
       stage.innerHTML = '<div class="player__loading">Player open in the app</div>';
       try { const result=await window.FlixerBrowser.openPlayer(url,{headers:server.headers,captureMedia:captureMedia===true&&server.captureMedia!==false,bounds:inlineBounds(),startAt:st.resumePosition,onProgress:state=>{
-        if(current()&&state.playing&&!confirmed){confirmed=true;setState('Playing · '+server.name);notice.hidden=true;try{localStorage.setItem('flixer:player-preference',JSON.stringify({provider:server.provider,name:server.name,audioMode:server.audioMode,confirmed:true}));}catch{}}
+        if(current()&&state.playing&&!confirmed){confirmed=true;sourceOutcome(server,true);setState('Playing · '+server.name);notice.hidden=true;try{localStorage.setItem('flixer:player-preference',JSON.stringify({provider:server.provider,name:server.name,audioMode:server.audioMode,confirmed:true}));}catch{}}
         if(current())reportProgress(state.position,state.duration,state.final===true);
       }});
         if(current()&&result?.played)reportProgress(result.position,result.duration,true);
@@ -221,7 +245,7 @@
         const result=await window.FlixerBrowser.openMedia(server,{title:opts.title,startAt:server.startAt??st.resumePosition,bounds:inlineBounds(),onProgress:state=>{
           if(!current())return;
           if(state.playing){try{localStorage.setItem('flixer:player-preference',JSON.stringify({provider:server.provider,name:server.name,audioMode:server.audioMode,confirmed:true}));}catch{}}
-          if(state.playing){played=true;setState('Playing · '+server.name);notice.hidden=true;}
+          if(state.playing){played=true;sourceOutcome(server,true);setState('Playing · '+server.name);notice.hidden=true;}
           if(played)reportProgress(state.position,state.duration,state.final===true);
         }});
         if(!current())return;
@@ -291,12 +315,12 @@
       const generation = st.generation;
       const current = () => !st.destroyed && generation === st.generation;
       const failed = () => { if (current()) failover(); };
-      const ready = () => { if (current()) { clearTimeout(st.startupTimer); notice.hidden = true; } };
+      const ready = () => { if (current()) { clearTimeout(st.startupTimer); notice.hidden = true;setState('Playing · '+s.name);sourceOutcome(s,true); } };
+      const play=()=>v.play().catch(error=>{if(current()&&error.name==='NotAllowedError'){clearTimeout(st.startupTimer);setState('Ready · press Play');showNotice('Press Play on the video to start.',true);}});
       showNotice("Loading video...");
       st.startupTimer = setTimeout(failed, 25000);
-      v.addEventListener("loadeddata", ready, { once: true });
       v.addEventListener("playing", () => {ready();try{localStorage.setItem('flixer:player-preference',JSON.stringify({provider:s.provider,name:s.name,audioMode:s.audioMode,confirmed:true}));}catch{}});
-      v.addEventListener("waiting", () => { if (current()) showNotice("Buffering... You can switch servers above"); });
+      st.stopStall=watchMediaStall(v,{isCurrent:current,onStall:failed,onBuffer:()=>{setState('Buffering · '+s.name);showNotice('Buffering… trying another source if this continues');}});
       v.addEventListener("error", failed);
       v.addEventListener("timeupdate", () => { if(current())reportProgress(v.currentTime,v.duration); });
       v.addEventListener("pause", () => { if(current())reportProgress(v.currentTime,v.duration,true); });
@@ -310,13 +334,13 @@
       if (['mp4','file'].includes(s.type) || v.canPlayType("application/vnd.apple.mpegurl")) {
         v.src = s.streamUrl;
         v.addEventListener("loadedmetadata", seek, { once: true });
-        v.play().catch(() => {});
+        play();
       } else if (window.Hls && window.Hls.isSupported()) {
         const hls = new window.Hls({ enableWorker: true, lowLatencyMode: true, backBufferLength: 30, maxBufferLength: 30, manifestLoadingTimeOut: 10000, manifestLoadingMaxRetry: 1, fragLoadingTimeOut: 15000, fragLoadingMaxRetry: 1 });
         st.hls = hls;
         hls.loadSource(s.streamUrl);
         hls.attachMedia(v);
-        hls.on(window.Hls.Events.MANIFEST_PARSED, () => { seek(); v.play().catch(() => {}); });
+        hls.on(window.Hls.Events.MANIFEST_PARSED, () => { seek(); play(); });
         hls.on(window.Hls.Events.ERROR, (_, data) => { if (data && data.fatal) { console.warn("[player] HLS fatal error:", data.type, data.details); failed(); } });
       } else {
         v.src = s.streamUrl;
@@ -355,14 +379,15 @@
     function failover() {
       if (st.destroyed) return;
       const cur = servers[st.idx];
+      sourceOutcome(cur,false);
       (st.failed ||= new Set()).add(cur);
       renderBar();
       setState('Trying another source');
       clearTimeout(st.startupTimer);
       clearTimeout(st.switchTimer);
       // Wrap around so a preferred middle server cannot skip earlier alternatives.
-      const next = servers.map((_, offset) => (st.idx + offset + 1) % servers.length)
-        .find(index => !st.attempted.has(index));
+      const candidates=servers.map((_, offset) => (st.idx + offset + 1) % servers.length).filter(index=>!st.attempted.has(index));
+      const next=candidates.find(index=>!sourceCoolingDown(servers[index]))??candidates[0];
       if (next !== undefined) {
         showNotice(`${cur ? cur.name : "Server"} unavailable. Switching to ${servers[next].name}...`);
         const generation = st.generation;

@@ -1,0 +1,42 @@
+name: Verify application
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Install locked dependencies
+        run: npm ci && npm ci --prefix server && npm ci --prefix client && npm ci --prefix mobile
+      - name: Test catalogue, sources and client behavior
+        run: npm test
+      - name: Browser smoke checks
+        run: npm run test:ui
+      - name: Build supported web client
+        run: node scripts/build-terrarium.js --out artifacts/verify-web --data-base https://flixer-api-fedimechergui.netlify.app
+      - name: Build backend assets
+        run: node scripts/build-netlify.js
+      - name: Build mobile client from a clean checkout
+        run: node scripts/product.js flixer mobile-web --data-base https://flixer-api-fedimechergui.netlify.app
+      - name: Sync native project
+        working-directory: mobile
+        run: npx cap sync android
+      - name: Test and build Android
+        working-directory: mobile/android
+        run: chmod +x gradlew && ./gradlew testDebugUnitTest assembleDebug --no-daemon

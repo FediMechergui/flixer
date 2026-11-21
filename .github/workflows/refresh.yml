@@ -5,9 +5,7 @@ name: Refresh catalogue data
 on:
   schedule:
     - cron: '17 */2 * * *'   # historical catalogue traversal
-    - cron: '47 * * * *'     # latest releases
-    - cron: '2,32 * * * *'   # latest releases every 15 minutes overall
-    - cron: '17 1-23/2 * * *' # latest releases between historical runs
+    - cron: '2,12,22,32,42,52 * * * *' # lightweight latest releases every 10 minutes
   workflow_dispatch:
     inputs:
       full:

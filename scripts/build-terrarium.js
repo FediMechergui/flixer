@@ -1,5 +1,6 @@
 import { configureMobile } from './configure-mobile.js';
 import {writeMobileIndex} from './bundle-mobile-index.js';
+import {validateBuildOutput} from './build-output.js';
 // Builds the Terrarium-based Flixer client (client-terrarium/) into a static folder.
 //   node scripts/build-terrarium.js [--out <dir>] [--data-base <url>] [--api-base <url>] [--mobile]
 // --mobile writes into mobile/www (the Capacitor webDir) and bundles the exported data unless
@@ -11,10 +12,10 @@ import {createRequire} from 'node:module';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
-const opt = (name, def) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : def; };
+const opt = (name, def) => { const i = args.indexOf(name); if(i<0)return def;if(!args[i+1]||args[i+1].startsWith('--'))throw Error(`Missing value for ${name}`);return args[i+1]; };
 const mobile = args.includes('--mobile');
 const src = path.join(root, 'client-terrarium');
-const out = path.resolve(root, opt('--out', mobile ? 'mobile/www' : 'client-terrarium/dist'));
+const out = validateBuildOutput(root, opt('--out', mobile ? 'mobile/www' : 'client-terrarium/dist'));
 const dataBase = opt('--data-base', process.env.VITE_DATA_BASE || '');
 const apiBase = opt('--api-base', process.env.VITE_API_BASE || dataBase || '');
 if (dataBase && /dahsha\.vercel\.app/.test(dataBase)) throw new Error('Flixer must use its own data host');
@@ -80,6 +81,7 @@ if (!dataBase) {
 if(mobile && dataBase) {
   fs.mkdirSync(path.join(out,'data'),{recursive:true});
   for(const name of ['bootstrap.json','universes.json','services.json']) if(fs.existsSync(path.join(dataDir,name))) fs.copyFileSync(path.join(dataDir,name),path.join(out,'data',name));
+  for(const name of ['universes.json','services.json'])if(!fs.existsSync(path.join(out,'data',name))&&fs.existsSync(path.join(src,'data',name)))fs.copyFileSync(path.join(src,'data',name),path.join(out,'data',name));
   if(fs.existsSync(path.join(dataDir,'index.json')))console.log('[terrarium] mobile index',writeMobileIndex(path.join(dataDir,'index.json'),path.join(out,'data')));
 }
 fs.writeFileSync(path.join(out, 'config.js'), `window.FLIXER_CONFIG = ${JSON.stringify({ dataBase, apiBase, mobile, builtAt: new Date().toISOString() })};\n`);

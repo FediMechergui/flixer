@@ -19,7 +19,7 @@ async function boundedBody(response,limit){
  if(!response.ok){await response.body?.cancel();throw Error('Catalogue source HTTP '+response.status)}
  const parts=[];let size=0;for await(const part of response.body){size+=part.length;if(size>limit)throw Error('Catalogue asset too large');parts.push(part)}return Buffer.concat(parts);
 }
-export function createRuntimeSource({fetchImpl=fetch,now=Date.now,pollMs=120000,root=RUNTIME_ROOT,log=console.warn}={}){
+export function createRuntimeSource({fetchImpl=fetch,now=Date.now,pollMs=60000,root=RUNTIME_ROOT,log=console.warn}={}){
  let manifest=null,available=null,catalog=null,pending=null,checking=null,checked=-Infinity,retryAt=0;
  const cache=new Map(),loading=new Map();
  const waiters=[];let downloads=0,cachedBytes=0;

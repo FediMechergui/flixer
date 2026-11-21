@@ -108,10 +108,14 @@ export function mergeLibrary(base, incoming, { product = 'flixer', aliases = {},
   for (const row of incoming || []) {
     if (!['film','series'].includes(row.kind) || !row.id || !row.title || (product === 'dahsha' && row.documentary !== true)) { report.rejected++; continue; }
     const source = product === 'dahsha' ? {...row,lang:row.lang === 'ar' ? 'ar' : 'en',channelId:row.channelId || 'fmovies'} : row;
-    let match = byId.get(source.id) || byId.get(report.aliases[source.id]) || byId.get(offerings.get(source.id))
-      || byId.get(source.tmdbId && external.get(`${source.kind}:tmdb:${source.tmdbId}`))
-      || byId.get(source.imdbId && external.get(`${source.kind}:imdb:${source.imdbId}`));
-    const candidates = [...new Set([source.title,...(source.altTitles||[])].flatMap(title=>[...(index.get(`${source.kind}:${titleKey(title)}`)||[])]))].map(id => byId.get(id));
+    const compatible=other=>other&&other.kind===source.kind&&!['tmdbId','imdbId'].some(key=>other[key]&&source[key]&&String(other[key])!==String(source[key]));
+    // A saved alias is evidence, not permission to override conflicting IDs.
+    // Same-source refreshes can still correct their own metadata.
+    if(report.aliases[source.id]&&!compatible(byId.get(report.aliases[source.id])))delete report.aliases[source.id];
+    let match = byId.get(source.id) || [report.aliases[source.id],offerings.get(source.id),
+      source.tmdbId && external.get(`${source.kind}:tmdb:${source.tmdbId}`),
+      source.imdbId && external.get(`${source.kind}:imdb:${source.imdbId}`)].map(id=>byId.get(id)).find(compatible);
+    const candidates = [...new Set([source.title,...(source.altTitles||[])].flatMap(title=>[...(index.get(`${source.kind}:${titleKey(title)}`)||[])]))].map(id => byId.get(id)).filter(compatible);
     if (!match) {
       const exact = candidates.filter(s => s.year && source.year && Number(s.year) === Number(source.year));
       if (exact.length === 1) match = exact[0];
